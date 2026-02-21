@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_colors.dart';
 import './email_login_screen.dart';
+import './email_signup_screen.dart';
+import '../homescreen.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -86,7 +87,11 @@ class LoginScreen extends StatelessWidget {
                     height: 56,
                     child: ElevatedButton(
                       onPressed: () {
-                        // TODO: Handle Google login
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const HomeScreen(),
+                          ),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.white,
@@ -124,10 +129,10 @@ class LoginScreen extends StatelessWidget {
                   Text(
                     "You don't have an account?",
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.white.withOpacity(0.7),
+                          color: AppColors.white.withValues(alpha: 0.7),
                         ) ??
                         TextStyle(
-                          color: AppColors.white.withOpacity(0.7),
+                          color: AppColors.white.withValues(alpha: 0.7),
                           fontSize: 14,
                         ),
                   ),
@@ -144,15 +149,14 @@ class LoginScreen extends StatelessWidget {
                           await precacheImage(const AssetImage('assets/images/mentor_signup.png'), context);
                           // Extra check: try loading raw bytes from asset bundle to catch missing/corrupt asset issues.
                           try {
-                            final bd = await rootBundle.load('assets/images/student_signup.png');
-                            debugPrint('rootBundle loaded student_signup.png: \${bd.lengthInBytes} bytes');
+                            final bytes = await rootBundle.load('assets/images/student_signup.png');
+                            debugPrint('rootBundle loaded student_signup.png: ${bytes.lengthInBytes} bytes');
                           } catch (loadErr, loadSt) {
-                            debugPrint('rootBundle.load error for student_signup.png: \$loadErr');
-                            debugPrint('\$loadSt');
+                            debugPrint('rootBundle.load error for student_signup.png: $loadErr');
+                            debugPrint('$loadSt');
                           }
-                        } catch (e, st) {
-                          debugPrint('Precache error: \$e');
-                          debugPrint('\$st');
+                        } catch (e) {
+                          debugPrint('Precache error: $e');
                         }
                         Navigator.of(context).push(
                           MaterialPageRoute(
@@ -226,7 +230,11 @@ class SignupScreen extends StatelessWidget {
                   const SizedBox(height: 80),
                   GestureDetector(
                     onTap: () {
-                      // TODO: Handle user signup
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const EmailSignupScreen(role: 'student'),
+                        ),
+                      );
                     },
                     child: SizedBox(
                       width: double.infinity,
@@ -249,7 +257,11 @@ class SignupScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   GestureDetector(
                     onTap: () {
-                      // TODO: Handle mentor signup
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const EmailSignupScreen(role: 'mentor'),
+                        ),
+                      );
                     },
                     child: SizedBox(
                       width: double.infinity,
@@ -276,10 +288,10 @@ class SignupScreen extends StatelessWidget {
                       Text(
                         'Already have an account? ',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.white.withOpacity(0.7),
+                              color: AppColors.white.withValues(alpha: 0.7),
                             ) ??
                             TextStyle(
-                              color: AppColors.white.withOpacity(0.7),
+                              color: AppColors.white.withValues(alpha: 0.7),
                               fontSize: 14,
                             ),
                       ),

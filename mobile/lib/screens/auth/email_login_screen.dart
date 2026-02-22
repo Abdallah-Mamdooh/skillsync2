@@ -17,6 +17,60 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
   bool _isPasswordVisible = false;
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _isFormValid = false;
+  bool _isEmailValid = true;
+  bool _hasEmailAtSymbol = false;
+  bool _hasEmailDomain = false;
+  bool _hasEmailTld = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController.addListener(_validateForm);
+    _passwordController.addListener(_validateForm);
+  }
+
+  void _validateForm() {
+    setState(() {
+      // Email validation checks
+      final email = _emailController.text.trim();
+      
+      // Check for @ symbol
+      _hasEmailAtSymbol = email.contains('@');
+      
+      // Check for valid domain (something after @ with a dot)
+      if (_hasEmailAtSymbol) {
+        final parts = email.split('@');
+        if (parts.length == 2) {
+          final domainPart = parts[1];
+          _hasEmailDomain = domainPart.contains('.') && 
+              domainPart.indexOf('.') > 0 && 
+              domainPart.indexOf('.') < domainPart.length - 1;
+          
+          // Check for valid TLD (at least 2 characters after last dot)
+          if (_hasEmailDomain) {
+            final lastDotIndex = domainPart.lastIndexOf('.');
+            _hasEmailTld = lastDotIndex < domainPart.length - 1 && 
+                domainPart.substring(lastDotIndex + 1).length >= 2;
+          } else {
+            _hasEmailTld = false;
+          }
+        } else {
+          _hasEmailDomain = false;
+          _hasEmailTld = false;
+        }
+      } else {
+        _hasEmailDomain = false;
+        _hasEmailTld = false;
+      }
+      
+      // Overall email valid if all conditions met
+      _isEmailValid = _hasEmailAtSymbol && _hasEmailDomain && _hasEmailTld;
+      
+      // Form is valid only if both email and password are valid
+      _isFormValid = _isEmailValid && _passwordController.text.trim().isNotEmpty;
+    });
+  }
 
   @override
   void dispose() {
@@ -64,7 +118,56 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                               letterSpacing: 1.5,
                             ),
                           ),
-                          const SizedBox(height: 60),
+                          const SizedBox(height: 40),
+                          
+                          // Email Validation Rules Card
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.2),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Email Requirements:',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                _buildRequirementRow(
+                                  'Must contain @ symbol',
+                                  _hasEmailAtSymbol || _emailController.text.isEmpty,
+                                ),
+                                _buildRequirementRow(
+                                  'Must have a valid domain (e.g., gmail.com)',
+                                  _hasEmailDomain || _emailController.text.isEmpty,
+                                ),
+                                _buildRequirementRow(
+                                  'Must have a valid top-level domain (e.g., .com, .org)',
+                                  _hasEmailTld || _emailController.text.isEmpty,
+                                ),
+                                const SizedBox(height: 8),
+                                const Divider(color: Colors.white24),
+                                const SizedBox(height: 8),
+                                _buildRequirementRow(
+                                  'Password cannot be empty',
+                                  _passwordController.text.trim().isNotEmpty,
+                                ),
+                              ],
+                            ),
+                          ),
+                          
+                          const SizedBox(height: 24),
+                          
+                          // Email Field
                           const Align(
                             alignment: Alignment.centerLeft,
                             child: Text(
@@ -95,6 +198,13 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                                   color: const Color(0xFFBCBCBC),
                                   fontSize: 16,
                                 ),
+                                errorText: _emailController.text.isNotEmpty && !_isEmailValid
+                                    ? 'Please enter a valid email address'
+                                    : null,
+                                errorStyle: const TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 12,
+                                ),
                               ),
                               style: GoogleFonts.getFont(
                                 'Inter',
@@ -103,7 +213,10 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                               ),
                             ),
                           ),
+                          
                           const SizedBox(height: 24),
+                          
+                          // Password Field
                           const Align(
                             alignment: Alignment.centerLeft,
                             child: Text(
@@ -134,6 +247,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                                     _isPasswordVisible
                                         ? Icons.visibility
                                         : Icons.visibility_off,
+                                    color: Colors.grey[600],
                                   ),
                                   onPressed: () {
                                     setState(() {
@@ -154,12 +268,39 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 40),
+                          
+                          // Password Empty Warning
+                          if (_passwordController.text.isNotEmpty && 
+                              _passwordController.text.trim().isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.warning,
+                                    color: Colors.orange,
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'Password cannot be empty or just spaces',
+                                    style: TextStyle(
+                                      color: Colors.orange,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          
+                          const SizedBox(height: 30),
+                          
+                          // Login Button with validation
                           SizedBox(
                             width: double.infinity,
                             height: 56,
                             child: ElevatedButton(
-                              onPressed: authProvider.isLoading
+                              onPressed: (!_isFormValid || authProvider.isLoading)
                                   ? null
                                   : () async {
                                       final success =
@@ -190,7 +331,9 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                                       }
                                     },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFF5A100),
+                                backgroundColor: (_isFormValid && !authProvider.isLoading)
+                                    ? const Color(0xFFF5A100)
+                                    : const Color(0xFFF5A100).withOpacity(0.3),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(15),
                                 ),
@@ -217,7 +360,44 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                                     ),
                             ),
                           ),
+                          
+                          const SizedBox(height: 16),
+                          
+                          // Form Status Message
+                          if (!_isFormValid && (_emailController.text.isNotEmpty || _passwordController.text.isNotEmpty))
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.orange.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
+                                    color: Colors.orange,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _getFormStatusMessage(),
+                                      style: const TextStyle(
+                                        color: Colors.orange,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          
                           const SizedBox(height: 24),
+                          
+                          // Forgot Password Link
                           Center(
                             child: TextButton(
                               onPressed: () {
@@ -251,5 +431,43 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildRequirementRow(String text, bool isMet) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        children: [
+          Icon(
+            isMet ? Icons.check_circle : Icons.radio_button_unchecked,
+            color: isMet ? Colors.green : Colors.grey,
+            size: 16,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: isMet ? Colors.green : Colors.grey,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getFormStatusMessage() {
+    if (!_isEmailValid && _emailController.text.isNotEmpty) {
+      return 'Please enter a valid email address that includes: @ symbol, domain name, and top-level domain (e.g., .com)';
+    } else if (_passwordController.text.trim().isEmpty && _passwordController.text.isNotEmpty) {
+      return 'Password cannot be empty or just spaces';
+    } else if (_emailController.text.isEmpty) {
+      return 'Please enter your email address';
+    } else if (_passwordController.text.isEmpty) {
+      return 'Please enter your password';
+    }
+    return 'Please complete all required fields';
   }
 }

@@ -87,9 +87,10 @@ class LoginScreen extends StatelessWidget {
                     height: 56,
                     child: ElevatedButton(
                       onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const HomeScreen(),
+                        // Placeholder for Google login - requires additional setup
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please sign up or use email login first'),
                           ),
                         );
                       },
@@ -232,7 +233,7 @@ class SignupScreen extends StatelessWidget {
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (context) => const EmailSignupScreen(role: 'student'),
+                          builder: (context) => const EmailSignupScreen(role: 'user'),
                         ),
                       );
                     },

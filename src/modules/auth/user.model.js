@@ -1,8 +1,6 @@
 const mongoose = require('mongoose');
 
-
 const userSchema = new mongoose.Schema(
- 
   {
     fullName: {
       type: String,
@@ -26,19 +24,13 @@ const userSchema = new mongoose.Schema(
     },
 
     password: {
-      passwordResetToken: String,
-      passwordResetExpires: Date,
       type: String,
       required: true,
       select: false
     },
-    passwordResetToken: {
-  type: String
-},
-passwordResetExpires: {
-  type: Date
-},
 
+    passwordResetToken: String,
+    passwordResetExpires: Date,
 
     role: {
       type: String,
@@ -46,17 +38,25 @@ passwordResetExpires: {
       required: true
     },
 
-    /* Mentor-only fields */
+    // Core Profile Data
+    skills: [
+      {
+        type: String
+      }
+    ],
+
+    cvUrl: {
+      type: String
+    },
+
+    assessmentCompleted: {
+      type: Boolean,
+      default: false
+    },
+
     mentorProfile: {
-      cvUrl: {
-        type: String
-      },
-      linkedinUrl: {
-        type: String
-      },
-      additionalInfo: {
-        type: String
-      },
+      linkedinUrl: String,
+      additionalInfo: String,
       isVerified: {
         type: Boolean,
         default: false
@@ -68,9 +68,7 @@ passwordResetExpires: {
       default: true
     }
   },
-  {
-    timestamps: true
-  }
+  { timestamps: true }
 );
 
 module.exports = mongoose.model('User', userSchema);

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_colors.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
+import '../homescreen.dart';
 
 class EmailSignupScreen extends StatefulWidget {
   final String role;
@@ -12,6 +15,40 @@ class EmailSignupScreen extends StatefulWidget {
 
 class _EmailSignupScreenState extends State<EmailSignupScreen> {
   bool _isPasswordVisible = false;
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isFormValid = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController.addListener(_validateForm);
+    _emailController.addListener(_validateForm);
+    _phoneController.addListener(_validateForm);
+    _passwordController.addListener(_validateForm);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _validateForm() {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+    final pass = _passwordController.text.trim();
+    final emailValid = email.contains('@') && email.contains('.');
+    setState(() {
+      _isFormValid = name.isNotEmpty && emailValid && phone.isNotEmpty && pass.isNotEmpty;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,38 +88,70 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                         ),
                       ),
                       const SizedBox(height: 60),
-                      _buildTextField(label: 'Full Name', hint: 'Enter your full name'),
+                      _buildTextField(controller: _nameController, label: 'Full Name', hint: 'Enter your full name'),
                       const SizedBox(height: 24),
-                      _buildTextField(label: 'Email', hint: 'ex.abdallah@gmail.com', keyboardType: TextInputType.emailAddress),
+                      _buildTextField(controller: _emailController, label: 'Email', hint: 'ex.abdallah@gmail.com', keyboardType: TextInputType.emailAddress),
                       const SizedBox(height: 24),
-                      _buildTextField(label: 'Phone Number', hint: 'Enter your phone number', keyboardType: TextInputType.phone),
+                      _buildTextField(controller: _phoneController, label: 'Phone Number', hint: 'Enter your phone number', keyboardType: TextInputType.phone),
                       const SizedBox(height: 24),
                        _buildPasswordField(),
                       const SizedBox(height: 40),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 56,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            // TODO: Handle signup logic
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFF5A100),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15),
+                      Consumer<AuthProvider>(builder: (context, authProvider, _) {
+                        return SizedBox(
+                          width: double.infinity,
+                          height: 56,
+                          child: ElevatedButton(
+                            onPressed: authProvider.isLoading || !_isFormValid
+                                ? null
+                                : () async {
+                                    final success = await authProvider.signup(
+                                      fullName: _nameController.text.trim(),
+                                      email: _emailController.text.trim(),
+                                      phoneNumber: _phoneController.text.trim(),
+                                      password: _passwordController.text.trim(),
+                                      role: widget.role,
+                                    );
+
+                                    if (success && mounted) {
+                                      Navigator.of(context).pushReplacement(
+                                        MaterialPageRoute(
+                                          builder: (context) => const HomeScreen(),
+                                        ),
+                                      );
+                                    } else if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text(authProvider.error ?? 'Signup failed')),
+                                      );
+                                    }
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: (!_isFormValid || authProvider.isLoading)
+                                  ? const Color(0xFFF5A100).withOpacity(0.4)
+                                  : const Color(0xFFF5A100),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15),
+                              ),
                             ),
+                            child: authProvider.isLoading
+                                ? const SizedBox(
+                                    height: 24,
+                                    width: 24,
+                                    child: CircularProgressIndicator(
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
+                                  )
+                                : Text(
+                                    'Signup',
+                                    style: GoogleFonts.getFont(
+                                      'Urbanist',
+                                      color: Colors.white,
+                                      fontSize: 25,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                           ),
-                          child: Text(
-                            'Signup',
-                            style: GoogleFonts.getFont(
-                              'Urbanist',
-                              color: Colors.white,
-                              fontSize: 25,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
+                        );
+                      }),
                     ],
                   ),
                 ),
@@ -94,7 +163,7 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
     );
   }
 
-    Widget _buildTextField({required String label, required String hint, TextInputType keyboardType = TextInputType.text}) {
+    Widget _buildTextField({TextEditingController? controller, required String label, required String hint, TextInputType keyboardType = TextInputType.text}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -110,6 +179,7 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
         SizedBox(
           height: 56,
           child: TextFormField(
+            controller: controller,
             keyboardType: keyboardType,
             decoration: InputDecoration(
               hintText: hint,
@@ -152,6 +222,7 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
         SizedBox(
           height: 56,
           child: TextFormField(
+            controller: _passwordController,
             obscureText: !_isPasswordVisible,
             decoration: InputDecoration(
               hintText: '***********************',

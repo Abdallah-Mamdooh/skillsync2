@@ -1,31 +1,45 @@
 const asyncHandler = require('../../middlewares/async.middleware');
 const roadmapService = require('./roadmap.service');
 
-const getUserRoadmap = asyncHandler(async (req, res) => {
-  const data = await roadmapService.getUserRoadmap(req.user._id);
-  res.json({ success: true, data });
+const getMyRoadmap = asyncHandler(async (req, res) => {
+
+  const roadmap = await roadmapService.getUserRoadmap(req.user._id);
+
+  res.status(200).json({
+    success: true,
+    data: roadmap
+  });
 });
 
 const completeStep = asyncHandler(async (req, res) => {
+
+  const { stepId } = req.body;
+
   const response = await roadmapService.completeStep(
     req.user._id,
-    req.body.phaseIndex,
-    req.body.stepIndex
+    stepId
   );
 
-  res.json({ success: true, ...response });
+  res.status(200).json({
+    success: true,
+    ...response
+  });
 });
 
-const getProgressPercentage = asyncHandler(async (req, res) => {
+const getProgress = asyncHandler(async (req, res) => {
+
   const percentage = await roadmapService.calculateProgressPercentage(
     req.user._id
   );
 
-  res.json({ success: true, progress: percentage });
+  res.status(200).json({
+    success: true,
+    progress: percentage
+  });
 });
 
 module.exports = {
-  getUserRoadmap,
+  getMyRoadmap,
   completeStep,
-  getProgressPercentage
+  getProgress
 };

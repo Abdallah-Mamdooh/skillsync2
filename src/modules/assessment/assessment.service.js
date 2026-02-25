@@ -87,22 +87,25 @@ const submitAssessment = async (userId, answers, forceOverwrite = false) => {
 /**
  * Choose Career
  */
+const { initializeProgress } = require('../roadmap/roadmap.service');
+
 const chooseCareer = async (userId, careerId) => {
 
   const result = await UserAssessmentResult.findOne({ userId });
 
   if (!result) {
-    throw new Error('You must complete assessment first');
+    throw new Error('Assessment not completed');
   }
 
   result.chosenCareer = careerId;
   await result.save();
 
-  return {
-    message: 'Career selected successfully',
-    data: result
-  };
+  // Reset and initialize roadmap progress
+  await initializeProgress(userId);
+
+  return { message: 'Career selected and roadmap initialized' };
 };
+
 
 module.exports = {
   submitAssessment,

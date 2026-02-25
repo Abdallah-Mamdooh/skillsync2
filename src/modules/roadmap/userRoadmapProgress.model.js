@@ -16,8 +16,7 @@ const userRoadmapProgressSchema = new mongoose.Schema(
 
     completedSteps: [
       {
-        phaseIndex: Number,
-        stepIndex: Number
+        type: mongoose.Schema.Types.ObjectId
       }
     ]
   },

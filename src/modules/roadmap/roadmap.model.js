@@ -1,5 +1,46 @@
 const mongoose = require('mongoose');
 
+const resourceSchema = new mongoose.Schema(
+  {
+    title: { type: String, required: true },
+
+    type: {
+      type: String,
+      enum: ['video', 'article', 'course', 'documentation'],
+      required: true
+    },
+
+    url: { type: String, required: true }
+  },
+  { _id: false }
+);
+
+const stepSchema = new mongoose.Schema(
+  {
+    title: { type: String, required: true },
+
+    description: { type: String, required: true },
+
+    skillTag: { type: String, required: true },
+
+    order: { type: Number, required: true },
+
+    resources: [resourceSchema]
+  },
+  { timestamps: true }
+);
+
+const phaseSchema = new mongoose.Schema(
+  {
+    title: { type: String, required: true },
+
+    order: { type: Number, required: true },
+
+    steps: [stepSchema]
+  },
+  { timestamps: true }
+);
+
 const roadmapSchema = new mongoose.Schema(
   {
     careerId: {
@@ -8,31 +49,7 @@ const roadmapSchema = new mongoose.Schema(
       required: true
     },
 
-    phases: [
-      {
-        title: String,
-        order: Number,
-
-        steps: [
-          {
-            title: String,
-            description: String,
-            skillTag: String,
-
-            resources: [
-              {
-                title: String,
-                type: {
-                  type: String,
-                  enum: ['video', 'article', 'course', 'documentation']
-                },
-                url: String
-              }
-            ]
-          }
-        ]
-      }
-    ]
+    phases: [phaseSchema]
   },
   { timestamps: true }
 );

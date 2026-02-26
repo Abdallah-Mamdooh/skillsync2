@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import 'assessment_flow.dart';
 
 class StudentHomeScreen extends StatelessWidget {
   const StudentHomeScreen({super.key});
@@ -13,8 +14,8 @@ class StudentHomeScreen extends StatelessWidget {
 
     return Scaffold(
       body: Container(
-        width: 395,
-        height: 968,
+        width: MediaQuery.of(context).size.width,
+        height: MediaQuery.of(context).size.height,
         clipBehavior: Clip.hardEdge,
         decoration: const BoxDecoration(
           color: Colors.white,
@@ -30,7 +31,7 @@ class StudentHomeScreen extends StatelessWidget {
                   left: 0,
                   top: 0,
                   child: Container(
-                    width: 393,
+                    width: MediaQuery.of(context).size.width,
                     height: 282,
                     clipBehavior: Clip.hardEdge,
                     decoration: const BoxDecoration(
@@ -114,6 +115,7 @@ class StudentHomeScreen extends StatelessWidget {
                             width: 61,
                             height: 62,
                             fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) => const Icon(Icons.star, color: Color(0xFFF5A100), size: 60),
                           ),
                         )
                       ],
@@ -187,70 +189,30 @@ class StudentHomeScreen extends StatelessWidget {
                           child: SizedBox(
                             width: 48,
                             height: 54,
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                Positioned(
-                                  left: 0,
-                                  top: 0,
-                                  child: Container(
-                                    width: 48,
-                                    height: 54,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      border: Border.all(
-                                        color: Colors.grey,
-                                      ),
-                                      borderRadius: BorderRadius.circular(4),
+                            child: Container(
+                              width: 48,
+                              height: 54,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                border: Border.all(color: Colors.grey),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.account_balance_wallet, color: Color(0xFF1D5572), size: 25),
+                                  Text(
+                                    'Wallet',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Color(0xFF333333),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      fontFamily: 'Roboto',
                                     ),
-                                    child: Stack(
-                                      clipBehavior: Clip.none,
-                                      children: [
-                                        Positioned(
-                                          left: 8,
-                                          top: 4,
-                                          child: Container(
-                                            width: 32,
-                                            height: 32,
-                                            decoration: BoxDecoration(
-                                              borderRadius: BorderRadius.circular(10),
-                                            ),
-                                            child: Stack(
-                                              clipBehavior: Clip.none,
-                                              children: [
-                                                Positioned(
-                                                  left: 4,
-                                                  top: 4,
-                                                  child: Image.network(
-                                                    'https://firebasestorage.googleapis.com/v0/b/codeless-app.appspot.com/o/projects%2F0RtgVWh8wVg1fysBxIg4%2F034e53e7a145dd083dc5c66d2703feec29e4fc96Wallet%20filled%20money%20tool.png?alt=media&token=290ddaac-4e57-49ed-81a6-140599007dd4',
-                                                    width: 25,
-                                                    height: 25,
-                                                    fit: BoxFit.cover,
-                                                  ),
-                                                )
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                        const Positioned(
-                                          left: 6,
-                                          top: 35,
-                                          child: Text(
-                                            'Wallet',
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              color: Color(0xFF333333),
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              fontFamily: 'Roboto',
-                                            ),
-                                          ),
-                                        )
-                                      ],
-                                    ),
-                                  ),
-                                )
-                              ],
+                                  )
+                                ],
+                              ),
                             ),
                           ),
                         )
@@ -378,10 +340,10 @@ class StudentHomeScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                Positioned(
+                const Positioned(
                   left: 26,
                   top: 254,
-                  child: const Icon(
+                  child: Icon(
                     Icons.trending_up,
                     color: Color(0xFF001636),
                     size: 20,
@@ -390,70 +352,81 @@ class StudentHomeScreen extends StatelessWidget {
                 Positioned(
                   left: 12,
                   top: 463,
-                  child: Container(
-                    width: 165,
-                    height: 118,
-                    clipBehavior: Clip.hardEdge,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD9D9D9),
-                      border: Border.all(
-                        color: const Color(0xFF1D5572),
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => const AssessmentQuestion1()),
+                      );
+                    },
+                    child: Container(
+                      width: 165,
+                      height: 118,
+                      clipBehavior: Clip.hardEdge,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD9D9D9),
+                        border: Border.all(
+                          color: const Color(0xFF1D5572),
+                        ),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 24,
-                  top: 475,
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    clipBehavior: Clip.hardEdge,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 32,
-                  top: 483,
-                  child: Image.asset(
-                    'assets/images/Skill Assessment logo.png',
-                    width: 24,
-                    height: 24,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-                Positioned(
-                  left: 25,
-                  top: 528,
-                  child: SizedBox(
-                    width: 151,
-                    child: Text(
-                      'Skill Assessment',
-                      style: GoogleFonts.getFont(
-                        'Cairo',
-                        color: Colors.black,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        height: 1.1,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Positioned(
+                            left: 12,
+                            top: 12,
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              clipBehavior: Clip.hardEdge,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Center(
+                                child: Image.asset(
+                                  'assets/images/skill_assessment_logo.png',
+                                  width: 24,
+                                  height: 24,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.assessment, color: Color(0xFF1D5572)),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            left: 13,
+                            top: 65,
+                            child: SizedBox(
+                              width: 151,
+                              child: Text(
+                                'Skill Assessment',
+                                style: GoogleFonts.getFont(
+                                  'Cairo',
+                                  color: Colors.black,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.1,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            left: 13,
+                            top: 87,
+                            child: Text(
+                              'Discover your strengths',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.getFont(
+                                'Cairo',
+                                color: Colors.black,
+                                fontSize: 13,
+                                height: 1.7,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 25,
-                  top: 550,
-                  child: Text(
-                    'Discover your strengths',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.getFont(
-                      'Cairo',
-                      color: Colors.black,
-                      fontSize: 13,
-                      height: 1.7,
                     ),
                   ),
                 ),
@@ -490,10 +463,11 @@ class StudentHomeScreen extends StatelessWidget {
                   left: 215,
                   top: 484,
                   child: Image.asset(
-                    'assets/images/Roadmaps logo.png',
+                    'assets/images/roadmaps_logo.png',
                     width: 23,
                     height: 23,
                     fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.map, color: Color(0xFFF5A100)),
                   ),
                 ),
                 Positioned(
@@ -592,10 +566,11 @@ class StudentHomeScreen extends StatelessWidget {
                   left: 213,
                   top: 616,
                   child: Image.asset(
-                    'assets/images/Find Mentor logo.png',
+                    'assets/images/find_mentor_logo.png',
                     width: 27,
                     height: 18,
                     fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.person_search, color: Color(0xFF1D5572)),
                   ),
                 ),
                 Positioned(
@@ -678,10 +653,11 @@ class StudentHomeScreen extends StatelessWidget {
                   left: 34,
                   top: 613,
                   child: Image.asset(
-                    'assets/images/CV Optimizer logo.png',
+                    'assets/images/cv_optimizer_logo.png',
                     width: 20,
                     height: 25,
                     fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.description, color: Color(0xFFF5A100)),
                   ),
                 ),
                 Positioned(
@@ -773,16 +749,9 @@ class StudentHomeScreen extends StatelessWidget {
                       color: const Color(0xFF1D5572),
                       borderRadius: BorderRadius.circular(26),
                     ),
-                  ),
-                ),
-                Positioned(
-                  left: 34,
-                  top: 778,
-                  child: Image.network(
-                    'https://storage.googleapis.com/codeless-app.appspot.com/uploads%2Fimages%2F0RtgVWh8wVg1fysBxIg4%2F752a6a1e-e7cd-4846-9574-3effac04420f.png',
-                    width: 27,
-                    height: 27,
-                    fit: BoxFit.contain,
+                    child: const Center(
+                      child: Icon(Icons.person_add, color: Colors.white, size: 27),
+                    ),
                   ),
                 ),
                 Positioned(
@@ -830,236 +799,13 @@ class StudentHomeScreen extends StatelessWidget {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(25),
                     ),
-                    child: Stack(
-                      clipBehavior: Clip.none,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        Positioned(
-                          left: 32,
-                          top: 16,
-                          child: Container(
-                            width: 56,
-                            height: 48,
-                            color: Colors.white,
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                Positioned(
-                                  left: 20,
-                                  top: 4,
-                                  child: Image.network(
-                                    'https://storage.googleapis.com/codeless-app.appspot.com/uploads%2Fimages%2F0RtgVWh8wVg1fysBxIg4%2Fcd8177a7-9412-4369-bf79-6ff6337d3551.png',
-                                    width: 16,
-                                    height: 17,
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                                Positioned(
-                                  left: -1,
-                                  top: 27,
-                                  child: SizedBox(
-                                    width: 58,
-                                    child: Text(
-                                      'Home',
-                                      textAlign: TextAlign.center,
-                                      style: GoogleFonts.getFont(
-                                        'Poppins',
-                                        color: const Color(0xFF001636),
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        height: 1.4,
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              ],
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          left: 123,
-                          top: 16,
-                          child: Container(
-                            width: 56,
-                            height: 48,
-                            color: Colors.white,
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                Positioned(
-                                  left: 21,
-                                  top: 3,
-                                  child: Image.network(
-                                    'https://storage.googleapis.com/codeless-app.appspot.com/uploads%2Fimages%2F0RtgVWh8wVg1fysBxIg4%2F2a714c54-5173-4d2e-b6de-4e853deaaa40.png',
-                                    width: 14,
-                                    height: 18,
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                                Positioned(
-                                  left: -1,
-                                  top: 27,
-                                  child: SizedBox(
-                                    width: 58,
-                                    child: Text(
-                                      'assess',
-                                      textAlign: TextAlign.center,
-                                      style: GoogleFonts.getFont(
-                                        'Poppins',
-                                        color: const Color(0xFF001636),
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                        height: 1.4,
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              ],
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          left: 214,
-                          top: 16,
-                          child: Container(
-                            width: 56,
-                            height: 48,
-                            color: Colors.white,
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                Positioned(
-                                  left: 23,
-                                  top: 9,
-                                  child: Container(
-                                    width: 2,
-                                    height: 2,
-                                    clipBehavior: Clip.hardEdge,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF001636),
-                                      borderRadius: BorderRadius.circular(1),
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  left: 27,
-                                  top: 9,
-                                  child: Container(
-                                    width: 2,
-                                    height: 2,
-                                    clipBehavior: Clip.hardEdge,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF001636),
-                                      borderRadius: BorderRadius.circular(1),
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  left: 31,
-                                  top: 9,
-                                  child: Container(
-                                    width: 2,
-                                    height: 2,
-                                    clipBehavior: Clip.hardEdge,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF001636),
-                                      borderRadius: BorderRadius.circular(1),
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  left: 18,
-                                  top: 2,
-                                  child: Image.network(
-                                    'https://storage.googleapis.com/codeless-app.appspot.com/uploads%2Fimages%2F0RtgVWh8wVg1fysBxIg4%2F94f57c70-b8d9-4188-9b45-019ff26c11ed.png',
-                                    width: 20,
-                                    height: 19,
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                                Positioned(
-                                  left: -1,
-                                  top: 27,
-                                  child: SizedBox(
-                                    width: 58,
-                                    child: Text(
-                                      'Chat',
-                                      textAlign: TextAlign.center,
-                                      style: GoogleFonts.getFont(
-                                        'Poppins',
-                                        color: const Color(0xFF001636),
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                        height: 1.4,
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              ],
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          left: 305,
-                          top: 16,
-                          child: Container(
-                            width: 56,
-                            height: 48,
-                            color: Colors.white,
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                Positioned(
-                                  left: 19,
-                                  top: 12,
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(4),
-                                    clipBehavior: Clip.hardEdge,
-                                    child: Image.network(
-                                      'https://storage.googleapis.com/codeless-app.appspot.com/uploads%2Fimages%2F0RtgVWh8wVg1fysBxIg4%2Fb4ae77c1-7cea-4acc-857e-1de8e3d221ba.png',
-                                      width: 18,
-                                      height: 9,
-                                      fit: BoxFit.contain,
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  left: 24,
-                                  top: 3,
-                                  child: Container(
-                                    width: 8,
-                                    height: 8,
-                                    clipBehavior: Clip.hardEdge,
-                                    decoration: BoxDecoration(
-                                      border: Border.all(
-                                        width: 2,
-                                        color: const Color(0xFF001636),
-                                      ),
-                                      borderRadius: BorderRadius.circular(3),
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  left: -1,
-                                  top: 27,
-                                  child: SizedBox(
-                                    width: 58,
-                                    child: Text(
-                                      'Profile',
-                                      textAlign: TextAlign.center,
-                                      style: GoogleFonts.getFont(
-                                        'Poppins',
-                                        color: const Color(0xFF001636),
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                        height: 1.4,
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              ],
-                            ),
-                          ),
-                        )
+                        _buildNavItem(Icons.home, 'Home', true),
+                        _buildNavItem(Icons.assessment, 'assess', false),
+                        _buildNavItem(Icons.chat, 'Chat', false),
+                        _buildNavItem(Icons.person, 'Profile', false),
                       ],
                     ),
                   ),
@@ -1069,6 +815,30 @@ class StudentHomeScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildNavItem(IconData icon, String label, bool isSelected) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          icon,
+          color: const Color(0xFF001636),
+          size: 24,
+        ),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.getFont(
+            'Poppins',
+            color: const Color(0xFF001636),
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            height: 1.4,
+          ),
+        )
+      ],
     );
   }
 }

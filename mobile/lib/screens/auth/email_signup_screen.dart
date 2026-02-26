@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_colors.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
-import '../homescreen.dart';
+import '../student_homescreen.dart';
 
 class EmailSignupScreen extends StatefulWidget {
   final String role;
@@ -79,7 +79,7 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Text(
-                        'SIGNUP AS \${widget.role.toUpperCase()}',
+                        'SIGNUP AS ${widget.role.toUpperCase()}',
                         style: const TextStyle(
                           color: AppColors.white,
                           fontSize: 32,
@@ -115,7 +115,7 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                                     if (success && mounted) {
                                       Navigator.of(context).pushReplacement(
                                         MaterialPageRoute(
-                                          builder: (context) => const HomeScreen(),
+                                          builder: (context) => const StudentHomeScreen(),
                                         ),
                                       );
                                     } else if (mounted) {

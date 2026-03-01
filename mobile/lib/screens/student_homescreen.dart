@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import 'assessment_flow.dart';
+import 'cv_Optimizer.dart';
 
 class StudentHomeScreen extends StatelessWidget {
   const StudentHomeScreen({super.key});
@@ -355,7 +356,7 @@ class StudentHomeScreen extends StatelessWidget {
                   child: GestureDetector(
                     onTap: () {
                       Navigator.of(context).push(
-                        MaterialPageRoute(builder: (context) => const AssessmentQuestion1()),
+                        MaterialPageRoute(builder: (context) => const AssessmentStartScreen()),
                       );
                     },
                     child: Container(
@@ -593,71 +594,81 @@ class StudentHomeScreen extends StatelessWidget {
                 Positioned(
                   left: 12,
                   top: 593,
-                  child: Container(
-                    width: 165,
-                    height: 118,
-                    clipBehavior: Clip.hardEdge,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD9D9D9),
-                      border: Border.all(
-                        color: const Color(0xFFF5A100),
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => const CVOptimizerScreen()),
+                      );
+                    },
+                    child: Container(
+                      width: 165,
+                      height: 118,
+                      clipBehavior: Clip.hardEdge,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD9D9D9),
+                        border: Border.all(
+                          color: const Color(0xFFF5A100),
+                        ),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 24,
-                  top: 605,
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    clipBehavior: Clip.hardEdge,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 25,
-                  top: 658,
-                  child: SizedBox(
-                    width: 120,
-                    child: Text(
-                      'CV Optimizer',
-                      style: GoogleFonts.getFont(
-                        'Cairo',
-                        color: Colors.black,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        height: 1.1,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Positioned(
+                            left: 10,
+                            top: 12,
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              clipBehavior: Clip.hardEdge,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Center(
+                                child: Image.asset(
+                                  'assets/images/cv_optimizer_logo.png',
+                                  width: 20,
+                                  height: 25,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.description, color: Color(0xFFF5A100)),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            left: 10,
+                            top: 65,
+                            child: SizedBox(
+                              width: 120,
+                              child: Text(
+                                'CV Optimizer',
+                                style: GoogleFonts.getFont(
+                                  'Cairo',
+                                  color: Colors.black,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.1,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            left: 10,
+                            top: 87,
+                            child: Text(
+                              'Polish your resume',
+                              style: GoogleFonts.getFont(
+                                'Cairo',
+                                color: Colors.black,
+                                fontSize: 13,
+                                height: 1.7,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                ),
-                Positioned(
-                  left: 25,
-                  top: 680,
-                  child: Text(
-                    'Polish your resume',
-                    style: GoogleFonts.getFont(
-                      'Cairo',
-                      color: Colors.black,
-                      fontSize: 13,
-                      height: 1.7,
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 34,
-                  top: 613,
-                  child: Image.asset(
-                    'assets/images/cv_optimizer_logo.png',
-                    width: 20,
-                    height: 25,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.description, color: Color(0xFFF5A100)),
                   ),
                 ),
                 Positioned(
@@ -802,10 +813,10 @@ class StudentHomeScreen extends StatelessWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        _buildNavItem(Icons.home, 'Home', true),
-                        _buildNavItem(Icons.assessment, 'assess', false),
-                        _buildNavItem(Icons.chat, 'Chat', false),
-                        _buildNavItem(Icons.person, 'Profile', false),
+                        _buildNavItem(context, Icons.home, 'Home', true),
+                        _buildNavItem(context, Icons.assessment, 'assess', false),
+                        _buildNavItem(context, Icons.chat, 'Chat', false),
+                        _buildNavItem(context, Icons.person, 'Profile', false),
                       ],
                     ),
                   ),
@@ -818,27 +829,36 @@ class StudentHomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, bool isSelected) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          icon,
-          color: const Color(0xFF001636),
-          size: 24,
-        ),
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          style: GoogleFonts.getFont(
-            'Poppins',
+  Widget _buildNavItem(BuildContext context, IconData icon, String label, bool isSelected) {
+    return GestureDetector(
+      onTap: () {
+        if (label == 'assess') {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => const AssessmentStartScreen()),
+          );
+        }
+      },
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
             color: const Color(0xFF001636),
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            height: 1.4,
+            size: 24,
           ),
-        )
-      ],
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.getFont(
+              'Poppins',
+              color: const Color(0xFF001636),
+              fontSize: 12,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              height: 1.4,
+            ),
+          )
+        ],
+      ),
     );
   }
 }

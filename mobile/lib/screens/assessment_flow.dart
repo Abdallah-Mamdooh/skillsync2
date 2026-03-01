@@ -1,5 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Assessment',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        fontFamily: 'SF Pro Display',
+        scaffoldBackgroundColor: const Color(0xFFF9FAFB),
+      ),
+      home: const AssessmentStartScreen(),
+    );
+  }
+}
 
 // ===== CAREER MODEL =====
 class CareerScore {
@@ -35,6 +59,183 @@ List<CareerScore> calculateMatches(List<int> answers) {
   return careers;
 }
 
+// ===== START SCREEN =====
+class AssessmentStartScreen extends StatelessWidget {
+  const AssessmentStartScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9FAFB),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            // Back Button
+            Positioned(
+              top: 10,
+              left: 10,
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Color(0xFF1D5572)),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+            Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const SizedBox(height: 80),
+                        // Assessment Logod
+                        Image.asset(
+                          'assets/images/assessment_start_logo.png',
+                          width: 120,
+                          height: 120,
+                          fit: BoxFit.contain,
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Title
+                        Text(
+                          "Career Skill Assessment",
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF1F2937),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Info Box
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 20),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                            border: Border.all(color: const Color(0xFFE5E7EB)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              _BulletPoint(
+                                text:
+                                    'Your answers directly influence your career recommendations.',
+                              ),
+                              SizedBox(height: 12),
+                              _BulletPoint(
+                                text:
+                                    'Please respond carefully and honestly to ensure accurate results.',
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+
+                        // Start Button directly under the Info Box with smooth navigationn
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                PageRouteBuilder(
+                                  pageBuilder: (context, animation, secondaryAnimation) =>
+                                      const AssessmentQuestion1(),
+                                  transitionsBuilder:
+                                      (context, animation, secondaryAnimation, child) {
+                                    const begin = Offset(1.0, 0.0);
+                                    const end = Offset.zero;
+                                    const curve = Curves.easeInOut;
+                                    var tween = Tween(begin: begin, end: end)
+                                        .chain(CurveTween(curve: curve));
+                                    return SlideTransition(
+                                      position: animation.drive(tween),
+                                      child: child,
+                                    );
+                                  },
+                                  transitionDuration: const Duration(milliseconds: 400),
+                                ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFF5A100),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: Text(
+                              'Start Assessment',
+                              style: GoogleFonts.inter(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF001636),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: _buildBottomNav(1),
+    );
+  }
+}
+
+class _BulletPoint extends StatelessWidget {
+  final String text;
+
+  const _BulletPoint({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(top: 6.0, right: 10),
+          child: Icon(
+            Icons.circle,
+            size: 6,
+            color: Color(0xFF1D5572),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            text,
+            style: GoogleFonts.inter(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF1F2937),
+              height: 1.4,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 // ===== ASSESSMENT FLOW SCREEN =====
 class AssessmentQuestion1 extends StatefulWidget {
   const AssessmentQuestion1({super.key});
@@ -46,74 +247,219 @@ class AssessmentQuestion1 extends StatefulWidget {
 class _AssessmentQuestion1State extends State<AssessmentQuestion1> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
-  final List<int> _answers = List.filled(5, 0);
+  List<int> _answers = [];
+  List<Map<String, dynamic>> _questions = [];
+  bool _isLoadingQuestions = true;
+  bool _isSubmitting = false;
+  String? _loadError;
 
-  final List<Map<String, dynamic>> _questions = [
-    {
-      'title': 'Assessment - Question 1',
-      'question': 'Which activity do you enjoy\nmost?',
-      'options': [
-        {'title': 'Building software and apps', 'tags': ['Programming', 'Problem Solving']},
-        {'title': 'Presenting and communicating ideas', 'tags': ['Communication', 'Leadership']},
-        {'title': 'Analyzing data and patterns', 'tags': ['Analytics', 'Critical Thinking']},
-        {'title': 'Creating visual designs', 'tags': ['Design', 'Creativity']},
-      ]
-    },
-    {
-      'title': 'Assessment - Question 2',
-      'question': "What's your preferred working\nstyle?",
-      'options': [
-        {'title': 'Working independently', 'tags': ['Self-motivated', 'Focus']},
-        {'title': 'Mix of both', 'tags': ['Adaptability', 'Flexibility']},
-        {'title': 'Leading and mentoring others', 'tags': ['Leadership', 'Mentoring']},
-        {'title': 'Collaborating with teams', 'tags': ['Teamwork', 'Collaboration']},
-      ]
-    },
-    {
-      'title': 'Assessment - Question 3',
-      'question': 'Which technical skill interests\nyou most?',
-      'options': [
-        {'title': 'Web Development', 'tags': ['HTML/CSS', 'JavaScript', 'React']},
-        {'title': 'Cloud & DevOps', 'tags': ['AWS', 'Docker', 'CI/CD']},
-        {'title': 'Mobile App Development', 'tags': ['Swift', 'Kotlin', 'Flutter']},
-        {'title': 'Data Science', 'tags': ['Python', 'Statistics', 'ML']},
-      ]
-    },
-    {
-      'title': 'Assessment - Question 4',
-      'question': 'How do you approach problem\nsolving?',
-      'options': [
-        {'title': 'Creative and innovative', 'tags': ['Innovation', 'Creative Thinking']},
-        {'title': 'Research-based approach', 'tags': ['Research', 'Structured Thinking']},
-        {'title': 'Systematic and methodical', 'tags': ['Analytical', 'Critical Thinking']},
-        {'title': 'Hands-on and practical', 'tags': ['Practical', 'Execution']},
-      ]
-    },
-    {
-      'title': 'Assessment - Question 5',
-      'question': 'What motivates you in your\ncareer?',
-      'options': [
-        {'title': 'Making a positive impact', 'tags': ['Purpose-driven', 'Impact']},
-        {'title': 'Stability and security', 'tags': ['Reliability', 'Consistency']},
-        {'title': 'Creating new solutions', 'tags': ['Innovation', 'Entrepreneurship']},
-        {'title': 'Learning and growth', 'tags': ['Growth Mindset', 'Learning']},
-      ]
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadQuestions();
+  }
 
-  void _nextPage() {
+  String? _getToken() {
+    try {
+      return context.read<AuthProvider>().token;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _loadQuestions() async {
+    final token = _getToken();
+    if (token == null || token.isEmpty) {
+      setState(() {
+        _isLoadingQuestions = false;
+        _loadError = 'You need to login before taking the assessment.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoadingQuestions = true;
+      _loadError = null;
+    });
+
+    final sectionsResponse = await ApiService.get('/assessment/sections', token);
+    if (sectionsResponse['success'] != true) {
+      setState(() {
+        _isLoadingQuestions = false;
+        _loadError = sectionsResponse['message'] ?? 'Failed to load assessment sections.';
+      });
+      return;
+    }
+
+    final List<dynamic> sections = sectionsResponse['data'] ?? [];
+    if (sections.isEmpty) {
+      setState(() {
+        _isLoadingQuestions = false;
+        _loadError = 'No assessment sections available.';
+      });
+      return;
+    }
+
+    final String sectionId = sections.first['_id'].toString();
+    final questionsResponse =
+        await ApiService.get('/assessment/questions/$sectionId', token);
+    if (questionsResponse['success'] != true) {
+      setState(() {
+        _isLoadingQuestions = false;
+        _loadError = questionsResponse['message'] ?? 'Failed to load questions.';
+      });
+      return;
+    }
+
+    final List<dynamic> questionsData = questionsResponse['data'] ?? [];
+    if (questionsData.isEmpty) {
+      setState(() {
+        _isLoadingQuestions = false;
+        _loadError = 'No assessment questions found.';
+      });
+      return;
+    }
+
+    final parsedQuestions = List<Map<String, dynamic>>.generate(
+      questionsData.length,
+      (index) {
+        final q = questionsData[index] as Map<String, dynamic>;
+        final optionsRaw = (q['options'] as List<dynamic>? ?? []);
+        return {
+          'id': q['_id'].toString(),
+          'title': 'Assessment - Question ${index + 1}',
+          'question': (q['text'] ?? '').toString(),
+          'options': optionsRaw.map((opt) {
+            final optionMap = opt as Map<String, dynamic>;
+            return {
+              'title': (optionMap['text'] ?? '').toString(),
+              'tags': <String>[],
+            };
+          }).toList(),
+        };
+      },
+    );
+
+    setState(() {
+      _questions = parsedQuestions;
+      _answers = List<int>.filled(parsedQuestions.length, -1);
+      _currentPage = 0;
+      _isLoadingQuestions = false;
+      _loadError = null;
+    });
+  }
+
+  Future<void> _nextPage() async {
+    if (_answers[_currentPage] == -1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select an answer before continuing.')),
+      );
+      return;
+    }
+
     if (_currentPage < _questions.length - 1) {
-      _pageController.nextPage(
+      await _pageController.nextPage(
         duration: const Duration(milliseconds: 400),
         curve: Curves.easeInOut,
       );
     } else {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => AssessmentCompleteState(answers: _answers),
-        ),
+      await _submitAssessment();
+    }
+  }
+
+  Future<void> _submitAssessment({bool forceOverwrite = false}) async {
+    if (_isSubmitting) return;
+
+    final token = _getToken();
+    if (token == null || token.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Login required to submit assessment.')),
       );
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      final answersPayload = List<Map<String, dynamic>>.generate(
+        _questions.length,
+        (index) => {
+          'questionId': _questions[index]['id'],
+          'selectedOptionIndex': _answers[index],
+        },
+      );
+
+      final response = await ApiService.postWithAuth(
+        '/assessment/submit',
+        {
+          'answers': answersPayload,
+          if (forceOverwrite) 'forceOverwrite': true,
+        },
+        token,
+      );
+
+      if (!mounted) return;
+
+      if (response['success'] == true &&
+          response['requiresConfirmation'] == true) {
+        setState(() {
+          _isSubmitting = false;
+        });
+
+        final shouldOverwrite = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Overwrite Assessment?'),
+            content: Text(
+              (response['message'] ??
+                      'You already completed the assessment. Overwrite old results?')
+                  .toString(),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Overwrite'),
+              ),
+            ],
+          ),
+        );
+
+        if (shouldOverwrite == true) {
+          await _submitAssessment(forceOverwrite: true);
+        }
+        return;
+      }
+
+      if (response['success'] == true) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AssessmentCompleteState(answers: _answers),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text((response['message'] ?? 'Submission failed').toString())),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unexpected error during submission.')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
     }
   }
 
@@ -130,6 +476,57 @@ class _AssessmentQuestion1State extends State<AssessmentQuestion1> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoadingQuestions) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF9FAFB),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF1D5572),
+          elevation: 0,
+          title: const Text('Assessment', style: TextStyle(color: Colors.white, fontSize: 16)),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_loadError != null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF9FAFB),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF1D5572),
+          elevation: 0,
+          title: const Text('Assessment', style: TextStyle(color: Colors.white, fontSize: 16)),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _loadError!,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF6B7280)),
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: _loadQuestions,
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
@@ -144,7 +541,7 @@ class _AssessmentQuestion1State extends State<AssessmentQuestion1> {
       ),
       body: Column(
         children: [
-          // Progress bar moved here to stay fixed and animate smoothly
+          // Progress bar
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
             child: Column(
@@ -152,7 +549,7 @@ class _AssessmentQuestion1State extends State<AssessmentQuestion1> {
               children: [
                 Row(children: [
                   const Icon(Icons.chevron_left, size: 18, color: Color(0xFF6B7280)),
-                  Text('Question ${_currentPage + 1} of 5',
+                  Text('Question ${_currentPage + 1} of ${_questions.length}',
                       style: GoogleFonts.inter(
                           fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF6B7280))),
                 ]),
@@ -160,7 +557,10 @@ class _AssessmentQuestion1State extends State<AssessmentQuestion1> {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(100),
                   child: TweenAnimationBuilder<double>(
-                    tween: Tween<double>(begin: 0, end: (_currentPage + 1) / 5),
+                    tween: Tween<double>(
+                      begin: 0,
+                      end: _questions.isEmpty ? 0 : (_currentPage + 1) / _questions.length,
+                    ),
                     duration: const Duration(milliseconds: 400),
                     curve: Curves.easeInOut,
                     builder: (context, value, child) {
@@ -197,16 +597,26 @@ class _AssessmentQuestion1State extends State<AssessmentQuestion1> {
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: _nextPage,
+                onPressed: _isSubmitting ? null : _nextPage,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFF5A100),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-                child: Text(
-                  _currentPage == _questions.length - 1 ? 'Complete Assessment' : 'Next Question',
-                  style: GoogleFonts.inter(
-                      fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF001636)),
-                ),
+                child: _isSubmitting
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(
+                        _currentPage == _questions.length - 1
+                            ? 'Complete Assessment'
+                            : 'Next Question',
+                        style: GoogleFonts.inter(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF001636)),
+                      ),
               ),
             ),
           ),
@@ -222,7 +632,7 @@ class _AssessmentQuestion1State extends State<AssessmentQuestion1> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 4), // Small offset since progress bar is above
+          const SizedBox(height: 4),
           Text(questionData['question'],
               style: GoogleFonts.inter(
                   fontSize: 22, fontWeight: FontWeight.bold, color: const Color(0xFF1F2937), height: 1.4)),
@@ -279,22 +689,24 @@ class _AssessmentQuestion1State extends State<AssessmentQuestion1> {
                           Text(questionData['options'][optIndex]['title'],
                               style: GoogleFonts.inter(
                                   fontSize: 15, fontWeight: FontWeight.w500, color: const Color(0xFF1F2937))),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8,
-                            children: (questionData['options'][optIndex]['tags'] as List<String>)
-                                .map((tag) => Container(
-                                      padding:
-                                          const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                      decoration: BoxDecoration(
-                                          color: const Color(0xFFF3F4F6),
-                                          borderRadius: BorderRadius.circular(20)),
-                                      child: Text(tag,
-                                          style: GoogleFonts.inter(
-                                              fontSize: 12, color: const Color(0xFF6B7280))),
-                                    ))
-                                .toList(),
-                          ),
+                          if ((questionData['options'][optIndex]['tags'] as List<String>).isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              children: (questionData['options'][optIndex]['tags'] as List<String>)
+                                  .map((tag) => Container(
+                                        padding:
+                                            const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                            color: const Color(0xFFF3F4F6),
+                                            borderRadius: BorderRadius.circular(20)),
+                                        child: Text(tag,
+                                            style: GoogleFonts.inter(
+                                                fontSize: 12, color: const Color(0xFF6B7280))),
+                                      ))
+                                  .toList(),
+                            ),
+                          ],
                         ],
                       ),
                     ),

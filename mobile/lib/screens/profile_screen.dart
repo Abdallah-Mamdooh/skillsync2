@@ -1,13 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import '../services/profile_service.dart';
 import 'assessment_flow.dart';
-import 'home_screen.dart';
+import 'student_homescreen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
+  String getInitials(String name) {
+    if (name.isEmpty) return '??';
+    List<String> parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    } else if (parts.isNotEmpty && parts[0].isNotEmpty) {
+      return parts[0][0].toUpperCase();
+    }
+    return '??';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
+    final user = authProvider.user;
+    final fullName = user?['fullName'] ?? 'User';
+    final email = user?['email'] ?? 'No email';
+    final role = user?['role'] ?? 'Member';
+
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
       body: SingleChildScrollView(
@@ -49,7 +69,10 @@ class ProfileScreen extends StatelessWidget {
                           width: 96, height: 96,
                           decoration: BoxDecoration(color: const Color(0xFFF3E8FF), borderRadius: BorderRadius.circular(48)),
                           child: Center(
-                            child: Text('AM', style: GoogleFonts.inter(color: const Color(0xFF1D5572), fontSize: 32, fontWeight: FontWeight.bold, height: 0.9)),
+                            child: Text(
+                              getInitials(fullName),
+                              style: GoogleFonts.inter(color: const Color(0xFF1D5572), fontSize: 32, fontWeight: FontWeight.bold, height: 0.9),
+                            ),
                           ),
                         ),
                         Positioned(
@@ -63,9 +86,15 @@ class ProfileScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    Text('Abdallah Mamdooh', style: GoogleFonts.inter(color: const Color(0xFF1F2937), fontSize: 20, fontWeight: FontWeight.bold, height: 1.4)),
+                    Text(
+                      fullName,
+                      style: GoogleFonts.inter(color: const Color(0xFF1F2937), fontSize: 20, fontWeight: FontWeight.bold, height: 1.4),
+                    ),
                     const SizedBox(height: 4),
-                    Text('Junior Developer', style: GoogleFonts.inter(color: const Color(0xFF6B7280), fontSize: 14, height: 1.1)),
+                    Text(
+                      role.toString().toUpperCase(),
+                      style: GoogleFonts.inter(color: const Color(0xFF6B7280), fontSize: 14, height: 1.1),
+                    ),
                     const SizedBox(height: 8),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -108,7 +137,7 @@ class ProfileScreen extends StatelessWidget {
               children: [
                 _sectionTitle('Contact Information'),
                 const SizedBox(height: 12),
-                _infoRow(Icons.email_outlined, 'Abdallahmamdooh17@gmail.com'),
+                _infoRow(Icons.email_outlined, email),
                 _infoRow(Icons.school_outlined, 'Computer Science, SAMS University'),
                 _infoRow(Icons.calendar_today_outlined, 'Joined January 2026'),
               ],
@@ -127,8 +156,8 @@ class ProfileScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 8, runSpacing: 8,
-                  children: ['JavaScript', 'React', 'Node.js', 'Python', 'Git', 'HTML/CSS', 'Problem Solving', 'Team Collaboration']
-                      .map((s) => _skillTag(s, filled: true)).toList(),
+                  children: (user?['skills'] as List? ?? ['JavaScript', 'React', 'Node.js', 'Python', 'Git', 'HTML/CSS', 'Problem Solving', 'Team Collaboration'])
+                      .map((s) => _skillTag(s.toString(), filled: true)).toList(),
                 ),
               ],
             ),
@@ -174,7 +203,10 @@ class ProfileScreen extends StatelessWidget {
                 const Divider(),
                 _accountRow(Icons.notifications_outlined, 'Notifications', const Color(0xFF1F2937), const Color(0xFF6B7280), () {}),
                 const Divider(),
-                _accountRow(Icons.logout, 'SignOut', const Color(0xFFDC2626), const Color(0xFFDC2626), () {}),
+                _accountRow(Icons.logout, 'SignOut', const Color(0xFFDC2626), const Color(0xFFDC2626), () {
+                  authProvider.logout();
+                  Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                }),
               ],
             ),
             const SizedBox(height: 20),
@@ -196,9 +228,19 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
-  final _nameController = TextEditingController(text: 'Abdallah Mamdooh');
-  final _roleController = TextEditingController(text: 'Junior Developer');
-  final _bioController = TextEditingController(text: 'Passionate about web development and eager to grow my career in tech. Love building user-friendly applications.');
+  late TextEditingController _nameController;
+  late TextEditingController _roleController;
+  late TextEditingController _bioController;
+
+  @override
+  void initState() {
+    super.initState();
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.user;
+    _nameController = TextEditingController(text: user?['fullName'] ?? '');
+    _roleController = TextEditingController(text: user?['role']?.toString().toUpperCase() ?? '');
+    _bioController = TextEditingController(text: 'Passionate about web development and eager to grow my career in tech. Love building user-friendly applications.');
+  }
 
   @override
   void dispose() {
@@ -208,8 +250,79 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
+  String getInitials(String name) {
+    if (name.isEmpty) return '??';
+    List<String> parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    } else if (parts.isNotEmpty && parts[0].isNotEmpty) {
+      return parts[0][0].toUpperCase();
+    }
+    return '??';
+  }
+
+  Future<void> _saveProfile() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final token = authProvider.token;
+
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error: Not authenticated')),
+      );
+      return;
+    }
+
+    final newName = _nameController.text.trim();
+    if (newName == authProvider.user?['fullName']) {
+      Navigator.pop(context);
+      return;
+    }
+
+    authProvider.setLoading(true);
+    authProvider.setError(null);
+
+    try {
+      final response = await ProfileService.updateProfile(
+        token: token,
+        updates: {'fullName': newName},
+      );
+
+      if (response['success'] == true) {
+        authProvider.updateUser(response['data']);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Profile updated successfully')),
+          );
+          Navigator.pop(context);
+        }
+      } else {
+        final rawMessage = response['message']?.toString();
+        final errorMsg = rawMessage == 'profileService.updateProfile is not a function'
+            ? 'Profile update endpoint is misconfigured on the server. Please check backend profile service exports.'
+            : (rawMessage ?? 'Failed to update profile');
+        authProvider.setError(errorMsg);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(errorMsg)),
+          );
+        }
+      }
+    } catch (e) {
+      authProvider.setError(e.toString());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      authProvider.setLoading(false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isLoading = context.watch<AuthProvider>().isLoading;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
       body: SingleChildScrollView(
@@ -245,7 +358,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             Container(
                               width: 96, height: 96,
                               decoration: BoxDecoration(color: const Color(0xFFF3E8FF), borderRadius: BorderRadius.circular(48)),
-                              child: Center(child: Text('AM', style: GoogleFonts.inter(color: const Color(0xFF1D5572), fontSize: 32, fontWeight: FontWeight.bold, height: 0.9))),
+                              child: Center(child: Text(getInitials(_nameController.text), style: GoogleFonts.inter(color: const Color(0xFF1D5572), fontSize: 32, fontWeight: FontWeight.bold, height: 0.9))),
                             ),
                             Positioned(
                               right: 0, bottom: 0,
@@ -259,13 +372,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      Center(child: Text('Abdallah Mamdooh', style: GoogleFonts.inter(color: const Color(0xFF1F2937), fontSize: 20, fontWeight: FontWeight.bold, height: 1.4))),
+                      Center(child: Text(_nameController.text, style: GoogleFonts.inter(color: const Color(0xFF1F2937), fontSize: 20, fontWeight: FontWeight.bold, height: 1.4))),
                       const SizedBox(height: 20),
                       _editLabel('Full Name'),
                       _editField(_nameController),
                       const SizedBox(height: 12),
                       _editLabel('Current Role'),
-                      _editField(_roleController),
+                      _editField(_roleController, enabled: false),
                       const SizedBox(height: 12),
                       _editLabel('Bio'),
                       _editField(_bioController, maxLines: 3),
@@ -274,11 +387,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         children: [
                           Expanded(
                             child: GestureDetector(
-                              onTap: () => Navigator.pop(context),
+                              onTap: isLoading ? null : _saveProfile,
                               child: Container(
                                 height: 40,
                                 decoration: BoxDecoration(color: const Color(0xFF1D5572), borderRadius: BorderRadius.circular(8)),
-                                child: Center(child: Text('Save', style: GoogleFonts.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500))),
+                                child: Center(
+                                  child: isLoading 
+                                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                    : Text('Save', style: GoogleFonts.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500))
+                                ),
                               ),
                             ),
                           ),
@@ -299,57 +416,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            // Contact Information
-            _buildCard(
-              children: [
-                _sectionTitle('Contact Information'),
-                const SizedBox(height: 12),
-                _infoRow(Icons.email_outlined, 'Abdallahmamdooh17@gmail.com'),
-                _infoRow(Icons.school_outlined, 'Computer Science, SAMS University'),
-                _infoRow(Icons.calendar_today_outlined, 'Joined January 2026'),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _buildCard(
-              children: [
-                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [_sectionTitle('Skills'), const Icon(Icons.add, size: 15, color: Color(0xFF1D5572))]),
-                const SizedBox(height: 12),
-                Wrap(spacing: 8, runSpacing: 8, children: ['JavaScript', 'React', 'Node.js', 'Python', 'Git', 'HTML/CSS', 'Problem Solving', 'Team Collaboration'].map((s) => _skillTag(s, filled: true)).toList()),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _buildCard(
-              children: [
-                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [_sectionTitle('Career Interests'), const Icon(Icons.add, size: 15, color: Color(0xFF1D5572))]),
-                const SizedBox(height: 12),
-                Wrap(spacing: 8, runSpacing: 8, children: ['Web Development', 'Data Science', 'Cloud Computing', 'UX Design'].map((s) => _skillTag(s, filled: false)).toList()),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _buildCard(
-              children: [
-                _sectionTitle('Recent Achievements'),
-                const SizedBox(height: 12),
-                _achievementRow(Icons.emoji_events, 'Completed React Roadmap', 'Feb 2026'),
-                const Divider(),
-                _achievementRow(Icons.people, 'First Mentor Session', 'Feb 2026'),
-                const Divider(),
-                _achievementRow(Icons.assignment_turned_in, 'Skill Assessment Complete', 'Jan 2026'),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _buildCard(
-              children: [
-                _sectionTitle('Account'),
-                const SizedBox(height: 12),
-                _accountRow(Icons.settings_outlined, 'Settings & Privacy', const Color(0xFF1F2937), const Color(0xFF6B7280), () {}),
-                const Divider(),
-                _accountRow(Icons.notifications_outlined, 'Notifications', const Color(0xFF1F2937), const Color(0xFF6B7280), () {}),
-                const Divider(),
-                _accountRow(Icons.logout, 'SignOut', const Color(0xFFDC2626), const Color(0xFFDC2626), () {}),
-              ],
             ),
             const SizedBox(height: 20),
             _buildBottomNav(context, 3),
@@ -445,15 +511,16 @@ Widget _editLabel(String label) {
   );
 }
 
-Widget _editField(TextEditingController controller, {int maxLines = 1}) {
+Widget _editField(TextEditingController controller, {int maxLines = 1, bool enabled = true}) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 4),
     child: TextFormField(
       controller: controller,
       maxLines: maxLines,
+      enabled: enabled,
       decoration: InputDecoration(
         filled: true,
-        fillColor: const Color(0xFFF3F4F6),
+        fillColor: enabled ? const Color(0xFFF3F4F6) : const Color(0xFFE5E7EB),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFF9CA3AF))),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
@@ -474,10 +541,10 @@ Widget _buildBottomNav(BuildContext context, int currentIndex) {
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
         _navItem(context, Icons.home_outlined, 'Home', currentIndex == 0, () {
-          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const HomeScreen()), (route) => false);
+          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const StudentHomeScreen()), (route) => false);
         }),
         _navItem(context, Icons.assignment_outlined, 'assess', currentIndex == 1, () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const AssessmentStartState()));
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const AssessmentStartScreen()));
         }),
         _navItem(context, Icons.chat_bubble_outline, 'Chat', currentIndex == 2, () {}),
         _navItem(context, Icons.person, 'Profile', currentIndex == 3, () {}),

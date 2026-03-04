@@ -283,7 +283,10 @@ class _AssessmentQuestion1State extends State<AssessmentQuestion1> {
     });
 
     final sectionsResponse = await ApiService.get('/assessment/sections', token);
+    debugPrint('[Assessment] /sections success=${sectionsResponse['success']}');
+    debugPrint('[Assessment] sectionsResponse=$sectionsResponse');
     if (sectionsResponse['success'] != true) {
+      debugPrint('[Assessment] /sections error=${sectionsResponse['message']}');
       setState(() {
         _isLoadingQuestions = false;
         _loadError = sectionsResponse['message'] ?? 'Failed to load assessment sections.';
@@ -291,7 +294,13 @@ class _AssessmentQuestion1State extends State<AssessmentQuestion1> {
       return;
     }
 
-    final List<dynamic> sections = sectionsResponse['data'] ?? [];
+    final dynamic sectionsData = sectionsResponse['data'];
+    final List<dynamic> sections = sectionsData is List
+        ? sectionsData
+        : (sectionsData is Map<String, dynamic> && sectionsData['sections'] is List
+            ? sectionsData['sections'] as List<dynamic>
+            : <dynamic>[]);
+    debugPrint('[Assessment] sections count=${sections.length}');
     if (sections.isEmpty) {
       setState(() {
         _isLoadingQuestions = false;
@@ -300,19 +309,43 @@ class _AssessmentQuestion1State extends State<AssessmentQuestion1> {
       return;
     }
 
-    final String sectionId = sections.first['_id'].toString();
-    final questionsResponse =
-        await ApiService.get('/assessment/questions/$sectionId', token);
-    if (questionsResponse['success'] != true) {
-      setState(() {
-        _isLoadingQuestions = false;
-        _loadError = questionsResponse['message'] ?? 'Failed to load questions.';
-      });
-      return;
+    final List<dynamic> allQuestionsRaw = [];
+    for (final section in sections) {
+      final sectionMap = section as Map<String, dynamic>;
+      final sectionId = sectionMap['_id']?.toString();
+      final sectionTitle = (sectionMap['title'] ?? '').toString();
+      debugPrint('[Assessment] section id=$sectionId title="$sectionTitle"');
+      if (sectionId == null || sectionId.isEmpty) continue;
+
+      final questionsResponse =
+          await ApiService.get('/assessment/questions/$sectionId', token);
+      debugPrint('[Assessment] /questions/$sectionId success=${questionsResponse['success']}');
+      debugPrint('[Assessment] questionsResponse(sectionId=$sectionId)=$questionsResponse');
+      if (questionsResponse['success'] != true) {
+        debugPrint('[Assessment] /questions/$sectionId error=${questionsResponse['message']}');
+        setState(() {
+          _isLoadingQuestions = false;
+          _loadError = questionsResponse['message'] ?? 'Failed to load questions.';
+        });
+        return;
+      }
+
+      final dynamic questionsData = questionsResponse['data'];
+      final List<dynamic> sectionQuestions = questionsData is List
+          ? questionsData
+          : (questionsData is Map<String, dynamic> && questionsData['questions'] is List
+              ? questionsData['questions'] as List<dynamic>
+              : <dynamic>[]);
+      debugPrint('[Assessment] section id=$sectionId questions=${sectionQuestions.length}');
+
+      allQuestionsRaw.addAll(sectionQuestions);
     }
 
-    final List<dynamic> questionsData = questionsResponse['data'] ?? [];
-    if (questionsData.isEmpty) {
+    debugPrint('[Assessment] total questions=${allQuestionsRaw.length}');
+    if (allQuestionsRaw.isNotEmpty) {
+      debugPrint('[Assessment] allQuestionsRaw.first=${allQuestionsRaw.first}');
+    }
+    if (allQuestionsRaw.isEmpty) {
       setState(() {
         _isLoadingQuestions = false;
         _loadError = 'No assessment questions found.';
@@ -320,25 +353,128 @@ class _AssessmentQuestion1State extends State<AssessmentQuestion1> {
       return;
     }
 
-    final parsedQuestions = List<Map<String, dynamic>>.generate(
-      questionsData.length,
-      (index) {
-        final q = questionsData[index] as Map<String, dynamic>;
-        final optionsRaw = (q['options'] as List<dynamic>? ?? []);
-        return {
-          'id': q['_id'].toString(),
-          'title': 'Assessment - Question ${index + 1}',
-          'question': (q['text'] ?? '').toString(),
-          'options': optionsRaw.map((opt) {
-            final optionMap = opt as Map<String, dynamic>;
-            return {
-              'title': (optionMap['text'] ?? '').toString(),
-              'tags': <String>[],
-            };
-          }).toList(),
-        };
-      },
-    );
+    String _extractOptionTitle(Map<String, dynamic> opt) {
+      final preferred = [
+        opt['text'],
+        opt['title'],
+        opt['optionText'],
+        opt['label'],
+        opt['name'],
+        opt['value'],
+      ];
+      for (final v in preferred) {
+        final s = (v ?? '').toString().trim();
+        if (s.isNotEmpty) return s;
+      }
+      for (final entry in opt.entries) {
+        final s = (entry.value ?? '').toString().trim();
+        if (s.isNotEmpty && s != '{}' && s != '[]') return s;
+      }
+      return '';
+    }
+
+    List<Map<String, dynamic>> _parseOptions(dynamic optionsDynamic) {
+      final parsed = <Map<String, dynamic>>[];
+
+      if (optionsDynamic is List) {
+        for (final opt in optionsDynamic) {
+          if (opt is String) {
+            final title = opt.trim();
+            if (title.isNotEmpty) {
+              parsed.add({'title': title, 'tags': <String>[]});
+            }
+            continue;
+          }
+          if (opt is Map<String, dynamic>) {
+            final title = _extractOptionTitle(opt);
+            if (title.isNotEmpty) {
+              parsed.add({'title': title, 'tags': <String>[]});
+            }
+          }
+        }
+      } else if (optionsDynamic is Map<String, dynamic>) {
+        for (final entry in optionsDynamic.entries) {
+          if (entry.value is String) {
+            final title = (entry.value as String).trim();
+            if (title.isNotEmpty) {
+              parsed.add({'title': title, 'tags': <String>[]});
+            }
+          } else if (entry.value is Map<String, dynamic>) {
+            final title = _extractOptionTitle(entry.value as Map<String, dynamic>);
+            if (title.isNotEmpty) {
+              parsed.add({'title': title, 'tags': <String>[]});
+            }
+          }
+        }
+      }
+
+      return parsed;
+    }
+
+    final List<Map<String, dynamic>> parsedQuestions = [];
+    for (var i = 0; i < allQuestionsRaw.length; i++) {
+      final raw = allQuestionsRaw[i];
+      if (raw is! Map<String, dynamic>) continue;
+      debugPrint('[Assessment] raw question keys=${raw.keys.toList()}');
+
+      dynamic optionsDynamic = raw['options'];
+      final optionsEmpty = optionsDynamic is List && optionsDynamic.isEmpty;
+      if (optionsDynamic == null || optionsEmpty) {
+        optionsDynamic = raw['answers'] ??
+            raw['choices'] ??
+            raw['items'] ??
+            raw['optionList'] ??
+            raw['questionOptions'] ??
+            <dynamic>[];
+      }
+      final parsedOptions = _parseOptions(optionsDynamic);
+
+      final questionText = (raw['text'] ??
+              raw['question'] ??
+              raw['title'] ??
+              raw['questionText'] ??
+              raw['prompt'] ??
+              raw['content'] ??
+              '')
+          .toString()
+          .trim();
+
+      final resolvedQuestionText =
+          questionText.isEmpty ? 'Question ${parsedQuestions.length + 1}' : questionText;
+
+      if (parsedOptions.isEmpty) {
+        // Last fallback for flattened schemas like option1/option2/option3...
+        for (var n = 1; n <= 10; n++) {
+          final fallback = (raw['option$n'] ?? '').toString().trim();
+          if (fallback.isNotEmpty) {
+            parsedOptions.add({'title': fallback, 'tags': <String>[]});
+          }
+        }
+      }
+
+      if (parsedOptions.isEmpty) {
+        debugPrint(
+          '[Assessment] skipped invalid question id=${raw['_id']} text="$resolvedQuestionText" options=${parsedOptions.length}',
+        );
+        continue;
+      }
+
+      parsedQuestions.add({
+        'id': (raw['_id'] ?? '').toString(),
+        'title': 'Assessment - Question ${parsedQuestions.length + 1}',
+        'question': resolvedQuestionText,
+        'options': parsedOptions,
+      });
+    }
+
+    debugPrint('[Assessment] valid parsed questions=${parsedQuestions.length}');
+    if (parsedQuestions.isEmpty) {
+      setState(() {
+        _isLoadingQuestions = false;
+        _loadError = 'Questions were loaded, but format is invalid (missing text/options).';
+      });
+      return;
+    }
 
     setState(() {
       _questions = parsedQuestions;

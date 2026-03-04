@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import 'assessment_flow.dart';
 import 'cv_Optimizer.dart';
+import 'profile_screen.dart';
 
 class StudentHomeScreen extends StatelessWidget {
   const StudentHomeScreen({super.key});
@@ -835,6 +836,10 @@ class StudentHomeScreen extends StatelessWidget {
         if (label == 'assess') {
           Navigator.of(context).push(
             MaterialPageRoute(builder: (context) => const AssessmentStartScreen()),
+          );
+        } else if (label == 'Profile') {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => const ProfileScreen()),
           );
         }
       },

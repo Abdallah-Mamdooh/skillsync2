@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
+import '../../providers/auth_provider.dart';
 import './email_login_screen.dart';
 import './email_signup_screen.dart';
-import '../homescreen.dart';
+import '../student_homescreen.dart';
+import '/services/google_auth_service.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -67,9 +70,9 @@ class LoginScreen extends StatelessWidget {
                           Text(
                             'Email Address',
                             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.w600,
-                                ) ??
+                              color: Colors.black,
+                              fontWeight: FontWeight.w600,
+                            ) ??
                                 const TextStyle(
                                   color: Colors.black,
                                   fontSize: 16,
@@ -86,13 +89,36 @@ class LoginScreen extends StatelessWidget {
                     width: double.infinity,
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: () {
-                        // Placeholder for Google login - requires additional setup
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Please sign up or use email login first'),
-                          ),
-                        );
+                      onPressed: () async {
+                        final result = await GoogleAuthService.signInWithGoogle();
+
+                        if (result['success'] == true && context.mounted) {
+                          // Update AuthProvider with the received data
+                          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                          
+                          // Correctly access nested data from backend response
+                          final data = result['data'];
+                          final email = data['user']['email'];
+                          
+                          // Use the auth provider to sync the state
+                          final success = await authProvider.googleLogin(email: email);
+
+                          if (success && context.mounted) {
+                            Navigator.of(context).pushReplacement(
+                              MaterialPageRoute(
+                                builder: (context) => const StudentHomeScreen(),
+                              ),
+                            );
+                          } else if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(authProvider.error ?? 'Login failed')),
+                            );
+                          }
+                        } else if (context.mounted && result['message'] != 'User cancelled') {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(result['message'] ?? 'Login failed')),
+                          );
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.white,
@@ -113,9 +139,9 @@ class LoginScreen extends StatelessWidget {
                           Text(
                             'Continue with Google',
                             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.w600,
-                                ) ??
+                              color: Colors.black,
+                              fontWeight: FontWeight.w600,
+                            ) ??
                                 const TextStyle(
                                   color: Colors.black,
                                   fontSize: 16,
@@ -130,8 +156,8 @@ class LoginScreen extends StatelessWidget {
                   Text(
                     "You don't have an account?",
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.white.withValues(alpha: 0.7),
-                        ) ??
+                      color: AppColors.white.withValues(alpha: 0.7),
+                    ) ??
                         TextStyle(
                           color: AppColors.white.withValues(alpha: 0.7),
                           fontSize: 14,
@@ -144,11 +170,9 @@ class LoginScreen extends StatelessWidget {
                     height: 56,
                     child: ElevatedButton(
                       onPressed: () async {
-                        // Preload signup images so they are bundled/cached before showing the screen.
                         try {
                           await precacheImage(const AssetImage('assets/images/student_signup.png'), context);
                           await precacheImage(const AssetImage('assets/images/mentor_signup.png'), context);
-                          // Extra check: try loading raw bytes from asset bundle to catch missing/corrupt asset issues.
                           try {
                             final bytes = await rootBundle.load('assets/images/student_signup.png');
                             debugPrint('rootBundle loaded student_signup.png: ${bytes.lengthInBytes} bytes');
@@ -175,10 +199,10 @@ class LoginScreen extends StatelessWidget {
                       child: Text(
                         'Sign up',
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              color: AppColors.white,
-                              fontSize: 25,
-                              fontWeight: FontWeight.w600,
-                            ) ??
+                          color: AppColors.white,
+                          fontSize: 25,
+                          fontWeight: FontWeight.w600,
+                        ) ??
                             const TextStyle(
                               color: AppColors.white,
                               fontSize: 25,
@@ -246,9 +270,8 @@ class SignupScreen extends StatelessWidget {
                           'assets/images/student_signup.png',
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
-                            debugPrint('Image load error (student_signup.png): \$error');
-                            debugPrint('\$stackTrace');
-                            // Fallback to a bundled placeholder logo if the specific image fails to load.
+                            debugPrint('Image load error (student_signup.png): $error');
+                            debugPrint('$stackTrace');
                             return Image.asset('assets/images/logo.png', fit: BoxFit.cover);
                           },
                         ),
@@ -273,8 +296,8 @@ class SignupScreen extends StatelessWidget {
                           'assets/images/mentor_signup.png',
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
-                            debugPrint('Image load error (mentor_signup.png): \$error');
-                            debugPrint('\$stackTrace');
+                            debugPrint('Image load error (mentor_signup.png): $error');
+                            debugPrint('$stackTrace');
                             return Image.asset('assets/images/logo.png', fit: BoxFit.cover);
                           },
                         ),
@@ -282,15 +305,14 @@ class SignupScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 40),
-                  // Login link
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
                         'Already have an account? ',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.white.withValues(alpha: 0.7),
-                            ) ??
+                          color: AppColors.white.withValues(alpha: 0.7),
+                        ) ??
                             TextStyle(
                               color: AppColors.white.withValues(alpha: 0.7),
                               fontSize: 14,
@@ -303,9 +325,9 @@ class SignupScreen extends StatelessWidget {
                         child: Text(
                           'Log in',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: AppColors.accentOrange,
-                                fontWeight: FontWeight.w600,
-                              ) ??
+                            color: AppColors.accentOrange,
+                            fontWeight: FontWeight.w600,
+                          ) ??
                               const TextStyle(
                                 color: AppColors.accentOrange,
                                 fontSize: 14,

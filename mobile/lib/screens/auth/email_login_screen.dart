@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
-import '../homescreen.dart';
+import '../student_homescreen.dart';
 import './forgot_password_screen.dart';
 
 class EmailLoginScreen extends StatefulWidget {
@@ -315,7 +315,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                                             .pushReplacement(
                                           MaterialPageRoute(
                                             builder: (context) =>
-                                                const HomeScreen(),
+                                                const StudentHomeScreen(),
                                           ),
                                         );
                                       } else if (mounted) {

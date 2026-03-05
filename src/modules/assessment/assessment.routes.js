@@ -5,24 +5,15 @@ const controller = require('./assessment.controller');
 
 router.get('/sections', authMiddleware, controller.getSections);
 
-router.get(
-  '/questions/:sectionId',
-  authMiddleware,
-  controller.getQuestionsBySection
-);
+router.get('/questions/:sectionId', authMiddleware, controller.getQuestionsBySection);
 
-router.post(
-  '/submit',
-  authMiddleware,
-  controller.submitAssessment
-);
+router.get('/result', authMiddleware, controller.getMyAssessmentResult);
 
+// ✅ NEW: save interests (non-scored screen)
+router.post('/interests', authMiddleware, controller.saveInterests);
 
+router.post('/submit', authMiddleware, controller.submitAssessment);
 
-router.post(
-  '/choose-career',
-  authMiddleware,
-  controller.chooseCareer
-);
+router.post('/choose-career', authMiddleware, controller.chooseCareer);
 
 module.exports = router;

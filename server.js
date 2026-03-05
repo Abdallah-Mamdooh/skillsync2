@@ -6,11 +6,13 @@ connectDB();
 
 const PORT = process.env.PORT || 5000;
 
+
 app.use(passport.initialize());
 app.use(passport.session());
 app.listen(PORT, () => {
   console.log(`SkillSync API running on port ${PORT}`);
 });
+
 
 
 app.use(

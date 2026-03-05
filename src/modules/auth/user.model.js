@@ -38,6 +38,15 @@ const userSchema = new mongoose.Schema(
       required: true
     },
 
+    // ✅ NEW: interest pre-selection for technical questions
+    // store up to 3 (web, data_ai, security, design, product, devops, qa, mobile_game)
+    selectedInterests: [
+      {
+        type: String,
+        trim: true
+      }
+    ],
+
     // Core Profile Data
     skills: [
       {

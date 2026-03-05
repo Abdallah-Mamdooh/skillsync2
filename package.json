@@ -14,7 +14,15 @@
 
     "test": "echo \"Error: no test specified\" && exit 1",
 
-    "start": "node server.js"
+    "start": "node server.js",
+
+    "sync:all-roadmaps": "node scripts/syncAllRoadmaps.js",
+"seed:sections": "node scripts/seedAssessmentSections.js",
+"seed:personality": "node scripts/seedPersonalityQuestions.js",
+"seed:technical": "node scripts/seedTechnicalQuestions.js",
+"seed:soft": "node scripts/seedSoftSkillsQuestions.js",
+"seed:tech-questions": "node scripts/seedTechnicalQuestions.js",
+"debug:tech": "node scripts/debugTechnicalQuestions.js"
 
   },
 
@@ -37,6 +45,8 @@
     "express": "^5.2.1",
 
     "express-session": "^1.19.0",
+
+    "glob": "^13.0.6",
 
     "jsonwebtoken": "^9.0.3",
 

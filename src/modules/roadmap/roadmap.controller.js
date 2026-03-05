@@ -1,45 +1,59 @@
 const asyncHandler = require('../../middlewares/async.middleware');
 const roadmapService = require('./roadmap.service');
-
 const getMyRoadmap = asyncHandler(async (req, res) => {
-
-  const roadmap = await roadmapService.getUserRoadmap(req.user._id);
+  const data = await roadmapService.getUserRoadmapWithProgress(req.user._id);
 
   res.status(200).json({
     success: true,
-    data: roadmap
+    data,
   });
 });
 
 const completeStep = asyncHandler(async (req, res) => {
-
   const { stepId } = req.body;
 
-  const response = await roadmapService.completeStep(
-    req.user._id,
-    stepId
-  );
+  const response = await roadmapService.completeStep(req.user._id, stepId);
 
   res.status(200).json({
     success: true,
-    ...response
+    ...response,
+  });
+});
+
+const toggleStep = asyncHandler(async (req, res) => {
+  const { stepId } = req.body;
+
+  const response = await roadmapService.toggleStep(req.user._id, stepId);
+
+  res.status(200).json({
+    success: true,
+    ...response,
   });
 });
 
 const getProgress = asyncHandler(async (req, res) => {
-
-  const percentage = await roadmapService.calculateProgressPercentage(
-    req.user._id
-  );
+  const percentage = await roadmapService.calculateProgressPercentage(req.user._id);
 
   res.status(200).json({
     success: true,
-    progress: percentage
+    progress: percentage,
+  });
+});
+
+// ✅ NEW
+const generateResources = asyncHandler(async (req, res) => {
+  const result = await roadmapService.generateResourcesForCurrentRoadmap(req.user._id);
+
+  res.status(200).json({
+    success: true,
+    ...result,
   });
 });
 
 module.exports = {
   getMyRoadmap,
   completeStep,
-  getProgress
+  toggleStep,
+  getProgress,
+  generateResources,
 };

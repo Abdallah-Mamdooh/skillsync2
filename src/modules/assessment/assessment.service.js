@@ -175,29 +175,27 @@ const submitAssessment = async (userId, answers, forceOverwrite = false) => {
     question: questionMap.get(String(a.questionId)),
   }));
 
-  const user = await User.findById(userId);
-const selectedInterests = Array.isArray(user?.selectedInterests)
-  ? user.selectedInterests
-  : [];
+  const { rankedCareers, personalityResult, technicalResult, softSkillsResult } =
+    scoreAssessment({ answersWithQuestions, careers });
 
-const {
-  scoresArray,
-  rankedCareers,
-  personalityResult,
-  technicalResult,
-  softSkillsResult,
-  weights,
-} = scoreAssessment({ answersWithQuestions, careers });
+  // keep old compatibility array too
+  const scores = rankedCareers.map((x) => ({
+    careerId: x.careerId,
+    percentage: Math.round(x.finalScore),
+    totalScore: x.finalScore,
+  }));
 
-const saved = await UserAssessmentResult.create({
-  userId,
-  scores: scoresArray,            // backward compatible
-  rankedCareers,                  // new
-  personalityResult,
-  technicalResult,
-  softSkillsResult,
-  weights,
-});
+  const saved = await UserAssessmentResult.create({
+    userId,
+    rankedCareers,
+    scores,
+    personalityResult,
+    technicalResult,
+    softSkillsResult,
+  });
+
+  // (optional) mark user flag
+  await User.findByIdAndUpdate(userId, { assessmentCompleted: true });
 
   return saved;
 };

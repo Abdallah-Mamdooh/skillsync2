@@ -20,9 +20,9 @@
 "seed:sections": "node scripts/seedAssessmentSections.js",
 "seed:personality": "node scripts/seedPersonalityQuestions.js",
 "seed:technical": "node scripts/seedTechnicalQuestions.js",
-"seed:soft": "node scripts/seedSoftSkillsQuestions.js",
 "seed:tech-questions": "node scripts/seedTechnicalQuestions.js",
-"debug:tech": "node scripts/debugTechnicalQuestions.js"
+"debug:tech": "node scripts/debugTechnicalQuestions.js",
+"seed:soft-questions": "node scripts/seedSoftSkillsQuestions.js"
 
   },
 

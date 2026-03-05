@@ -1,25 +1,24 @@
 // src/modules/assessment/scoring/index.js
 
 const { FINAL_WEIGHTS } = require('./constants');
+const { clamp, toId } = require('./helpers');
 const { scorePersonality } = require('./personality.scorer');
 const { scoreTechnical } = require('./technical.scorer');
 const { scoreSoftSkills } = require('./softskills.scorer');
 
 function scoreAssessment({ answersWithQuestions, careers }) {
-  // Run each scorer
   const personality = scorePersonality({ answersWithQuestions, careers });
   const technical = scoreTechnical({ answersWithQuestions, careers });
-  const soft = scoreSoftSkills({ answersWithQuestions, careers });
+  const softSkills = scoreSoftSkills({ answersWithQuestions, careers });
 
-  // Combine per career
-  const scoresArray = (careers || []).map((career) => {
-    const id = String(career._id);
+  const rankedCareers = careers.map((career) => {
+    const cid = toId(career._id);
 
-    const technicalScore = technical.careerTechnicalScores?.[id] ?? 0;
-    const personalityScore = personality.careerPersonalityFit?.[id] ?? 0;
-    const softScore = soft.careerSoftFit?.[id] ?? 0;
+    const technicalScore = technical.careerTechnicalScores[cid] ?? 0;
+    const personalityScore = personality.careerPersonalityFit[cid] ?? 50;
+    const softScore = softSkills.careerSoftFit[cid] ?? 50;
 
-    const finalScore =
+    const final =
       technicalScore * FINAL_WEIGHTS.technical +
       personalityScore * FINAL_WEIGHTS.personality +
       softScore * FINAL_WEIGHTS.soft;
@@ -27,22 +26,20 @@ function scoreAssessment({ answersWithQuestions, careers }) {
     return {
       careerId: career._id,
       name: career.name,
-      finalScore: Math.round(finalScore),
-
-      // breakdown (frontend will show these)
-      technical: Math.round(technicalScore),
-      personality: Math.round(personalityScore),
-      soft: Math.round(softScore),
+      finalScore: clamp(final, 0, 100),
+      technical: clamp(technicalScore, 0, 100),
+      personality: clamp(personalityScore, 0, 100),
+      soft: clamp(softScore, 0, 100),
     };
   });
 
-  scoresArray.sort((a, b) => b.finalScore - a.finalScore);
+  rankedCareers.sort((a, b) => b.finalScore - a.finalScore);
 
   return {
-    scoresArray,
+    rankedCareers,
     personalityResult: personality,
     technicalResult: technical,
-    softSkillsResult: soft,
+    softSkillsResult: softSkills,
   };
 }
 

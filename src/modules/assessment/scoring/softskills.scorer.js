@@ -1,134 +1,125 @@
 // src/modules/assessment/scoring/softskills.scorer.js
 
-const {
-  LIKERT_SCORE,
-  reverseLikertValue,
-  SOFT_BEHAVIOR_POINTS,
-  RELIABILITY_MIN,
-  RELIABILITY_MAX,
-} = require('./constants');
-
-const { clamp, safeNum } = require('./helpers');
+const { LIKERT_SCORE, SOFT_BEHAVIOR_POINTS_BY_QUESTION, SOFT_SJT_POINTS_BY_QUESTION } = require('./constants');
+const { normalizeTo100, reverseLikertScore, safeNumber, clamp, safeDivide, toId } = require('./helpers');
 const { getCareerProfileByName } = require('./careerProfiles');
 
+function optionKeyFromAnswer(question, selectedIndex) {
+  const opt = question.options?.[selectedIndex];
+  return opt?.key || null;
+}
+
 function scoreSoftSkills({ answersWithQuestions, careers }) {
-  const items = (answersWithQuestions || []).filter(
-    (x) => x?.question?.category === 'soft'
-  );
+  const categoryRaw = {};
+  const categoryMax = {};
 
-  // category buckets (you use these in careerProfiles softWeights)
-  const catSum = {
-    communication: 0,
-    teamwork: 0,
-    adaptability: 0,
-    problemSolving: 0,
-    leadership: 0,
-    timeManagement: 0,
-    conflictManagement: 0,
-  };
+  const likertByCode = {}; // for reliability pairs
 
-  const catMax = {
-    communication: 0,
-    teamwork: 0,
-    adaptability: 0,
-    problemSolving: 0,
-    leadership: 0,
-    timeManagement: 0,
-    conflictManagement: 0,
-  };
-
-  // reliability from reverse-coded items (only if present)
-  let reliabilityChecks = 0;
-  let reliabilityBad = 0;
-
-  for (const item of items) {
+  // Collect category raw/max
+  for (const item of answersWithQuestions) {
     const q = item.question;
-    const opt = q?.options?.[item.selectedOptionIndex];
-    if (!q || !opt) continue;
+    if (!q || q.category !== 'soft') continue;
 
-    const code = String(q.questionCode || '');
-    const softType = q?.meta?.soft?.softType; // likert | behavior | sjt
-    const category = String(q?.meta?.soft?.softCategory || '').trim();
-    const isReverse = q?.meta?.soft?.isReverse === true;
+    const softCategory = q.meta?.soft?.softCategory || 'general';
+    categoryRaw[softCategory] = safeNumber(categoryRaw[softCategory], 0);
+    categoryMax[softCategory] = safeNumber(categoryMax[softCategory], 0);
 
-    if (!catSum.hasOwnProperty(category)) continue;
+    if (q.answerType === 'likert') {
+      const opt = q.options?.[item.selectedOptionIndex];
+      const key = opt?.key;
+      if (!key || !LIKERT_SCORE[key]) continue;
 
-    if (softType === 'likert') {
-      const key = String(opt.key || '').toUpperCase();
-      let raw = LIKERT_SCORE[key];
-      if (!raw) continue;
-
-      if (isReverse) raw = reverseLikertValue(raw);
-
-      catSum[category] += raw;
-      catMax[category] += 5;
-
-      // Only count reliability checks on the “Self-report” band if you used S61..S68
-      if (/^S6[1-8]$/.test(code) && isReverse) {
-        reliabilityChecks += 1;
-        // after reversing, low score means inconsistency
-        if (raw <= 2) reliabilityBad += 1;
+      let score = LIKERT_SCORE[key]; // 1..5
+      if (q.meta?.soft?.isReverse) {
+        score = reverseLikertScore(score);
       }
-    } else {
-      // behavior/sjt: keys A..D
-      const key = String(opt.key || '').toUpperCase();
-      const map = SOFT_BEHAVIOR_POINTS[category];
-      if (!map) continue;
 
-      const pts = map[key];
-      if (!pts) continue;
+      categoryRaw[softCategory] += score;
+      categoryMax[softCategory] += 5;
 
-      catSum[category] += pts;
-      catMax[category] += 5; // keep consistent scale (pts 1..5)
-    }
-  }
-
-  // category scores 0..100
-  const categoryScores = {};
-  for (const k of Object.keys(catSum)) {
-    const max = catMax[k] || 0;
-    categoryScores[k] = max ? Math.round((catSum[k] / max) * 100) : 0;
-  }
-
-  const inconsistencyRate = reliabilityChecks ? reliabilityBad / reliabilityChecks : 0;
-  const reliability = clamp(1 - inconsistencyRate, RELIABILITY_MIN, RELIABILITY_MAX);
-
-  // career fit using careerProfiles softWeights
-  const careerSoftFit = {};
-  for (const career of careers || []) {
-    const profile = getCareerProfileByName(career.name);
-    const weights = profile?.softWeights;
-
-    if (!weights) {
-      careerSoftFit[String(career._id)] = Math.round(50 * reliability);
+      likertByCode[q.questionCode] = score;
       continue;
     }
 
-    let sum = 0;
-    let wsum = 0;
+    // behavior / sjt are single (A/B/C/D)
+    const key = optionKeyFromAnswer(q, item.selectedOptionIndex);
+    if (!key) continue;
 
-    for (const [cat, w] of Object.entries(weights)) {
-      const ww = safeNum(w, 0);
-      if (ww <= 0) continue;
-      const score = safeNum(categoryScores[cat], 0);
-      sum += score * ww;
-      wsum += ww;
+    const code = q.questionCode;
+    const map =
+      SOFT_BEHAVIOR_POINTS_BY_QUESTION[code] ||
+      SOFT_SJT_POINTS_BY_QUESTION[code] ||
+      null;
+
+    if (!map) continue;
+
+    const pts = safeNumber(map[key], 0); // 0..4
+    categoryRaw[softCategory] += pts;
+    categoryMax[softCategory] += 4;
+  }
+
+  // Category score 0..100
+  const categoryScores = {};
+  for (const k of Object.keys(categoryRaw)) {
+    categoryScores[k] = normalizeTo100(categoryRaw[k], categoryMax[k]);
+  }
+
+  // Reliability from reverse pairs in S61–S68:
+  // (S61 vs S62), (S63 vs S64), (S65 vs S66), (S67 vs S68)
+  const pairs = [
+    ['S61', 'S62'],
+    ['S63', 'S64'],
+    ['S65', 'S66'],
+    ['S67', 'S68'],
+  ];
+
+  let relSum = 0;
+  let relCount = 0;
+
+  for (const [a, b] of pairs) {
+    const sa = likertByCode[a];
+    const sb = likertByCode[b];
+    if (!sa || !sb) continue;
+
+    // they are "opposites", so best consistency is sa ≈ sb (after reverse already applied in seeding)
+    const diff = Math.abs(sa - sb); // 0..4
+    const pairRel = 1 - (diff / 4);
+    relSum += pairRel;
+    relCount++;
+  }
+
+  const reliability = relCount ? clamp(relSum / relCount, 0, 1) : 0.5;
+
+  // Career soft fit using career profile weights
+  const careerSoftFit = {};
+  for (const career of careers) {
+    const profile = getCareerProfileByName(career.name);
+    const weights = profile?.softWeights || null;
+
+    if (!weights) {
+      // neutral average
+      const values = Object.values(categoryScores);
+      const avg = values.length ? values.reduce((s, v) => s + v, 0) / values.length : 50;
+      careerSoftFit[toId(career._id)] = avg;
+      continue;
     }
 
-    const base = wsum ? sum / wsum : 50;
-    careerSoftFit[String(career._id)] = Math.round(base * reliability);
+    let wSum = 0;
+    let scoreSum = 0;
+
+    for (const [cat, w] of Object.entries(weights)) {
+      const s = safeNumber(categoryScores[cat], 50);
+      scoreSum += s * safeNumber(w, 0);
+      wSum += safeNumber(w, 0);
+    }
+
+    careerSoftFit[toId(career._id)] = wSum ? (scoreSum / wSum) : 50;
   }
 
   return {
     categoryScores,
-    reliability: Number(reliability.toFixed(2)),
+    reliability,
     careerSoftFit,
-    diagnostics: {
-      answered: items.length,
-      reliabilityChecks,
-      reliabilityBad,
-      inconsistencyRate: Number(inconsistencyRate.toFixed(2)),
-    },
   };
 }
 

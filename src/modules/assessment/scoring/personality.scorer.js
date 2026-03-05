@@ -1,116 +1,111 @@
 // src/modules/assessment/scoring/personality.scorer.js
 
 const { LIKERT_SCORE } = require('./constants');
-const { clamp, safeNum } = require('./helpers');
+const { safeNumber, safeDivide, clamp } = require('./helpers');
 const { getCareerProfileByName } = require('./careerProfiles');
 
 function scorePersonality({ answersWithQuestions, careers }) {
-  const items = (answersWithQuestions || []).filter(
-    (x) => x?.question?.category === 'personality'
-  );
-
-  // Dimension sums
-  const dims = {
-    EI: { E: 0, I: 0, max: 0 },
-    SN: { S: 0, N: 0, max: 0 },
-    TF: { T: 0, F: 0, max: 0 },
-    JP: { J: 0, P: 0, max: 0 },
+  const dimTotals = {
+    EI: { E: 0, I: 0 },
+    SN: { S: 0, N: 0 },
+    TF: { T: 0, F: 0 },
+    JP: { J: 0, P: 0 },
   };
 
-  for (const item of items) {
+  let answeredCount = 0;
+
+  for (const item of answersWithQuestions) {
     const q = item.question;
-    const opt = q?.options?.[item.selectedOptionIndex];
-    const key = String(opt?.key || '').toUpperCase();
-    const raw = LIKERT_SCORE[key];
-    if (!raw) continue;
+    if (!q || q.category !== 'personality') continue;
 
-    const dim = q?.meta?.personality?.dimension; // EI, SN, TF, JP
-    const agreePole = q?.meta?.personality?.agreePole; // e.g. E or I
+    const option = q.options?.[item.selectedOptionIndex];
+    const key = option?.key; // A..E
+    if (!key || !LIKERT_SCORE[key]) continue;
 
-    if (!dims[dim] || !agreePole) continue;
+    const score = LIKERT_SCORE[key]; // 1..5
+    const dim = q.meta?.personality?.dimension;
+    const agreePole = q.meta?.personality?.agreePole; // E/I etc
 
-    // Agree = raw is high => push toward agreePole
-    // Disagree = raw low => push toward opposite pole
+    if (!dim || !agreePole) continue;
+
+    // AgreePole gets "score", opposite gets reversed (6-score)
     const opposite = dim === 'EI'
       ? (agreePole === 'E' ? 'I' : 'E')
       : dim === 'SN'
-        ? (agreePole === 'S' ? 'N' : 'S')
-        : dim === 'TF'
-          ? (agreePole === 'T' ? 'F' : 'T')
-          : (agreePole === 'J' ? 'P' : 'J');
+      ? (agreePole === 'S' ? 'N' : 'S')
+      : dim === 'TF'
+      ? (agreePole === 'T' ? 'F' : 'T')
+      : (agreePole === 'J' ? 'P' : 'J');
 
-    // raw is 1..5. Convert to signed “lean” around 3.
-    // 5->+2, 4->+1, 3->0, 2->-1, 1->-2
-    const lean = raw - 3;
+    dimTotals[dim][agreePole] += score;
+    dimTotals[dim][opposite] += (6 - score);
 
-    if (lean > 0) dims[dim][agreePole] += lean;
-    if (lean < 0) dims[dim][opposite] += Math.abs(lean);
-
-    dims[dim].max += 2; // max lean magnitude per question
+    answeredCount++;
   }
 
-  // Ratios + MBTI
-  const dimensionRatios = {};
-  const letters = [];
-
-  for (const dimKey of Object.keys(dims)) {
-    const d = dims[dimKey];
-    const poles = Object.keys(d).filter((k) => k !== 'max');
-
-    const p1 = poles[0];
-    const p2 = poles[1];
-
-    const total = safeNum(d[p1], 0) + safeNum(d[p2], 0);
-    const r1 = total ? d[p1] / total : 0.5;
-    const r2 = total ? d[p2] / total : 0.5;
-
-    dimensionRatios[p1] = Number(r1.toFixed(2));
-    dimensionRatios[p2] = Number(r2.toFixed(2));
-
-    letters.push(d[p1] >= d[p2] ? p1 : p2);
+  function pickLetter(dim, a, b) {
+    return dimTotals[dim][a] >= dimTotals[dim][b] ? a : b;
   }
 
-  const mbtiType = letters.join('');
+  const type =
+    pickLetter('EI', 'E', 'I') +
+    pickLetter('SN', 'S', 'N') +
+    pickLetter('TF', 'T', 'F') +
+    pickLetter('JP', 'J', 'P');
 
-  // Confidence: average distance from 50/50 (0..1)
-  const confParts = [];
-  for (const [a, b] of [['E','I'], ['S','N'], ['T','F'], ['J','P']]) {
-    const ra = safeNum(dimensionRatios[a], 0.5);
-    const rb = safeNum(dimensionRatios[b], 0.5);
-    confParts.push(Math.abs(ra - rb)); // 0..1
+  const ratios = {};
+  let confidenceSum = 0;
+  let dimsCounted = 0;
+
+  for (const dim of Object.keys(dimTotals)) {
+    const poles = dimTotals[dim];
+    const keys = Object.keys(poles);
+    const total = poles[keys[0]] + poles[keys[1]];
+    if (total <= 0) continue;
+
+    ratios[keys[0]] = safeDivide(poles[keys[0]], total);
+    ratios[keys[1]] = safeDivide(poles[keys[1]], total);
+
+    const diff = Math.abs(ratios[keys[0]] - ratios[keys[1]]); // 0..1
+    confidenceSum += diff;
+    dimsCounted++;
   }
-  const confidence = clamp(confParts.reduce((s, x) => s + x, 0) / confParts.length, 0, 1);
 
-  // Career fit using profile preferred poles
+  const confidence = dimsCounted ? clamp(confidenceSum / dimsCounted, 0, 1) : 0;
+
+  // Career personality fit
   const careerPersonalityFit = {};
-  for (const career of careers || []) {
+  for (const career of careers) {
     const profile = getCareerProfileByName(career.name);
     if (!profile?.personality) {
-      careerPersonalityFit[String(career._id)] = Math.round(50 + confidence * 20);
+      careerPersonalityFit[String(career._id)] = 50; // neutral
       continue;
     }
 
-    const pref = profile.personality; // { EI:'I', SN:'N', TF:'T', JP:'J' }
+    const pref = profile.personality; // {EI:'I', SN:'S'...}
+    const dimToPoles = { EI: ['E', 'I'], SN: ['S', 'N'], TF: ['T', 'F'], JP: ['J', 'P'] };
 
-    // Fit = average ratio for preferred poles (0..1) => (0..100)
-    const preferRatios = [];
-    for (const dim of ['EI','SN','TF','JP']) {
-      const pole = pref[dim];
-      preferRatios.push(safeNum(dimensionRatios[pole], 0.5));
+    let sum = 0;
+    let count = 0;
+
+    for (const dim of Object.keys(dimToPoles)) {
+      const prefer = pref[dim];
+      if (!prefer) continue;
+
+      const poleRatio = safeNumber(ratios[prefer], 0.5);
+      sum += poleRatio * 100;
+      count++;
     }
 
-    const base = preferRatios.reduce((s, x) => s + x, 0) / preferRatios.length; // 0..1
-    const score = Math.round(base * 100);
-
-    careerPersonalityFit[String(career._id)] = score;
+    careerPersonalityFit[String(career._id)] = count ? (sum / count) : 50;
   }
 
   return {
-    mbtiType,
-    dimensionRatios,
-    confidence: Number(confidence.toFixed(2)),
+    mbtiType: type,
+    dimensionRatios: ratios,
+    confidence,
+    answeredCount,
     careerPersonalityFit,
-    diagnostics: { answered: items.length },
   };
 }
 

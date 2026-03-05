@@ -1,23 +1,22 @@
 // src/modules/assessment/scoring/softskills.scorer.js
+
 const {
   LIKERT_SCORE,
-  SOFT_REVERSE_CODES,
+  reverseLikertValue,
   SOFT_BEHAVIOR_POINTS,
   RELIABILITY_MIN,
   RELIABILITY_MAX,
 } = require('./constants');
+
 const { clamp, safeNum } = require('./helpers');
 const { getCareerProfileByName } = require('./careerProfiles');
 
-function reverseLikert(raw) {
-  // raw is 1..5 -> reversed
-  return 6 - raw;
-}
-
 function scoreSoftSkills({ answersWithQuestions, careers }) {
-  const items = (answersWithQuestions || []).filter((x) => x?.question?.category === 'soft');
+  const items = (answersWithQuestions || []).filter(
+    (x) => x?.question?.category === 'soft'
+  );
 
-  // Category accumulators
+  // category buckets (you use these in careerProfiles softWeights)
   const catSum = {
     communication: 0,
     teamwork: 0,
@@ -27,6 +26,7 @@ function scoreSoftSkills({ answersWithQuestions, careers }) {
     timeManagement: 0,
     conflictManagement: 0,
   };
+
   const catMax = {
     communication: 0,
     teamwork: 0,
@@ -37,72 +37,67 @@ function scoreSoftSkills({ answersWithQuestions, careers }) {
     conflictManagement: 0,
   };
 
-  // Reliability using reverse vs positive consistency in the Self-Report (S61–S68)
-  // Simple: count contradictions (high on positive, high on negative)
-  let reliabilityHits = 0;
+  // reliability from reverse-coded items (only if present)
   let reliabilityChecks = 0;
+  let reliabilityBad = 0;
 
   for (const item of items) {
     const q = item.question;
-    if (!q) continue;
+    const opt = q?.options?.[item.selectedOptionIndex];
+    if (!q || !opt) continue;
 
     const code = String(q.questionCode || '');
-    const option = q.options?.[item.selectedOptionIndex];
-    const key = String(option?.key || '').toUpperCase();
+    const softType = q?.meta?.soft?.softType; // likert | behavior | sjt
+    const category = String(q?.meta?.soft?.softCategory || '').trim();
+    const isReverse = q?.meta?.soft?.isReverse === true;
 
-    const softType = q.meta?.soft?.softType; // likert | behavior | sjt
-    const cat = q.meta?.soft?.softCategory; // communication, teamwork, ...
-    const isReverse = q.meta?.soft?.isReverse === true || SOFT_REVERSE_CODES.has(code);
-
-    if (!catSum[cat]) {
-      // if category missing or unknown, skip safely
-      continue;
-    }
+    if (!catSum.hasOwnProperty(category)) continue;
 
     if (softType === 'likert') {
+      const key = String(opt.key || '').toUpperCase();
       let raw = LIKERT_SCORE[key];
       if (!raw) continue;
 
-      if (isReverse) raw = reverseLikert(raw);
+      if (isReverse) raw = reverseLikertValue(raw);
 
-      catSum[cat] += raw;
-      catMax[cat] += 5;
+      catSum[category] += raw;
+      catMax[category] += 5;
 
-      // Reliability check only for S61-S68 range
-      if (/^S6[1-8]$/.test(code)) {
+      // Only count reliability checks on the “Self-report” band if you used S61..S68
+      if (/^S6[1-8]$/.test(code) && isReverse) {
         reliabilityChecks += 1;
-
-        // "bad" answers are extremes in opposite direction; basic rule:
-        // if original was reverse question AND user chose Strongly Agree (A->5), after reversing it's 1 => inconsistency
-        // We'll treat low reversed score (<=2) as inconsistency.
-        if (raw <= 2) reliabilityHits += 1;
+        // after reversing, low score means inconsistency
+        if (raw <= 2) reliabilityBad += 1;
       }
     } else {
-      // behavior / sjt: A..D (best..worst)
-      const pts = SOFT_BEHAVIOR_POINTS[key];
+      // behavior/sjt: keys A..D
+      const key = String(opt.key || '').toUpperCase();
+      const map = SOFT_BEHAVIOR_POINTS[category];
+      if (!map) continue;
+
+      const pts = map[key];
       if (!pts) continue;
 
-      catSum[cat] += pts;
-      catMax[cat] += 4;
+      catSum[category] += pts;
+      catMax[category] += 5; // keep consistent scale (pts 1..5)
     }
   }
 
-  // Category scores 0..100
+  // category scores 0..100
   const categoryScores = {};
   for (const k of Object.keys(catSum)) {
     const max = catMax[k] || 0;
     categoryScores[k] = max ? Math.round((catSum[k] / max) * 100) : 0;
   }
 
-  // reliability: fewer inconsistencies => higher reliability
-  const inconsistencyRate = reliabilityChecks ? reliabilityHits / reliabilityChecks : 0;
+  const inconsistencyRate = reliabilityChecks ? reliabilityBad / reliabilityChecks : 0;
   const reliability = clamp(1 - inconsistencyRate, RELIABILITY_MIN, RELIABILITY_MAX);
 
-  // Convert to career-specific soft fit using careerProfiles softWeights
+  // career fit using careerProfiles softWeights
   const careerSoftFit = {};
   for (const career of careers || []) {
     const profile = getCareerProfileByName(career.name);
-    const weights = profile?.softWeights || null;
+    const weights = profile?.softWeights;
 
     if (!weights) {
       careerSoftFit[String(career._id)] = Math.round(50 * reliability);
@@ -131,7 +126,7 @@ function scoreSoftSkills({ answersWithQuestions, careers }) {
     diagnostics: {
       answered: items.length,
       reliabilityChecks,
-      reliabilityHits,
+      reliabilityBad,
       inconsistencyRate: Number(inconsistencyRate.toFixed(2)),
     },
   };

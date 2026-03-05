@@ -1,88 +1,89 @@
 // src/modules/assessment/scoring/technical.scorer.js
+
 const { normalizeTo100, safeNum } = require('./helpers');
 
+/**
+ * Technical scoring (MVP but correct):
+ * - For each answered technical question:
+ *   - If selected option isCorrect -> add points
+ *   - If option has careerWeights -> add weighted points per career
+ *   - Else -> add generic points equally (so technical still matters)
+ *
+ * Then normalize per career to 0..100.
+ */
 function scoreTechnical({ answersWithQuestions, careers }) {
   const items = (answersWithQuestions || []).filter(
     (x) => x?.question?.category === 'technical'
   );
 
-  const careerRaw = {};
+  const careerScore = {};
   const careerMax = {};
-
   for (const c of careers || []) {
-    careerRaw[String(c._id)] = 0;
+    careerScore[String(c._id)] = 0;
     careerMax[String(c._id)] = 0;
   }
 
-  let baseCorrectCount = 0;
-  let specialtyCorrectCount = 0;
-  let baseTotal = 0;
-  let specialtyTotal = 0;
+  let baseCorrect = 0;
+  let specialtyCorrect = 0;
 
   for (const item of items) {
     const q = item.question;
-    if (!q) continue;
+    const opt = q?.options?.[item.selectedOptionIndex];
+    if (!q || !opt) continue;
 
-    const selected = q.options?.[item.selectedOptionIndex];
-    const multiplier = safeNum(q.meta?.technical?.multiplier, 1);
+    const isCorrect = opt.isCorrect === true;
+    const multiplier = safeNum(q?.meta?.technical?.multiplier, 1);
+    const isSpecialty = q?.meta?.technical?.isSpecialty === true;
 
-    const isSpecialty = q.meta?.technical?.isSpecialty === true || String(q.questionCode || '').startsWith('TS-');
+    // define "points this question contributes if correct"
+    const questionPoints = 10 * multiplier; // arbitrary but stable
 
-    // correctness diagnostics
-    const correctIndex = q.options?.findIndex((o) => o.isCorrect === true);
-    const isCorrect = correctIndex >= 0 && item.selectedOptionIndex === correctIndex;
-
-    if (isSpecialty) {
-      specialtyTotal += 1;
-      if (isCorrect) specialtyCorrectCount += 1;
-    } else {
-      baseTotal += 1;
-      if (isCorrect) baseCorrectCount += 1;
-    }
-
-    // Add to max per career: take BEST weight among options for that career (fair max)
+    // max always increases (fairness)
     for (const c of careers || []) {
-      const id = String(c._id);
-      let best = 0;
-
-      for (const opt of q.options || []) {
-        const cw = (opt.careerWeights || []).find((w) => String(w.careerId) === id);
-        const wv = safeNum(cw?.weight, 0);
-        if (wv > best) best = wv;
-      }
-
-      careerMax[id] += best * multiplier;
+      careerMax[String(c._id)] += questionPoints;
     }
 
-    // Add to raw per career using selected option
-    for (const w of selected?.careerWeights || []) {
-      const id = String(w.careerId);
-      if (careerRaw[id] !== undefined) {
-        careerRaw[id] += safeNum(w.weight, 0) * multiplier;
+    if (!isCorrect) continue;
+
+    if (isSpecialty) specialtyCorrect += 1;
+    else baseCorrect += 1;
+
+    const weights = Array.isArray(opt.careerWeights) ? opt.careerWeights : [];
+
+    if (weights.length) {
+      // distribute per career by weights
+      for (const w of weights) {
+        const id = String(w.careerId);
+        if (careerScore[id] === undefined) continue;
+        careerScore[id] += safeNum(w.weight, 0) * multiplier;
+      }
+    } else {
+      // no careerWeights => give everyone equal credit for correctness
+      for (const c of careers || []) {
+        careerScore[String(c._id)] += questionPoints;
       }
     }
   }
 
+  // normalize to 0..100
   const careerTechnicalScores = {};
   for (const c of careers || []) {
     const id = String(c._id);
-    careerTechnicalScores[id] = normalizeTo100(careerRaw[id], careerMax[id]);
+    careerTechnicalScores[id] = Math.round(normalizeTo100(careerScore[id], careerMax[id]));
   }
 
-  // confidence based on correctness ratio (simple)
-  const totalAnswered = items.length || 1;
-  const correct = baseCorrectCount + specialtyCorrectCount;
-  const technicalConfidence = Number((correct / totalAnswered).toFixed(2));
+  // confidence: how many answered + correctness rate
+  const answered = items.length;
+  const correct = baseCorrect + specialtyCorrect;
+  const confidence = answered ? Math.min(1, correct / answered) : 0;
 
   return {
     careerTechnicalScores,
     diagnostics: {
-      answered: items.length,
-      baseCorrectCount,
-      specialtyCorrectCount,
-      baseTotal,
-      specialtyTotal,
-      technicalConfidence,
+      answered,
+      baseCorrectCount: baseCorrect,
+      specialtyCorrectCount: specialtyCorrect,
+      technicalConfidence: Number(confidence.toFixed(2)),
     },
   };
 }

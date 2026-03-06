@@ -201,6 +201,7 @@ const submitAssessment = async (userId, answers, forceOverwrite = false) => {
 };
 
 // -------------------- choose career --------------------
+// -------------------- choose career --------------------
 const chooseCareer = async (userId, careerId) => {
   const result = await UserAssessmentResult.findOne({ userId });
 
@@ -211,6 +212,7 @@ const chooseCareer = async (userId, careerId) => {
   result.chosenCareer = careerId;
   await result.save();
 
+  // ✅ important: create/reset roadmap progress for this user
   await initializeProgress(userId);
 
   return { message: 'Career selected and roadmap initialized' };

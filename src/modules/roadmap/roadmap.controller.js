@@ -1,5 +1,6 @@
 const asyncHandler = require('../../middlewares/async.middleware');
 const roadmapService = require('./roadmap.service');
+
 const getMyRoadmap = asyncHandler(async (req, res) => {
   const data = await roadmapService.getUserRoadmapWithProgress(req.user._id);
 
@@ -9,17 +10,7 @@ const getMyRoadmap = asyncHandler(async (req, res) => {
   });
 });
 
-const completeStep = asyncHandler(async (req, res) => {
-  const { stepId } = req.body;
-
-  const response = await roadmapService.completeStep(req.user._id, stepId);
-
-  res.status(200).json({
-    success: true,
-    ...response,
-  });
-});
-
+// ✅ Toggle = mark done / undo
 const toggleStep = asyncHandler(async (req, res) => {
   const { stepId } = req.body;
 
@@ -40,7 +31,7 @@ const getProgress = asyncHandler(async (req, res) => {
   });
 });
 
-// ✅ NEW
+// ✅ Generate learning resources for current roadmap
 const generateResources = asyncHandler(async (req, res) => {
   const result = await roadmapService.generateResourcesForCurrentRoadmap(req.user._id);
 
@@ -52,7 +43,6 @@ const generateResources = asyncHandler(async (req, res) => {
 
 module.exports = {
   getMyRoadmap,
-  completeStep,
   toggleStep,
   getProgress,
   generateResources,

@@ -10,7 +10,6 @@ const getMyRoadmap = asyncHandler(async (req, res) => {
   });
 });
 
-// ✅ Toggle = mark done / undo
 const toggleStep = asyncHandler(async (req, res) => {
   const { stepId } = req.body;
 
@@ -31,7 +30,6 @@ const getProgress = asyncHandler(async (req, res) => {
   });
 });
 
-// ✅ Generate learning resources for current roadmap
 const generateResources = asyncHandler(async (req, res) => {
   const result = await roadmapService.generateResourcesForCurrentRoadmap(req.user._id);
 
@@ -41,9 +39,22 @@ const generateResources = asyncHandler(async (req, res) => {
   });
 });
 
+// ✅ new
+const getRecentCompletions = asyncHandler(async (req, res) => {
+  const limit = Number(req.query.limit) || 10;
+
+  const data = await roadmapService.getRecentCompletions(req.user._id, limit);
+
+  res.status(200).json({
+    success: true,
+    data,
+  });
+});
+
 module.exports = {
   getMyRoadmap,
   toggleStep,
   getProgress,
   generateResources,
+  getRecentCompletions,
 };

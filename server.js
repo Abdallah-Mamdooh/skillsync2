@@ -14,7 +14,7 @@ const mentorSessionRoutes = require('./src/modules/mentor/mentorSession.routes')
 const paymentRoutes = require('./src/modules/payment/payment.routes');
 const sessionFeedbackRoutes = require('./src/modules/mentor/sessionFeedback.routes');
 const chatRoutes = require('./src/modules/mentor/chat.routes');
-
+const groupEventRoutes = require('./src/modules/events/groupEvent.routes');
 
 
 const server = http.createServer(app);
@@ -102,7 +102,7 @@ async function getUserFromSocket(socket, eventToken = null) {
 }
 
 app.use('/api/chat', chatRoutes);
-
+app.use('/api/events', groupEventRoutes);
 app.use('/api/session-feedback', sessionFeedbackRoutes);
 app.use('/api/mentor-sessions', mentorSessionRoutes);
 app.use('/api/payments', paymentRoutes);

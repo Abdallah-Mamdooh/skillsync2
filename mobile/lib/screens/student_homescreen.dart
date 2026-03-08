@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import 'assessment_flow.dart';
 import 'cv_Optimizer.dart';
 import 'profile_screen.dart';
+import 'mentorship_screen.dart';
 
 class StudentHomeScreen extends StatelessWidget {
   const StudentHomeScreen({super.key});
@@ -505,74 +506,84 @@ class StudentHomeScreen extends StatelessWidget {
                 Positioned(
                   left: 194,
                   top: 593,
-                  child: Container(
-                    width: 165,
-                    height: 118,
-                    clipBehavior: Clip.hardEdge,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD9D9D9),
-                      border: Border.all(
-                        color: const Color(0xFF1D5572),
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => const MentorshipScreen()),
+                      );
+                    },
+                    child: Container(
+                      width: 165,
+                      height: 118,
+                      clipBehavior: Clip.hardEdge,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD9D9D9),
+                        border: Border.all(
+                          color: const Color(0xFF1D5572),
+                        ),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 206,
-                  top: 605,
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    clipBehavior: Clip.hardEdge,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 207,
-                  top: 658,
-                  child: SizedBox(
-                    width: 112,
-                    child: Text(
-                      'Find Mentor',
-                      style: GoogleFonts.getFont(
-                        'Cairo',
-                        color: Colors.black,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        height: 1.1,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Positioned(
+                            left: 12,
+                            top: 12,
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              clipBehavior: Clip.hardEdge,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Center(
+                                child: Image.asset(
+                                  'assets/images/find_mentor_logo.png',
+                                  width: 27,
+                                  height: 18,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.person_search, color: Color(0xFF1D5572)),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            left: 13,
+                            top: 65,
+                            child: SizedBox(
+                              width: 112,
+                              child: Text(
+                                'Find Mentor',
+                                style: GoogleFonts.getFont(
+                                  'Cairo',
+                                  color: Colors.black,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.1,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            left: 13,
+                            top: 87,
+                            child: SizedBox(
+                              width: 124,
+                              child: Text(
+                                'Connect with experts',
+                                style: GoogleFonts.getFont(
+                                  'Cairo',
+                                  color: Colors.black,
+                                  fontSize: 13,
+                                  height: 1.7,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                ),
-                Positioned(
-                  left: 207,
-                  top: 680,
-                  child: SizedBox(
-                    width: 124,
-                    child: Text(
-                      'Connect with experts',
-                      style: GoogleFonts.getFont(
-                        'Cairo',
-                        color: Colors.black,
-                        fontSize: 13,
-                        height: 1.7,
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 213,
-                  top: 616,
-                  child: Image.asset(
-                    'assets/images/find_mentor_logo.png',
-                    width: 27,
-                    height: 18,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.person_search, color: Color(0xFF1D5572)),
                   ),
                 ),
                 Positioned(

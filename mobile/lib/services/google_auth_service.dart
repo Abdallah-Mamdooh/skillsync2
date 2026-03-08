@@ -1,9 +1,10 @@
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'api_service.dart';
 
 class GoogleAuthService {
-  static const String baseUrl = 'http://192.168.1.2:5000/api/auth';
+  static String get baseUrl => '${ApiService.baseUrl}/auth'; 
 
   static final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],

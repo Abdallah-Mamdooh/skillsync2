@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../services/auth_service.dart';
+import '../services/google_auth_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   String? _token;
@@ -7,11 +10,66 @@ class AuthProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
+  AuthProvider() {
+    _loadAuthData();
+  }
+
   String? get token => _token;
   Map<String, dynamic>? get user => _user;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isLoggedIn => _token != null;
+
+  Future<void> _loadAuthData() async {
+    final prefs = await SharedPreferences.getInstance();
+    _token = prefs.getString('auth_token');
+    final userData = prefs.getString('user_data');
+    if (userData != null) {
+      _user = json.decode(userData);
+    }
+    notifyListeners();
+  }
+
+  Future<void> _saveAuthData(String token, Map<String, dynamic> user) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('auth_token', token);
+    await prefs.setString('user_data', json.encode(user));
+  }
+
+  Future<void> _clearAuthData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('auth_token');
+    await prefs.remove('user_data');
+  }
+
+  void updateUser(Map<String, dynamic> userData) {
+    _user = userData;
+    _saveAuthData(_token ?? '', userData);
+    notifyListeners();
+  }
+
+  void setLoading(bool loading) {
+    _isLoading = loading;
+    notifyListeners();
+  }
+
+  void setError(String? error) {
+    _error = error;
+    notifyListeners();
+  }
+
+  /// Called after a successful Google sign-in to store the token and user
+  /// from the [GoogleAuthService] response without making a second API call.
+  Future<void> setFromGoogle({
+    required String token,
+    required Map<String, dynamic> user,
+  }) async {
+    _token = token;
+    _user = user;
+    _error = null;
+    await _saveAuthData(token, user);
+    notifyListeners();
+  }
 
   Future<bool> signup({
     required String fullName,
@@ -38,16 +96,34 @@ class AuthProvider extends ChangeNotifier {
       additionalInfo: additionalInfo,
     );
 
-    _isLoading = false;
-
-    if (response['success'] == true) {
-      _user = response['data'];
-      notifyListeners();
-      return true;
-    } else {
+    if (response['success'] != true) {
+      _isLoading = false;
       _error = response['message'];
       notifyListeners();
       return false;
+    }
+
+    // Signup succeeded — now login so the user gets a JWT token
+    final loginResponse = await AuthService.login(
+      email: email,
+      password: password,
+    );
+
+    _isLoading = false;
+
+    if (loginResponse['success'] == true) {
+      _token = loginResponse['data']['token'];
+      _user = loginResponse['data']['user'];
+      await _saveAuthData(_token!, _user!);
+      notifyListeners();
+      return true;
+    } else {
+      // Signup succeeded but auto-login failed; still report success
+      // so the user can manually log in
+      _user = response['data'];
+      _error = null;
+      notifyListeners();
+      return true;
     }
   }
 
@@ -69,6 +145,7 @@ class AuthProvider extends ChangeNotifier {
     if (response['success'] == true) {
       _token = response['data']['token'];
       _user = response['data']['user'];
+      await _saveAuthData(_token!, _user!);
       notifyListeners();
       return true;
     } else {
@@ -90,6 +167,7 @@ class AuthProvider extends ChangeNotifier {
     if (response['success'] == true) {
       _token = response['data']['token'];
       _user = response['data']['user'];
+      await _saveAuthData(_token!, _user!);
       notifyListeners();
       return true;
     } else {
@@ -99,10 +177,13 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  void logout() {
+  Future<void> logout() async {
     _token = null;
     _user = null;
     _error = null;
+    await _clearAuthData();
+    // Also sign out from Google in case the user logged in via Google
+    await GoogleAuthService.signOut();
     notifyListeners();
   }
 }

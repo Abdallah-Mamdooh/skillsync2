@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import '../services/profile_service.dart';
 import 'assessment_flow.dart';
 import 'student_homescreen.dart';
+import 'auth/login_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -203,9 +204,33 @@ class ProfileScreen extends StatelessWidget {
                 const Divider(),
                 _accountRow(Icons.notifications_outlined, 'Notifications', const Color(0xFF1F2937), const Color(0xFF6B7280), () {}),
                 const Divider(),
-                _accountRow(Icons.logout, 'SignOut', const Color(0xFFDC2626), const Color(0xFFDC2626), () {
-                  authProvider.logout();
-                  Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                _accountRow(Icons.logout, 'Sign Out', const Color(0xFFDC2626), const Color(0xFFDC2626), () async {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Sign Out'),
+                      content: const Text('Are you sure you want to sign out?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(false),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(true),
+                          style: TextButton.styleFrom(foregroundColor: const Color(0xFFDC2626)),
+                          child: const Text('Sign Out'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed == true && context.mounted) {
+                    final navigator = Navigator.of(context);
+                    await authProvider.logout();
+                    navigator.pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      (route) => false,
+                    );
+                  }
                 }),
               ],
             ),

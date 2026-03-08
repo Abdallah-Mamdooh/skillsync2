@@ -93,17 +93,16 @@ class LoginScreen extends StatelessWidget {
                         final result = await GoogleAuthService.signInWithGoogle();
 
                         if (result['success'] == true && context.mounted) {
-                          // Update AuthProvider with the received data
                           final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                          
-                          // Correctly access nested data from backend response
-                          final data = result['data'];
-                          final email = data['user']['email'];
-                          
-                          // Use the auth provider to sync the state
-                          final success = await authProvider.googleLogin(email: email);
 
-                          if (success && context.mounted) {
+                          // GoogleAuthService already called the backend and got
+                          // token + user — use them directly without a second call
+                          final data = result['data'];
+                          final token = data['token'] as String?;
+                          final user = data['user'] as Map<String, dynamic>?;
+
+                          if (token != null && user != null) {
+                            authProvider.setFromGoogle(token: token, user: user);
                             Navigator.of(context).pushReplacement(
                               MaterialPageRoute(
                                 builder: (context) => const StudentHomeScreen(),
@@ -111,7 +110,7 @@ class LoginScreen extends StatelessWidget {
                             );
                           } else if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(authProvider.error ?? 'Login failed')),
+                              const SnackBar(content: Text('Google login failed: missing data')),
                             );
                           }
                         } else if (context.mounted && result['message'] != 'User cancelled') {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_colors.dart';
+import '../../services/auth_service.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -10,18 +11,51 @@ class ForgotPasswordScreen extends StatefulWidget {
 }
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
-  bool _isOldPasswordVisible = false;
-  bool _isNewPasswordVisible = false;
   final _emailController = TextEditingController();
-  final _oldPasswordController = TextEditingController();
-  final _newPasswordController = TextEditingController();
+  bool _isLoading = false;
+  bool _emailSent = false;
 
   @override
   void dispose() {
     _emailController.dispose();
-    _oldPasswordController.dispose();
-    _newPasswordController.dispose();
     super.dispose();
+  }
+
+  bool get _isEmailValid {
+    final email = _emailController.text.trim();
+    if (!email.contains('@')) return false;
+    final parts = email.split('@');
+    if (parts.length != 2) return false;
+    final domain = parts[1];
+    return domain.contains('.') &&
+        domain.indexOf('.') > 0 &&
+        domain.indexOf('.') < domain.length - 1 &&
+        domain.substring(domain.lastIndexOf('.') + 1).length >= 2;
+  }
+
+  Future<void> _sendResetLink() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !_isEmailValid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid email address')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final response = await AuthService.forgotPassword(email: email);
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (response['success'] == true) {
+      setState(() => _emailSent = true);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(response['message'] ?? 'Failed to send reset email')),
+      );
+    }
   }
 
   @override
@@ -49,203 +83,203 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
               child: Center(
                 child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      const Text(
-                        'FORGET PASSWORD',
-                        style: TextStyle(
-                          color: AppColors.white,
-                          fontSize: 29,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 60),
-                      // Email Field
-                      const Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Email',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            height: 1.2,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        height: 56,
-                        child: TextFormField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: InputDecoration(
-                            hintText: 'ex.abdallah@gmail.com',
-                            filled: true,
-                            fillColor: Colors.white,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide.none,
-                            ),
-                            hintStyle: GoogleFonts.getFont(
-                              'Inter',
-                              color: const Color(0xFFBCBCBC),
-                              fontSize: 16,
-                            ),
-                          ),
-                          style: GoogleFonts.getFont(
-                            'Inter',
-                            color: Colors.black,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      // Old Password Field
-                      const Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Current Password',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            height: 1.2,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        height: 56,
-                        child: TextFormField(
-                          controller: _oldPasswordController,
-                          obscureText: !_isOldPasswordVisible,
-                          decoration: InputDecoration(
-                            hintText: '***********************',
-                            filled: true,
-                            fillColor: Colors.white,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide.none,
-                            ),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _isOldPasswordVisible
-                                    ? Icons.visibility
-                                    : Icons.visibility_off,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _isOldPasswordVisible = !_isOldPasswordVisible;
-                                });
-                              },
-                            ),
-                            hintStyle: GoogleFonts.getFont(
-                              'Inter',
-                              color: const Color(0xFFBCBCBC),
-                              fontSize: 16,
-                            ),
-                          ),
-                          style: GoogleFonts.getFont(
-                            'Inter',
-                            color: Colors.black,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      // New Password Field
-                      const Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'New Password',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            height: 1.2,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        height: 56,
-                        child: TextFormField(
-                          controller: _newPasswordController,
-                          obscureText: !_isNewPasswordVisible,
-                          decoration: InputDecoration(
-                            hintText: '***********************',
-                            filled: true,
-                            fillColor: Colors.white,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide.none,
-                            ),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _isNewPasswordVisible
-                                    ? Icons.visibility
-                                    : Icons.visibility_off,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _isNewPasswordVisible = !_isNewPasswordVisible;
-                                });
-                              },
-                            ),
-                            hintStyle: GoogleFonts.getFont(
-                              'Inter',
-                              color: const Color(0xFFBCBCBC),
-                              fontSize: 16,
-                            ),
-                          ),
-                          style: GoogleFonts.getFont(
-                            'Inter',
-                            color: Colors.black,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 40),
-                      // Reset Password Button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 56,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            // Add password reset logic here
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Password reset successful!'),
-                              ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.accentOrange,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 4,
-                          ),
-                          child: Text(
-                            'Reset Password',
-                            style: GoogleFonts.getFont(
-                              'Inter',
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                    ],
-                  ),
+                  child: _emailSent ? _buildSuccessView() : _buildFormView(),
                 ),
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFormView() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        const Text(
+          'FORGOT PASSWORD',
+          style: TextStyle(
+            color: AppColors.white,
+            fontSize: 29,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.5,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Enter your account email and we\'ll send you a password reset link.',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.inter(
+            color: Colors.white70,
+            fontSize: 14,
+            height: 1.5,
+          ),
+        ),
+        const SizedBox(height: 48),
+        // Email Field
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Email',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              height: 1.2,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 56,
+          child: TextFormField(
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              hintText: 'ex.abdallah@gmail.com',
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide.none,
+              ),
+              hintStyle: GoogleFonts.inter(
+                color: const Color(0xFFBCBCBC),
+                fontSize: 16,
+              ),
+            ),
+            style: GoogleFonts.inter(
+              color: Colors.black,
+              fontSize: 16,
+            ),
+          ),
+        ),
+        const SizedBox(height: 40),
+        // Send Reset Link Button
+        SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: ElevatedButton(
+            onPressed: (_isLoading || _emailController.text.trim().isEmpty)
+                ? null
+                : _sendResetLink,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: (_isLoading || _emailController.text.trim().isEmpty)
+                  ? AppColors.accentOrange.withOpacity(0.4)
+                  : AppColors.accentOrange,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 4,
+            ),
+            child: _isLoading
+                ? const SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : Text(
+                    'Send Reset Link',
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+          ),
+        ),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _buildSuccessView() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        const SizedBox(height: 40),
+        Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.15),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.mark_email_read_outlined, color: Colors.white, size: 40),
+        ),
+        const SizedBox(height: 24),
+        const Text(
+          'Check Your Email',
+          style: TextStyle(
+            color: AppColors.white,
+            fontSize: 26,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'We sent a password reset link to\n${_emailController.text.trim()}',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.inter(
+            color: Colors.white70,
+            fontSize: 15,
+            height: 1.6,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Please check your inbox and follow the link to reset your password.',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.inter(
+            color: Colors.white54,
+            fontSize: 13,
+            height: 1.5,
+          ),
+        ),
+        const SizedBox(height: 48),
+        SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accentOrange,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 4,
+            ),
+            child: Text(
+              'Back to Login',
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        TextButton(
+          onPressed: () => setState(() {
+            _emailSent = false;
+          }),
+          child: Text(
+            'Resend email',
+            style: GoogleFonts.inter(
+              color: Colors.white70,
+              fontSize: 14,
+              decoration: TextDecoration.underline,
+              decorationColor: Colors.white70,
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+      ],
     );
   }
 }

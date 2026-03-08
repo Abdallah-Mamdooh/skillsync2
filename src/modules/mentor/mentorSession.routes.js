@@ -3,7 +3,10 @@ const router = express.Router();
 
 const authMiddleware = require('../../middlewares/auth.middleware');
 const controller = require('./mentorSession.controller');
+router.post('/:sessionId/start', authMiddleware, controller.startSession);
 
+// manual expire endpoint for MVP/admin/testing
+router.post('/expire-pending/run', authMiddleware, controller.expirePendingSessions);
 // user side
 router.post('/', authMiddleware, controller.requestSession);
 router.get('/me', authMiddleware, controller.getMySessions);

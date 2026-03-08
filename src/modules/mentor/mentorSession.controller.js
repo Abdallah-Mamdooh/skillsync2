@@ -77,6 +77,28 @@ const completeSession = asyncHandler(async (req, res) => {
     data,
   });
 });
+
+
+const startSession = asyncHandler(async (req, res) => {
+  const data = await mentorSessionService.startSession(
+    req.user._id,
+    req.params.sessionId
+  );
+
+  res.status(200).json({
+    success: true,
+    data,
+  });
+});
+
+const expirePendingSessions = asyncHandler(async (req, res) => {
+  const data = await mentorSessionService.expirePendingSessions();
+
+  res.status(200).json({
+    success: true,
+    data,
+  });
+});
 module.exports = {
   requestSession,
   getMySessions,
@@ -85,4 +107,6 @@ module.exports = {
   acceptSession,
   rejectSession,
   completeSession,
+  startSession,
+  expirePendingSessions,
 };

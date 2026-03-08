@@ -450,6 +450,69 @@ const completeSession = async (mentorUserId, sessionId) => {
   };
 };
 
+const startSession = async (currentUserId, sessionId) => {
+  const session = await MentorSession.findById(sessionId);
+
+  if (!session) {
+    throw new Error('Session not found');
+  }
+
+  const isUser = String(session.userId) === String(currentUserId);
+  const isMentor = String(session.mentorUserId) === String(currentUserId);
+
+  if (!isUser && !isMentor) {
+    throw new Error('You are not allowed to start this session');
+  }
+
+  if (session.status !== 'accepted') {
+    throw new Error('Only accepted sessions can be started');
+  }
+
+  session.status = 'active';
+  session.startedAt = new Date();
+
+  await session.save();
+
+  return {
+    id: session._id,
+    status: session.status,
+    startedAt: session.startedAt,
+  };
+};
+
+const expirePendingSessions = async () => {
+  const now = new Date();
+
+  const sessions = await MentorSession.find({
+    status: 'pending',
+    expiresAt: { $lte: now },
+  });
+
+  let expiredCount = 0;
+
+  for (const session of sessions) {
+    session.status = 'expired';
+
+    if (session.paymentStatus === 'held') {
+      await paymentService.releaseHeldFunds({
+        userId: session.userId,
+        sessionId: session._id,
+        amount: session.totalAmount,
+        currency: session.currency,
+      });
+
+      session.paymentStatus = 'released';
+    }
+
+    await session.save();
+    expiredCount++;
+  }
+
+  return {
+    expiredCount,
+  };
+};
+
 module.exports = {
   requestSession,
   getMySessions,
@@ -458,4 +521,6 @@ module.exports = {
   acceptSession,
   rejectSession,
   completeSession,
+  startSession,
+  expirePendingSessions,
 };

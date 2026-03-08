@@ -1,7 +1,7 @@
 const SessionFeedback = require('./sessionFeedback.model');
 const MentorSession = require('./mentorSession.model');
 const MentorProfile = require('./mentorProfile.model');
-
+const notificationService = require('../notification/notification.service');
 async function recalculateMentorRatings(mentorProfileId) {
   const allFeedback = await SessionFeedback.find({ mentorProfileId });
 
@@ -74,7 +74,18 @@ const submitSessionFeedback = async (userId, payload) => {
   });
 
   const mentorRatingSummary = await recalculateMentorRatings(session.mentorProfileId);
-
+  await notificationService.createNotification({
+    userId: session.mentorUserId,
+    type: 'session_feedback_received',
+    title: 'New feedback received',
+    message: 'A user submitted feedback for one of your sessions.',
+    data: {
+      sessionId: session._id,
+      feedbackId: feedback._id,
+      mentorRating: feedback.mentorRating,
+      complaintStatus: feedback.complaintStatus,
+    },
+  });
   return {
     feedback,
     mentorRatingSummary,

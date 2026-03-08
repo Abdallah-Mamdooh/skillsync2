@@ -3,6 +3,7 @@ const EventRegistration = require('./eventRegistration.model');
 const MentorProfile = require('../mentor/mentorProfile.model');
 const paymentService = require('../payment/payment.service');
 const createEvent = async (organizerUserId, payload) => {
+    const notificationService = require('../notification/notification.service');
   const speakers = Array.isArray(payload.speakers) ? payload.speakers : [];
 
   const normalizedSpeakers = [];
@@ -105,6 +106,19 @@ const publishEvent = async (organizerUserId, eventId) => {
 
   event.status = 'published';
   await event.save();
+    for (const speaker of event.speakers || []) {
+    await notificationService.createNotification({
+      userId: speaker.mentorUserId,
+      type: 'event_published',
+      title: 'Event published',
+      message: `You have been listed as a speaker in "${event.title}".`,
+      data: {
+        eventId: event._id,
+        title: event.title,
+        scheduledAt: event.scheduledAt,
+      },
+    });
+  }
 
   return event;
 };
@@ -168,6 +182,20 @@ const registerForEvent = async (userId, eventId) => {
   event.registeredCount += 1;
   await event.save();
 
+    await notificationService.createNotification({
+    userId,
+    type: 'event_registered',
+    title: 'Event registration confirmed',
+    message: `You registered for "${event.title}". ${event.fee} ${event.currency} was placed on hold.`,
+    data: {
+      eventId: event._id,
+      registrationId: registration._id,
+      amount: event.fee,
+      currency: event.currency,
+      paymentStatus: registration.paymentStatus,
+    },
+  });
+
   return registration;
 };
 
@@ -207,6 +235,20 @@ const captureEventRegistrationPayment = async (organizerUserId, registrationId) 
   registration.paymentStatus = 'captured';
   await registration.save();
 
+    await notificationService.createNotification({
+    userId: registration.userId,
+    type: 'event_payment_captured',
+    title: 'Event payment captured',
+    message: `Your registration payment for "${event.title}" was captured.`,
+    data: {
+      eventId: event._id,
+      registrationId: registration._id,
+      amount: registration.amountPaid,
+      currency: registration.currency,
+      paymentStatus: registration.paymentStatus,
+    },
+  });
+
   return registration;
 };
 
@@ -239,7 +281,19 @@ const releaseEventRegistrationPayment = async (organizerUserId, registrationId) 
 
   registration.paymentStatus = 'released';
   await registration.save();
-
+  await notificationService.createNotification({
+    userId: registration.userId,
+    type: 'event_payment_released',
+    title: 'Event payment released',
+    message: `Your held registration payment for "${event.title}" was released back to your wallet.`,
+    data: {
+      eventId: event._id,
+      registrationId: registration._id,
+      amount: registration.amountPaid,
+      currency: registration.currency,
+      paymentStatus: registration.paymentStatus,
+    },
+  });
   return registration;
 };
 
@@ -300,6 +354,34 @@ const completeEvent = async (organizerUserId, eventId) => {
 
   event.status = 'completed';
   await event.save();
+
+    const allRegistrations = await EventRegistration.find({ eventId: event._id });
+
+  for (const registration of allRegistrations) {
+    await notificationService.createNotification({
+      userId: registration.userId,
+      type: 'event_completed',
+      title: 'Event completed',
+      message: `The event "${event.title}" has been completed.`,
+      data: {
+        eventId: event._id,
+        registrationId: registration._id,
+        status: event.status,
+      },
+    });
+  }
+
+  await notificationService.createNotification({
+    userId: event.organizerUserId,
+    type: 'event_completed',
+    title: 'Event completed',
+    message: `Your event "${event.title}" has been marked as completed.`,
+    data: {
+      eventId: event._id,
+      capturedCount,
+      status: event.status,
+    },
+  });
 
   return {
     eventId: event._id,

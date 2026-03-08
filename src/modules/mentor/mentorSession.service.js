@@ -2,6 +2,7 @@ const MentorSession = require('./mentorSession.model');
 const MentorProfile = require('./mentorProfile.model');
 const paymentService = require('../payment/payment.service');
 const PLATFORM_FEE_PERCENT = 0.2; // 20%
+const notificationService = require('../notification/notification.service');
 
 function round2(n) {
   return Math.round((Number(n) || 0) * 100) / 100;
@@ -77,6 +78,34 @@ const requestSession = async (userId, payload) => {
 
   session.paymentStatus = 'held';
   await session.save();
+
+    await notificationService.createNotification({
+    userId: mentorProfile.userId._id,
+    type: 'mentor_session_requested',
+    title: 'New session request',
+    message: `You received a new ${method} session request for ${durationMinutes} minutes.`,
+    data: {
+      sessionId: session._id,
+      mentorProfileId: mentorProfile._id,
+      method,
+      durationMinutes,
+      totalAmount: pricing.totalAmount,
+      currency: pricing.currency,
+    },
+  });
+
+  await notificationService.createNotification({
+    userId,
+    type: 'payment_held',
+    title: 'Payment placed on hold',
+    message: `An amount of ${pricing.totalAmount} ${pricing.currency} was placed on hold for your session request.`,
+    data: {
+      sessionId: session._id,
+      amount: pricing.totalAmount,
+      currency: pricing.currency,
+      paymentStatus: 'held',
+    },
+  });
   if (!mentorProfileId) {
     throw new Error('mentorProfileId is required');
   }
@@ -319,6 +348,20 @@ const acceptSession = async (mentorUserId, sessionId, payload = {}) => {
 
   await session.save();
 
+    await notificationService.createNotification({
+    userId: session.userId,
+    type: 'mentor_session_accepted',
+    title: 'Session accepted',
+    message: 'Your mentor accepted the session request.',
+    data: {
+      sessionId: session._id,
+      method: session.method,
+      meetingProvider: session.meetingProvider,
+      meetingLink: session.meetingLink,
+      status: session.status,
+    },
+  });
+
   return {
     id: session._id,
     status: session.status,
@@ -350,6 +393,32 @@ const rejectSession = async (mentorUserId, sessionId) => {
 
   session.status = 'rejected';
   await session.save();
+
+    await notificationService.createNotification({
+    userId: session.userId,
+    type: 'mentor_session_rejected',
+    title: 'Session rejected',
+    message: 'Your mentor rejected the session request.',
+    data: {
+      sessionId: session._id,
+      status: session.status,
+    },
+  });
+
+  if (session.paymentStatus === 'released') {
+    await notificationService.createNotification({
+      userId: session.userId,
+      type: 'payment_released',
+      title: 'Held payment released',
+      message: `Your held payment of ${session.totalAmount} ${session.currency} was released back to your wallet.`,
+      data: {
+        sessionId: session._id,
+        amount: session.totalAmount,
+        currency: session.currency,
+        paymentStatus: session.paymentStatus,
+      },
+    });
+  }
 
 
 
@@ -437,6 +506,35 @@ const completeSession = async (mentorUserId, sessionId) => {
   mentorProfile.totalSessions = Number(mentorProfile.totalSessions || 0) + 1;
   await mentorProfile.save();
 
+    await notificationService.createNotification({
+    userId: session.userId,
+    type: 'mentor_session_completed',
+    title: 'Session completed',
+    message: `Your session has been completed and payment of ${session.totalAmount} ${session.currency} was captured.`,
+    data: {
+      sessionId: session._id,
+      totalAmount: session.totalAmount,
+      mentorNetAmount: session.mentorNetAmount,
+      platformFee: session.platformFee,
+      currency: session.currency,
+      paymentStatus: session.paymentStatus,
+      endedAt: session.endedAt,
+    },
+  });
+
+  await notificationService.createNotification({
+    userId: session.mentorUserId,
+    type: 'mentor_session_completed',
+    title: 'Session completed',
+    message: `Session completed. ${session.mentorNetAmount} ${session.currency} has been added to your wallet.`,
+    data: {
+      sessionId: session._id,
+      mentorNetAmount: session.mentorNetAmount,
+      currency: session.currency,
+      endedAt: session.endedAt,
+    },
+  });
+
   return {
     id: session._id,
     status: session.status,
@@ -472,7 +570,29 @@ const startSession = async (currentUserId, sessionId) => {
   session.startedAt = new Date();
 
   await session.save();
+  await notificationService.createNotification({
+    userId: session.userId,
+    type: 'mentor_session_started',
+    title: 'Session started',
+    message: 'Your mentor session has started.',
+    data: {
+      sessionId: session._id,
+      startedAt: session.startedAt,
+      status: session.status,
+    },
+  });
 
+  await notificationService.createNotification({
+    userId: session.mentorUserId,
+    type: 'mentor_session_started',
+    title: 'Session started',
+    message: 'Your mentor session has started.',
+    data: {
+      sessionId: session._id,
+      startedAt: session.startedAt,
+      status: session.status,
+    },
+  });
   return {
     id: session._id,
     status: session.status,
@@ -507,6 +627,32 @@ const expirePendingSessions = async () => {
     await session.save();
     expiredCount++;
   }
+
+      await notificationService.createNotification({
+      userId: session.userId,
+      type: 'mentor_session_expired',
+      title: 'Session request expired',
+      message: 'Your session request expired because it was not accepted in time.',
+      data: {
+        sessionId: session._id,
+        status: session.status,
+      },
+    });
+
+    if (session.paymentStatus === 'released') {
+      await notificationService.createNotification({
+        userId: session.userId,
+        type: 'payment_released',
+        title: 'Held payment released',
+        message: `Your held payment of ${session.totalAmount} ${session.currency} was released after session expiration.`,
+        data: {
+          sessionId: session._id,
+          amount: session.totalAmount,
+          currency: session.currency,
+          paymentStatus: session.paymentStatus,
+        },
+      });
+    }
 
   return {
     expiredCount,

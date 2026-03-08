@@ -1,7 +1,7 @@
 const Wallet = require('./wallet.model');
 const PaymentMethod = require('./paymentMethod.model');
 const Transaction = require('./transaction.model');
-
+const notificationService = require('../notification/notification.service');
 function round2(n) {
   return Math.round((Number(n) || 0) * 100) / 100;
 }
@@ -77,6 +77,17 @@ async function depositToWallet(userId, amount, notes = 'Wallet top-up') {
     currency: wallet.currency,
     status: 'completed',
     notes,
+  });
+    await notificationService.createNotification({
+    userId,
+    type: 'wallet_deposit',
+    title: 'Wallet topped up',
+    message: `${amt} ${wallet.currency} was added to your wallet.`,
+    data: {
+      amount: amt,
+      currency: wallet.currency,
+      availableBalance: wallet.availableBalance,
+    },
   });
 
   return wallet;
@@ -174,6 +185,19 @@ async function creditMentorWallet({ mentorUserId, sessionId, amount, currency = 
     currency,
     status: 'completed',
     notes: 'Mentor credited after completed session',
+  });
+
+    await notificationService.createNotification({
+    userId: mentorUserId,
+    type: 'wallet_credit',
+    title: 'Wallet credited',
+    message: `${amt} ${currency} was added to your wallet.`,
+    data: {
+      amount: amt,
+      currency,
+      availableBalance: wallet.availableBalance,
+      sessionId,
+    },
   });
 
   return wallet;

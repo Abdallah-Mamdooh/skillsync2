@@ -2,6 +2,7 @@ const Roadmap = require('./roadmap.model');
 const UserRoadmapProgress = require('./userRoadmapProgress.model');
 const UserAssessmentResult = require('../assessment/userAssessmentResult.model');
 const User = require('../auth/user.model');
+const notificationService = require('../notification/notification.service');
 
 // ---------- helpers ----------
 function normalizeText(value) {
@@ -261,6 +262,31 @@ const toggleStep = async (userId, stepId) => {
       const alreadyHasSkill = existingSkills.some(
         (s) => normalizeSkill(s) === normalizeSkill(skillTag)
       );
+          await notificationService.createNotification({
+      userId,
+      type: 'roadmap_step_completed',
+      title: 'Roadmap step completed',
+      message: `You completed: ${step.title}`,
+      data: {
+        stepId: step._id,
+        stepTitle: step.title,
+        skillTag: step.skillTag,
+        skillAdded,
+      },
+    });
+
+    if (skillAdded) {
+      await notificationService.createNotification({
+        userId,
+        type: 'skill_added',
+        title: 'New skill added',
+        message: `${step.skillTag} was added to your profile skills.`,
+        data: {
+          stepId: step._id,
+          skillTag: step.skillTag,
+        },
+      });
+    }
 
       if (!alreadyHasSkill) {
         user.skills.push(skillTag);

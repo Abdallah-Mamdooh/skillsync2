@@ -242,6 +242,72 @@ const releaseEventRegistrationPayment = async (organizerUserId, registrationId) 
 
   return registration;
 };
+
+
+const markRegistrationAttended = async (organizerUserId, registrationId) => {
+  const registration = await EventRegistration.findById(registrationId).populate('eventId');
+
+  if (!registration) {
+    throw new Error('Registration not found');
+  }
+
+  const event = registration.eventId;
+  if (!event) {
+    throw new Error('Event not found');
+  }
+
+  if (String(event.organizerUserId) !== String(organizerUserId)) {
+    throw new Error('You are not allowed to mark attendance for this event');
+  }
+
+  registration.attended = true;
+  registration.checkedInAt = new Date();
+  await registration.save();
+
+  return registration;
+};
+
+const completeEvent = async (organizerUserId, eventId) => {
+  const event = await GroupEvent.findById(eventId);
+
+  if (!event) {
+    throw new Error('Event not found');
+  }
+
+  if (String(event.organizerUserId) !== String(organizerUserId)) {
+    throw new Error('You are not allowed to complete this event');
+  }
+
+  const registrations = await EventRegistration.find({
+    eventId: event._id,
+    paymentStatus: 'held',
+  });
+
+  let capturedCount = 0;
+
+  for (const registration of registrations) {
+    await paymentService.captureHeldFunds({
+      userId: registration.userId,
+      sessionId: null,
+      amount: registration.amountPaid,
+      currency: registration.currency,
+    });
+
+    registration.paymentStatus = 'captured';
+    await registration.save();
+    capturedCount++;
+  }
+
+  event.status = 'completed';
+  await event.save();
+
+  return {
+    eventId: event._id,
+    status: event.status,
+    capturedCount,
+  };
+};
+
 module.exports = {
   createEvent,
   updateEvent,
@@ -252,4 +318,6 @@ module.exports = {
   getMyEventRegistrations,
   captureEventRegistrationPayment,
   releaseEventRegistrationPayment,
+  markRegistrationAttended,
+  completeEvent,
 };

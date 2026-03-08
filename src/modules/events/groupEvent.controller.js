@@ -54,6 +54,24 @@ const releaseEventRegistrationPayment = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data });
 });
 
+const markRegistrationAttended = asyncHandler(async (req, res) => {
+  const data = await eventService.markRegistrationAttended(
+    req.user._id,
+    req.params.registrationId
+  );
+
+  res.status(200).json({ success: true, data });
+});
+
+const completeEvent = asyncHandler(async (req, res) => {
+  const data = await eventService.completeEvent(
+    req.user._id,
+    req.params.eventId
+  );
+
+  res.status(200).json({ success: true, data });
+});
+
 module.exports = {
   createEvent,
   updateEvent,
@@ -64,4 +82,6 @@ module.exports = {
   getMyEventRegistrations,
   captureEventRegistrationPayment,
   releaseEventRegistrationPayment,
+  markRegistrationAttended,
+  completeEvent,
 };

@@ -383,4 +383,5 @@ module.exports = {
   toggleStep,
   calculateProgressPercentage,
   generateResourcesForCurrentRoadmap,
+  getRecentCompletions,
 };

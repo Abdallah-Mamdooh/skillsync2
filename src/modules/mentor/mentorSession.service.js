@@ -371,6 +371,85 @@ const rejectSession = async (mentorUserId, sessionId) => {
   };
 };
 
+const completeSession = async (mentorUserId, sessionId) => {
+  const mentorProfile = await MentorProfile.findOne({ userId: mentorUserId });
+
+  if (!mentorProfile) {
+    throw new Error('Mentor profile not found');
+  }
+
+  const session = await MentorSession.findById(sessionId);
+  if (!session) {
+    throw new Error('Session not found');
+  }
+
+  if (String(session.mentorProfileId) !== String(mentorProfile._id)) {
+    throw new Error('You are not allowed to complete this session');
+  }
+
+  if (!['accepted', 'active'].includes(session.status)) {
+    throw new Error('Only accepted or active sessions can be completed');
+  }
+
+  const endedAt = new Date();
+  session.endedAt = endedAt;
+  session.status = 'completed';
+
+  // calculate actual duration
+  if (session.startedAt) {
+    const ms = endedAt.getTime() - new Date(session.startedAt).getTime();
+    session.actualDurationMinutes = Math.max(1, Math.ceil(ms / 60000));
+  } else {
+    session.actualDurationMinutes = session.durationMinutes;
+  }
+
+  // Capture held funds from requester
+  if (session.paymentStatus === 'held') {
+    await paymentService.captureHeldFunds({
+      userId: session.userId,
+      sessionId: session._id,
+      amount: session.totalAmount,
+      currency: session.currency,
+    });
+
+    // credit mentor
+    await paymentService.creditMentorWallet({
+      mentorUserId: session.mentorUserId,
+      sessionId: session._id,
+      amount: session.mentorNetAmount,
+      currency: session.currency,
+    });
+
+    // record platform fee
+    await paymentService.addPlatformFeeTransaction({
+      userId: session.userId,
+      sessionId: session._id,
+      amount: session.platformFee,
+      currency: session.currency,
+    });
+
+    session.paymentStatus = 'captured';
+  }
+
+  await session.save();
+
+  // update mentor stats
+  mentorProfile.totalSessions = Number(mentorProfile.totalSessions || 0) + 1;
+  await mentorProfile.save();
+
+  return {
+    id: session._id,
+    status: session.status,
+    paymentStatus: session.paymentStatus,
+    endedAt: session.endedAt,
+    actualDurationMinutes: session.actualDurationMinutes,
+    totalAmount: session.totalAmount,
+    mentorNetAmount: session.mentorNetAmount,
+    platformFee: session.platformFee,
+    currency: session.currency,
+  };
+};
+
 module.exports = {
   requestSession,
   getMySessions,
@@ -378,4 +457,5 @@ module.exports = {
   getSessionById,
   acceptSession,
   rejectSession,
+  completeSession,
 };

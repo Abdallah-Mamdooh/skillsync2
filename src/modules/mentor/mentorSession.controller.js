@@ -65,6 +65,18 @@ const rejectSession = asyncHandler(async (req, res) => {
   });
 });
 
+
+const completeSession = asyncHandler(async (req, res) => {
+  const data = await mentorSessionService.completeSession(
+    req.user._id,
+    req.params.sessionId
+  );
+
+  res.status(200).json({
+    success: true,
+    data,
+  });
+});
 module.exports = {
   requestSession,
   getMySessions,
@@ -72,4 +84,5 @@ module.exports = {
   getSessionById,
   acceptSession,
   rejectSession,
+  completeSession,
 };

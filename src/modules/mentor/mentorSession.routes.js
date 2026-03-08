@@ -17,5 +17,5 @@ router.get('/:sessionId', authMiddleware, controller.getSessionById);
 // mentor actions
 router.post('/:sessionId/accept', authMiddleware, controller.acceptSession);
 router.post('/:sessionId/reject', authMiddleware, controller.rejectSession);
-
+router.post('/:sessionId/complete', authMiddleware, controller.completeSession);
 module.exports = router;

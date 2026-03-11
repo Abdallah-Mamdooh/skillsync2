@@ -11,6 +11,8 @@ const passport = require('./src/config/passport');
 const User = require('./src/modules/auth/user.model');
 const chatService = require('./src/modules/mentor/chat.service');
 const notificationRoutes = require('./src/modules/notification/notification.routes');
+const reminderRoutes = require('./src/modules/notification/reminder.routes');
+const { startReminderCron } = require('./src/modules/notification/reminder.cron');
 connectDB();
 
 const PORT = process.env.PORT || 5000;
@@ -23,10 +25,10 @@ app.use(
     saveUninitialized: false,
   })
 );
-
 app.use(passport.initialize());
 app.use(passport.session());
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/reminders', reminderRoutes);
 const server = http.createServer(app);
 
 const io = new Server(server, {
@@ -106,6 +108,7 @@ io.on('connection', (socket) => {
     }
   });
 });
+startReminderCron();
 
 server.listen(PORT, () => {
   console.log(`SkillSync API running on port ${PORT}`);

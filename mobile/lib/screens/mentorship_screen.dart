@@ -1,9 +1,97 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+// ===== MENTOR MODEL =====
+class MentorData {
+  final String initials, name, role, rating, reviews, experience, price;
+  final Color initialsColor, buttonColor;
+  final bool isOnline;
+  final List<String> expertise;
+
+  MentorData({
+    required this.initials,
+    required this.name,
+    required this.role,
+    required this.rating,
+    required this.reviews,
+    required this.experience,
+    required this.price,
+    required this.initialsColor,
+    required this.buttonColor,
+    required this.isOnline,
+    required this.expertise,
+  });
+}
+
 // ===== MENTORSHIP SCREEN =====
-class MentorshipScreen extends StatelessWidget {
+class MentorshipScreen extends StatefulWidget {
   const MentorshipScreen({super.key});
+
+  @override
+  State<MentorshipScreen> createState() => _MentorshipScreenState();
+}
+
+class _MentorshipScreenState extends State<MentorshipScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  
+  final List<MentorData> _allMentors = [
+    MentorData(
+      initials: 'SJ', initialsColor: const Color(0xFFF5A100),
+      name: 'Sarah Johnson', role: 'Full Stack Developer',
+      isOnline: true, rating: '4.9', reviews: '127 reviews', experience: '8+ years',
+      expertise: ['Node.js', 'System Design', 'React', 'Career Coaching'],
+      price: '150 EGP/HOUR', buttonColor: const Color(0xFFF5A100),
+    ),
+    MentorData(
+      initials: 'MC', initialsColor: const Color(0xFF1D5572),
+      name: 'Michael Chen', role: 'Data Science Lead',
+      isOnline: true, rating: '4.8', reviews: '94 reviews', experience: '6+ years',
+      expertise: ['Python', 'Machine Learning', 'Analytics', 'Interview Prep'],
+      price: '75 EGP/HOUR', buttonColor: const Color(0xFF1D5572),
+    ),
+    MentorData(
+      initials: 'ER', initialsColor: const Color(0xFFF5A100),
+      name: 'Emily Rodriguez', role: 'UI/UX Designer',
+      isOnline: false, rating: '5', reviews: '82 reviews', experience: '6+ years',
+      expertise: ['UI/UX', 'Figma', 'Design Systems', 'Portfolio Review'],
+      price: '150 EGP/HOUR', buttonColor: const Color(0xFFF5A100),
+    ),
+    MentorData(
+      initials: 'DK', initialsColor: const Color(0xFF1D5572),
+      name: 'David Kim', role: 'Product Manager',
+      isOnline: true, rating: '4.7', reviews: '65 reviews', experience: '7+ years',
+      expertise: ['Product Strategy', 'Agile', 'Case Studies', 'Leadership'],
+      price: '75 EGP/HOUR', buttonColor: const Color(0xFF1D5572),
+    ),
+  ];
+
+  List<MentorData> _filteredMentors = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _filteredMentors = _allMentors;
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredMentors = _allMentors.where((m) {
+        final nameMatch = m.name.toLowerCase().contains(query);
+        final roleMatch = m.role.toLowerCase().contains(query);
+        final expertiseMatch = m.expertise.any((e) => e.toLowerCase().contains(query));
+        return nameMatch || roleMatch || expertiseMatch;
+      }).toList();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,6 +116,7 @@ class MentorshipScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
+              // Featured Section
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 26),
                 child: Container(
@@ -84,19 +173,28 @@ class MentorshipScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
+              // Search Bar
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 26),
                 child: Row(children: [
                   Expanded(
                     child: Container(
                       height: 40,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(color: const Color(0xFFE5E7EB), borderRadius: BorderRadius.circular(6), border: Border.all(color: const Color(0xFFE5E7EB))),
-                      child: Row(children: [
-                        const Icon(Icons.search, size: 16, color: Color(0xFF9CA3AF)),
-                        const SizedBox(width: 8),
-                        Text('Search mentors', style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF9CA3AF))),
-                      ]),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE5E7EB),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: TextField(
+                        controller: _searchController,
+                        style: GoogleFonts.inter(fontSize: 14, color: Colors.black),
+                        decoration: InputDecoration(
+                          hintText: 'Search mentors',
+                          hintStyle: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF9CA3AF)),
+                          prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF9CA3AF)),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -108,10 +206,29 @@ class MentorshipScreen extends StatelessWidget {
                 ]),
               ),
               const SizedBox(height: 16),
-              _buildMentorCard(context: context, initials: 'SJ', initialsColor: const Color(0xFFF5A100), name: 'Sarah Johnson', role: 'Full Stack Developer', isOnline: true, rating: '4.9', reviews: '127 reviews', experience: '8+ years', expertise: ['Node.js', 'System Design', 'React', 'Career Coaching'], price: '150 EGP/HOUR', buttonColor: const Color(0xFFF5A100)),
-              _buildMentorCard(context: context, initials: 'MC', initialsColor: const Color(0xFF1D5572), name: 'Michael Chen', role: 'Data Science Lead', isOnline: true, rating: '4.8', reviews: '94 reviews', experience: '6+ years', expertise: ['Python', 'Machine Learning', 'Analytics', 'Interview Prep'], price: '75 EGP/HOUR', buttonColor: const Color(0xFF1D5572)),
-              _buildMentorCard(context: context, initials: 'ER', initialsColor: const Color(0xFFF5A100), name: 'Emily Rodriguez', role: 'UI/UX Designer', isOnline: false, rating: '5', reviews: '82 reviews', experience: '6+ years', expertise: ['UI/UX', 'Figma', 'Design Systems', 'Portfolio Review'], price: '150 EGP/HOUR', buttonColor: const Color(0xFFF5A100)),
-              _buildMentorCard(context: context, initials: 'DK', initialsColor: const Color(0xFF1D5572), name: 'David Kim', role: 'Product Manager', isOnline: true, rating: '4.7', reviews: '65 reviews', experience: '7+ years', expertise: ['Product Strategy', 'Agile', 'Case Studies', 'Leadership'], price: '75 EGP/HOUR', buttonColor: const Color(0xFF1D5572)),
+              // List of Mentors
+              if (_filteredMentors.isEmpty)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 40),
+                    child: Text('No mentors found.', style: GoogleFonts.inter(color: const Color(0xFF6B7280))),
+                  ),
+                )
+              else
+                ..._filteredMentors.map((m) => _buildMentorCard(
+                  context: context,
+                  initials: m.initials,
+                  initialsColor: m.initialsColor,
+                  name: m.name,
+                  role: m.role,
+                  isOnline: m.isOnline,
+                  rating: m.rating,
+                  reviews: m.reviews,
+                  experience: m.experience,
+                  expertise: m.expertise,
+                  price: m.price,
+                  buttonColor: m.buttonColor,
+                )),
               const SizedBox(height: 20),
             ],
           ),

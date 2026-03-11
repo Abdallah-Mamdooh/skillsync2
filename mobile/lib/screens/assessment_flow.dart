@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../screens/roadmap_screen.dart';
 import '../services/api_service.dart';
 
 void main() {
@@ -48,13 +49,22 @@ List<CareerScore> calculateMatches(List<int> answers) {
   final q4 = [[1, 1, 2, 3], [0, 3, 2, 1], [3, 1, 1, 1], [0, 1, 3, 2]];
   final q5 = [[2, 1, 3, 2], [1, 2, 2, 2], [2, 1, 2, 2], [1, 3, 2, 2]];
   final matrices = [q1, q2, q3, q4, q5];
+  
   for (int q = 0; q < answers.length; q++) {
+    // If we have more answers than hardcoded matrices, stop or use a default
+    if (q >= matrices.length) break;
+    
+    final answerIndex = answers[q];
+    if (answerIndex == -1) continue;
+
     for (int c = 0; c < careers.length; c++) {
-      if (q < answers.length) {
-        careers[c].score += matrices[q][c][answers[q]];
+      // Safety check: ensure career index exists in matrix and answer index exists in career scores
+      if (c < matrices[q].length && answerIndex < matrices[q][c].length) {
+        careers[c].score += matrices[q][c][answerIndex];
       }
     }
   }
+  
   careers.sort((a, b) => b.score.compareTo(a.score));
   return careers;
 }
@@ -825,18 +835,18 @@ class _AssessmentQuestion1State extends State<AssessmentQuestion1> {
                           Text(questionData['options'][optIndex]['title'],
                               style: GoogleFonts.inter(
                                   fontSize: 15, fontWeight: FontWeight.w500, color: const Color(0xFF1F2937))),
-                          if ((questionData['options'][optIndex]['tags'] as List<String>).isNotEmpty) ...[
+                          if ((questionData['options'][optIndex]['tags'] as List<dynamic>).isNotEmpty) ...[
                             const SizedBox(height: 8),
                             Wrap(
                               spacing: 8,
-                              children: (questionData['options'][optIndex]['tags'] as List<String>)
+                              children: (questionData['options'][optIndex]['tags'] as List<dynamic>)
                                   .map((tag) => Container(
                                         padding:
                                             const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                         decoration: BoxDecoration(
                                             color: const Color(0xFFF3F4F6),
                                             borderRadius: BorderRadius.circular(20)),
-                                        child: Text(tag,
+                                        child: Text(tag.toString(),
                                             style: GoogleFonts.inter(
                                                 fontSize: 12, color: const Color(0xFF6B7280))),
                                       ))
@@ -897,8 +907,8 @@ class AssessmentCompleteState extends StatelessWidget {
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: () => Navigator.push(
-                    context, MaterialPageRoute(builder: (_) => CareerMatchesScreen(answers: answers))),
+                onPressed: () =>
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const CareerMatchesScreen())),
                 style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFF5A100),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
@@ -916,13 +926,152 @@ class AssessmentCompleteState extends StatelessWidget {
 }
 
 // ===== CAREER MATCHES SCREEN =====
-class CareerMatchesScreen extends StatelessWidget {
-  final List<int> answers;
-  const CareerMatchesScreen({super.key, required this.answers});
+class CareerMatchesScreen extends StatefulWidget {
+  const CareerMatchesScreen({super.key});
+
+  @override
+  State<CareerMatchesScreen> createState() => _CareerMatchesScreenState();
+}
+
+class _CareerMatchesScreenState extends State<CareerMatchesScreen> {
+  bool _isLoading = true;
+  String? _error;
+  List<Map<String, dynamic>> _suggestions = [];
+  String? _choosingCareerId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadResult();
+  }
+
+  String? _token() {
+    try {
+      return context.read<AuthProvider>().token;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  int _asPercent(dynamic v) {
+    if (v == null) return 0;
+    final raw = v.toString().replaceAll('%', '').trim();
+    double n = double.tryParse(raw) ?? 0;
+    if (n >= 0 && n <= 1 && raw.contains('.')) {
+      n *= 100;
+    }
+    final rounded = n.round();
+    if (rounded < 0) return 0;
+    if (rounded > 100) return 100;
+    return rounded;
+  }
+
+  String _extractCareerId(dynamic value) {
+    if (value == null) return '';
+    if (value is String) return value;
+    if (value is Map<String, dynamic>) {
+      final nested = value['_id'] ?? value['id'] ?? value['careerId'];
+      return nested?.toString() ?? '';
+    }
+    return value.toString();
+  }
+
+  Future<void> _loadResult() async {
+    final token = _token();
+    if (token == null || token.isEmpty) {
+      setState(() {
+        _isLoading = false;
+        _error = 'Login required.';
+      });
+      return;
+    }
+
+    final response = await ApiService.get('/assessment/result', token);
+    if (response['success'] != true) {
+      setState(() {
+        _isLoading = false;
+        _error = (response['message'] ?? 'Failed to load assessment result.').toString();
+      });
+      return;
+    }
+
+    final data = response['data'] as Map<String, dynamic>? ?? {};
+    final suggestionsRaw = data['suggestions'];
+    final suggestions = suggestionsRaw is List ? suggestionsRaw : <dynamic>[];
+
+    setState(() {
+      _suggestions =
+          suggestions.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      _isLoading = false;
+      _error = null;
+    });
+  }
+
+  Future<void> _chooseCareer(String careerId) async {
+    final token = _token();
+    if (token == null || token.isEmpty) return;
+
+    final trimmedId = careerId.trim();
+    if (trimmedId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid career id.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _choosingCareerId = trimmedId;
+    });
+
+    final requestBodies = <Object>[
+      trimmedId,
+      {'careerId': trimmedId},
+      {'id': trimmedId},
+      {'_id': trimmedId},
+    ];
+
+    Map<String, dynamic>? lastResponse;
+    bool hasChosenCareer = false;
+    for (final body in requestBodies) {
+      final response = await ApiService.postWithAuth('/assessment/choose-career', body, token);
+      lastResponse = response;
+
+      if (response['success'] == true) {
+        final verify = await ApiService.get('/assessment/result', token);
+        final data = verify['data'] as Map<String, dynamic>? ?? {};
+        final chosenCareer = data['chosenCareer'];
+        final chosenId = _extractCareerId(chosenCareer);
+        hasChosenCareer = chosenId.isNotEmpty;
+        if (hasChosenCareer) break;
+      }
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      _choosingCareerId = null;
+    });
+
+    if (hasChosenCareer) {
+      if (mounted) {
+        await _loadResult();
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Career selected and roadmap initialized.')),
+      );
+      if (mounted) {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const RoadmapScreen()));
+      }
+    } else {
+      final fallbackMessage = (lastResponse?['message'] ?? 'Failed to choose career').toString();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(fallbackMessage)),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final matches = calculateMatches(answers);
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
@@ -930,27 +1079,48 @@ class CareerMatchesScreen extends StatelessWidget {
         title: const Text('Career Matches', style: TextStyle(color: Colors.white, fontSize: 16)),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Career Matches',
-                style: GoogleFonts.inter(
-                    fontSize: 25, fontWeight: FontWeight.bold, color: const Color(0xFF1F2937))),
-            const SizedBox(height: 4),
-            Text('Recommendations based on your skills',
-                style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF6B7280))),
-            const SizedBox(height: 20),
-            ...matches.map((career) => _buildCareerCard(career)),
-          ],
-        ),
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(child: Text(_error!))
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Career Matches',
+                          style: GoogleFonts.inter(
+                              fontSize: 25,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1F2937))),
+                      const SizedBox(height: 4),
+                      Text('Recommendations based on your assessment result',
+                          style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF6B7280))),
+                      const SizedBox(height: 20),
+                      if (_suggestions.isEmpty)
+                        Text('No suggestions found yet.',
+                            style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF6B7280))),
+                      ..._suggestions.map(_buildCareerCard),
+                    ],
+                  ),
+                ),
       bottomNavigationBar: _buildBottomNav(1),
     );
   }
 
-  Widget _buildCareerCard(CareerScore career) {
+  Widget _buildCareerCard(Map<String, dynamic> suggestion) {
+    final careerId = _extractCareerId(suggestion['careerId'] ?? suggestion['id']).trim();
+    final title = (suggestion['name'] ?? 'Career').toString();
+    final percent = _asPercent(
+      suggestion['percentage'] ??
+          suggestion['finalScore'] ??
+          suggestion['score'] ??
+          suggestion['match'] ??
+          suggestion['matchPercentage'],
+    );
+    final breakdown = suggestion['breakdown'] as Map<String, dynamic>? ?? {};
+    final isChoosing = _choosingCareerId == careerId;
+
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 16),
@@ -965,79 +1135,49 @@ class CareerMatchesScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(career.title,
+          Text(title,
               style: GoogleFonts.inter(
                   fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF1F2937))),
           const SizedBox(height: 4),
-          Text('${career.matchPercent}% Match',
+          Text('$percent% Match',
               style: GoogleFonts.inter(
                   fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF1F2937))),
           const SizedBox(height: 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(100),
             child: LinearProgressIndicator(
-              value: career.matchPercent / 100,
+              value: percent / 100,
               backgroundColor: const Color(0xFFE5E7EB),
               valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF1D5572)),
               minHeight: 6,
             ),
           ),
           const SizedBox(height: 12),
-          Text(career.description,
-              style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF6B7280))),
-          const SizedBox(height: 12),
-          Text('Key Skills:',
-              style: GoogleFonts.inter(
-                  fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF374151))),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: career.skills
-                .map((skill) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF3F4F6),
-                        border: Border.all(color: const Color(0xFFE9D5FF)),
-                        borderRadius: BorderRadius.circular(13),
-                      ),
-                      child: Text(skill,
-                          style: GoogleFonts.inter(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: const Color(0xFFF5A100))),
-                    ))
-                .toList(),
+          Text(
+            'Technical: ${_asPercent(breakdown['technical'] ?? breakdown['technicalScore'])}%   Personality: ${_asPercent(breakdown['personality'] ?? breakdown['personalityScore'])}%   Soft: ${_asPercent(breakdown['soft'] ?? breakdown['softSkills'] ?? breakdown['softScore'])}%',
+            style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF6B7280)),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1D5572),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
-                  child: Text('View Roadmap',
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: (careerId.isEmpty || isChoosing) ? null : () => _chooseCareer(careerId),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1D5572),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
+              child: isChoosing
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : Text('Choose Roadmap',
                       style: GoogleFonts.inter(
                           fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white)),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFD9D9D9),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
-                  child: Text('Learn More',
-                      style: GoogleFonts.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF1D5572))),
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),

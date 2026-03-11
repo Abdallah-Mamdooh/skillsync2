@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'api_service.dart';
 
-class GoogleAuthService {
+class GoogleAuthService { 
   static String get baseUrl => '${ApiService.baseUrl}/auth'; 
 
   static final GoogleSignIn _googleSignIn = GoogleSignIn(

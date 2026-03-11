@@ -1,14 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'dart:convert';
 import '../providers/auth_provider.dart';
 import '../services/profile_service.dart';
 import 'assessment_flow.dart';
 import 'student_homescreen.dart';
 import 'auth/login_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final ImagePicker _picker = ImagePicker();
 
   String getInitials(String name) {
     if (name.isEmpty) return '??';
@@ -21,6 +31,142 @@ class ProfileScreen extends StatelessWidget {
     return '??';
   }
 
+  Future<void> _pickAndUploadImage() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final token = authProvider.token;
+
+    if (token == null) return;
+
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 50, 
+      );
+
+      if (pickedFile != null) {
+        // Convert image to Base64 string
+        final bytes = await File(pickedFile.path).readAsBytes();
+        final base64Image = base64Encode(bytes);
+        final imageUri = 'data:image/jpeg;base64,$base64Image';
+
+        authProvider.setLoading(true);
+        
+        // Send to backend
+        final response = await ProfileService.updateProfile(
+          token: token,
+          updates: {'profilePhoto': imageUri},
+        );
+
+        if (response['success'] == true) {
+          authProvider.updateUser(response['data']);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Profile photo updated successfully!')),
+            );
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(response['message'] ?? 'Failed to upload photo')),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error picking image: $e')),
+        );
+      }
+    } finally {
+      authProvider.setLoading(false);
+    }
+  }
+
+  ImageProvider _getProfileImage(String? photoData) {
+    if (photoData != null && photoData.startsWith('data:image')) {
+      try {
+        final base64Str = photoData.split(',').last;
+        return MemoryImage(base64Decode(base64Str));
+      } catch (_) {
+        return const AssetImage('assets/images/logo.png');
+      }
+    }
+    return const AssetImage('assets/images/logo.png'); 
+  }
+
+  void _showAddSkillDialog() {
+    final TextEditingController skillController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Add New Skill'),
+          content: TextField(
+            controller: skillController,
+            decoration: const InputDecoration(hintText: 'Skill name (e.g. Flutter, Dart)'),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () async {
+                final skill = skillController.text.trim();
+                if (skill.isNotEmpty) {
+                  final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                  final currentSkills = List<String>.from(authProvider.user?['skills'] ?? []);
+                  if (!currentSkills.contains(skill)) {
+                    currentSkills.add(skill);
+                    final success = await _updateSkillsOnServer(currentSkills);
+                    if (success && mounted) {
+                      Navigator.pop(context);
+                    }
+                  } else {
+                    Navigator.pop(context);
+                  }
+                }
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<bool> _updateSkillsOnServer(List<String> newSkills) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final token = authProvider.token;
+    if (token == null) return false;
+
+    try {
+      final response = await ProfileService.updateProfile(
+        token: token,
+        updates: {'skills': newSkills},
+      );
+      if (response['success'] == true) {
+        authProvider.updateUser(response['data']);
+        return true;
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(response['message'] ?? 'Failed to update skills')),
+          );
+        }
+        return false;
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
@@ -28,6 +174,8 @@ class ProfileScreen extends StatelessWidget {
     final fullName = user?['fullName'] ?? 'User';
     final email = user?['email'] ?? 'No email';
     final role = user?['role'] ?? 'Member';
+    final profilePhoto = user?['profilePhoto'] as String?;
+    final isLoading = authProvider.isLoading;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
@@ -66,22 +214,46 @@ class ProfileScreen extends StatelessWidget {
                     const SizedBox(height: 22),
                     Stack(
                       children: [
-                        Container(
-                          width: 96, height: 96,
-                          decoration: BoxDecoration(color: const Color(0xFFF3E8FF), borderRadius: BorderRadius.circular(48)),
-                          child: Center(
-                            child: Text(
-                              getInitials(fullName),
-                              style: GoogleFonts.inter(color: const Color(0xFF1D5572), fontSize: 32, fontWeight: FontWeight.bold, height: 0.9),
+                        GestureDetector(
+                          onTap: isLoading ? null : _pickAndUploadImage,
+                          child: Container(
+                            width: 96, height: 96,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF3E8FF),
+                              borderRadius: BorderRadius.circular(48),
+                              image: profilePhoto != null && profilePhoto.isNotEmpty
+                                  ? DecorationImage(
+                                      image: _getProfileImage(profilePhoto),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
                             ),
+                            child: (profilePhoto == null || profilePhoto.isEmpty)
+                                ? Center(
+                                    child: isLoading 
+                                      ? const CircularProgressIndicator()
+                                      : Text(
+                                          getInitials(fullName),
+                                          style: GoogleFonts.inter(
+                                            color: const Color(0xFF1D5572),
+                                            fontSize: 32,
+                                            fontWeight: FontWeight.bold,
+                                            height: 0.9,
+                                          ),
+                                        ),
+                                  )
+                                : (isLoading ? const Center(child: CircularProgressIndicator(color: Colors.white)) : null),
                           ),
                         ),
                         Positioned(
                           right: 0, bottom: 0,
-                          child: Container(
-                            width: 32, height: 32,
-                            decoration: BoxDecoration(color: const Color(0xFF1D5572), borderRadius: BorderRadius.circular(16)),
-                            child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
+                          child: GestureDetector(
+                            onTap: isLoading ? null : _pickAndUploadImage,
+                            child: Container(
+                              width: 32, height: 32,
+                              decoration: BoxDecoration(color: const Color(0xFF1D5572), borderRadius: BorderRadius.circular(16)),
+                              child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
+                            ),
                           ),
                         ),
                       ],
@@ -97,12 +269,12 @@ class ProfileScreen extends StatelessWidget {
                       style: GoogleFonts.inter(color: const Color(0xFF6B7280), fontSize: 14, height: 1.1),
                     ),
                     const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12),
                       child: Text(
                         'Passionate about web development and eager to grow my career in tech. Love building user-friendly applications.',
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.inter(color: const Color(0xFF6B7280), fontSize: 14, height: 1.1),
+                        style: TextStyle(color: Color(0xFF6B7280), fontSize: 14, height: 1.1),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -151,7 +323,10 @@ class ProfileScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _sectionTitle('Skills'),
-                    const Icon(Icons.add, size: 15, color: Color(0xFF1D5572)),
+                    GestureDetector(
+                      onTap: _showAddSkillDialog,
+                      child: const Icon(Icons.add, size: 20, color: Color(0xFF1D5572)),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -321,10 +496,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           Navigator.pop(context);
         }
       } else {
-        final rawMessage = response['message']?.toString();
-        final errorMsg = rawMessage == 'profileService.updateProfile is not a function'
-            ? 'Profile update endpoint is misconfigured on the server. Please check backend profile service exports.'
-            : (rawMessage ?? 'Failed to update profile');
+        final errorMsg = response['message']?.toString() ?? 'Failed to update profile';
         authProvider.setError(errorMsg);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

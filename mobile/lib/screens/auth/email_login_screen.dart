@@ -34,23 +34,23 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
     setState(() {
       // Email validation checks
       final email = _emailController.text.trim();
-      
+
       // Check for @ symbol
       _hasEmailAtSymbol = email.contains('@');
-      
+
       // Check for valid domain (something after @ with a dot)
       if (_hasEmailAtSymbol) {
         final parts = email.split('@');
         if (parts.length == 2) {
           final domainPart = parts[1];
-          _hasEmailDomain = domainPart.contains('.') && 
-              domainPart.indexOf('.') > 0 && 
+          _hasEmailDomain = domainPart.contains('.') &&
+              domainPart.indexOf('.') > 0 &&
               domainPart.indexOf('.') < domainPart.length - 1;
-          
+
           // Check for valid TLD (at least 2 characters after last dot)
           if (_hasEmailDomain) {
             final lastDotIndex = domainPart.lastIndexOf('.');
-            _hasEmailTld = lastDotIndex < domainPart.length - 1 && 
+            _hasEmailTld = lastDotIndex < domainPart.length - 1 &&
                 domainPart.substring(lastDotIndex + 1).length >= 2;
           } else {
             _hasEmailTld = false;
@@ -63,10 +63,10 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
         _hasEmailDomain = false;
         _hasEmailTld = false;
       }
-      
+
       // Overall email valid if all conditions met
       _isEmailValid = _hasEmailAtSymbol && _hasEmailDomain && _hasEmailTld;
-      
+
       // Form is valid only if both email and password are valid
       _isFormValid = _isEmailValid && _passwordController.text.trim().isNotEmpty;
     });
@@ -119,54 +119,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                             ),
                           ),
                           const SizedBox(height: 40),
-                          
-                          // Email Validation Rules Card
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: Colors.white.withOpacity(0.2),
-                              ),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Email Requirements:',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                _buildRequirementRow(
-                                  'Must contain @ symbol',
-                                  _hasEmailAtSymbol || _emailController.text.isEmpty,
-                                ),
-                                _buildRequirementRow(
-                                  'Must have a valid domain (e.g., gmail.com)',
-                                  _hasEmailDomain || _emailController.text.isEmpty,
-                                ),
-                                _buildRequirementRow(
-                                  'Must have a valid top-level domain (e.g., .com, .org)',
-                                  _hasEmailTld || _emailController.text.isEmpty,
-                                ),
-                                const SizedBox(height: 8),
-                                const Divider(color: Colors.white24),
-                                const SizedBox(height: 8),
-                                _buildRequirementRow(
-                                  'Password cannot be empty',
-                                  _passwordController.text.trim().isNotEmpty,
-                                ),
-                              ],
-                            ),
-                          ),
-                          
-                          const SizedBox(height: 24),
-                          
+
                           // Email Field
                           const Align(
                             alignment: Alignment.centerLeft,
@@ -213,9 +166,9 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                               ),
                             ),
                           ),
-                          
+
                           const SizedBox(height: 24),
-                          
+
                           // Password Field
                           const Align(
                             alignment: Alignment.centerLeft,
@@ -268,9 +221,9 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                               ),
                             ),
                           ),
-                          
+
                           // Password Empty Warning
-                          if (_passwordController.text.isNotEmpty && 
+                          if (_passwordController.text.isNotEmpty &&
                               _passwordController.text.trim().isEmpty)
                             Padding(
                               padding: const EdgeInsets.only(top: 8.0),
@@ -292,9 +245,9 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                                 ],
                               ),
                             ),
-                          
+
                           const SizedBox(height: 30),
-                          
+
                           // Login Button with validation
                           SizedBox(
                             width: double.infinity,
@@ -303,33 +256,33 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                               onPressed: (!_isFormValid || authProvider.isLoading)
                                   ? null
                                   : () async {
-                                      final success =
-                                          await authProvider.login(
-                                        email: _emailController.text.trim(),
-                                        password:
-                                            _passwordController.text.trim(),
-                                      );
+                                final success =
+                                await authProvider.login(
+                                  email: _emailController.text.trim(),
+                                  password:
+                                  _passwordController.text.trim(),
+                                );
 
-                                      if (success && mounted) {
-                                        Navigator.of(context)
-                                            .pushReplacement(
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                const StudentHomeScreen(),
-                                          ),
-                                        );
-                                      } else if (mounted) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              authProvider.error ??
-                                                  'Login failed',
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    },
+                                if (success && mounted) {
+                                  Navigator.of(context)
+                                      .pushReplacement(
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                      const StudentHomeScreen(),
+                                    ),
+                                  );
+                                } else if (mounted) {
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        authProvider.error ??
+                                            'Login failed',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: (_isFormValid && !authProvider.isLoading)
                                     ? const Color(0xFFF5A100)
@@ -340,29 +293,29 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                               ),
                               child: authProvider.isLoading
                                   ? const SizedBox(
-                                      height: 24,
-                                      width: 24,
-                                      child: CircularProgressIndicator(
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                          Colors.white,
-                                        ),
-                                      ),
-                                    )
+                                height: 24,
+                                width: 24,
+                                child: CircularProgressIndicator(
+                                  valueColor:
+                                  AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
+                              )
                                   : Text(
-                                      'Login',
-                                      style: GoogleFonts.getFont(
-                                        'Urbanist',
-                                        color: Colors.white,
-                                        fontSize: 25,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
+                                'Login',
+                                style: GoogleFonts.getFont(
+                                  'Urbanist',
+                                  color: Colors.white,
+                                  fontSize: 25,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
                           ),
-                          
+
                           const SizedBox(height: 16),
-                          
+
                           // Form Status Message
                           if (!_isFormValid && (_emailController.text.isNotEmpty || _passwordController.text.isNotEmpty))
                             Container(
@@ -394,9 +347,9 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                                 ],
                               ),
                             ),
-                          
+
                           const SizedBox(height: 24),
-                          
+
                           // Forgot Password Link
                           Center(
                             child: TextButton(
@@ -404,7 +357,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
                                     builder: (context) =>
-                                        const ForgotPasswordScreen(),
+                                    const ForgotPasswordScreen(),
                                   ),
                                 );
                               },

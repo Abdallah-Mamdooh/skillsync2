@@ -22,19 +22,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         curve: Curves.easeInOut,
       );
     } else {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => const LoginScreen(),
-        ),
-      );
+      _goToLogin();
     }
   }
 
   void _skip() {
-    _pageController.animateToPage(
-      _totalPages - 1,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
+    _goToLogin();
+  }
+
+  void _goToLogin() {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => const LoginScreen(),
+      ),
     );
   }
 
@@ -135,7 +135,7 @@ class _OnboardingPageOne extends StatelessWidget {
                 builder: (context, constraints) {
                   final size = MediaQuery.sizeOf(context);
                   final maxW = size.width * 0.85;
-                  final maxH = size.height * 0.5;
+                  final maxH = size.height * 0.4;
                   return Image.asset(
                     'assets/images/logo.png',
                     fit: BoxFit.contain,
@@ -145,7 +145,17 @@ class _OnboardingPageOne extends StatelessWidget {
                   );
                 },
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 20),
+              const Text(
+                'SKILLSYNC',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 36,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
+                ),
+              ),
+              const SizedBox(height: 8),
               Text(
                 'Closer Than You Think',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(

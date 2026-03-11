@@ -38,7 +38,7 @@ class LoginScreen extends StatelessWidget {
                       letterSpacing: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 80),
+                  const SizedBox(height: 22),
                   // Email Address Button
                   SizedBox(
                     width: double.infinity,
@@ -63,8 +63,8 @@ class LoginScreen extends StatelessWidget {
                         children: [
                           Image.asset(
                             'assets/images/Email.png',
-                            width: 24,
-                            height: 24,
+                            width: 25,
+                            height: 25,
                           ),
                           const SizedBox(width: 12),
                           Text(
@@ -151,11 +151,11 @@ class LoginScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 20),
                   Text(
                     "You don't have an account?",
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.white.withValues(alpha: 0.7),
+                      color: Colors.black
                     ) ??
                         TextStyle(
                           color: AppColors.white.withValues(alpha: 0.7),

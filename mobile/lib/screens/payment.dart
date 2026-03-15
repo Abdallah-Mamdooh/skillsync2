@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'home_screen.dart';
+import 'student_homescreen.dart';
 import 'profile_screen.dart';
+import 'payment_confirmation_screen.dart';
 
 class PaymentScreen extends StatelessWidget {
   final String mentorName;
@@ -83,7 +84,7 @@ class PaymentScreen extends StatelessWidget {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.account_balance_wallet, color: Color(0xFFF5A100), size: 26),
+                                Image.asset('assets/images/wallet.png', width: 26, height: 26),
                                 const SizedBox(height: 4),
                                 Text('Wallet', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF333333))),
                               ],
@@ -138,12 +139,31 @@ class PaymentScreen extends StatelessWidget {
                         child: SizedBox(
                           height: 40,
                           child: ElevatedButton(
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Session confirmed!'), backgroundColor: Color(0xFF1D5572)),
+                            onPressed: () async {
+                              // Show loading indicator
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (_) => const Center(
+                                  child: CircularProgressIndicator(color: Color(0xFF1D5572)),
+                                ),
                               );
-                            },
-                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1D5572), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
+
+                              // Simulate booking API call (replace with your real logic)
+                              await Future.delayed(const Duration(seconds: 2));
+                              final bool bookingSuccess = walletBalance >= sessionPrice; // your condition
+
+                              if (context.mounted) Navigator.pop(context); // close loader
+
+                              if (context.mounted) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => PaymentConfirmationScreen(isSuccess: bookingSuccess),
+                                  ),
+                                );
+                              }
+                            },                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1D5572), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
                             child: Text('Confirm', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white)),
                           ),
                         ),
@@ -153,7 +173,120 @@ class PaymentScreen extends StatelessWidget {
                         child: SizedBox(
                           height: 40,
                           child: ElevatedButton(
-                            onPressed: () => Navigator.pop(context),
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (BuildContext dialogContext) {
+                                  return Dialog(
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    backgroundColor: Colors.white,
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          // Red circle with ! icon
+                                          Container(
+                                            width: 64,
+                                            height: 64,
+                                            decoration: const BoxDecoration(
+                                              color: Color(0xFFFFEBEB),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                              Icons.priority_high_rounded,
+                                              color: Color(0xFFD32F2F),
+                                              size: 36,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 14),
+
+                                          // "Warning!" title
+                                          Text(
+                                            'Warning!',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold,
+                                              color: const Color(0xFFD32F2F),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 10),
+
+                                          // Subtitle message
+                                          Text(
+                                            'If you cancel the payment process,\nthe information you entered will be deleted',
+                                            textAlign: TextAlign.center,
+                                            style: GoogleFonts.inter(
+                                              fontSize: 11,
+                                              color: const Color(0xFFD32F2F),
+                                              height: 1.5,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 24),
+
+                                          // Yes,cancel + NO buttons
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: SizedBox(
+                                                  height: 44,
+                                                  child: ElevatedButton(
+                                                    onPressed: () {
+                                                      Navigator.pop(dialogContext);
+                                                      Navigator.pop(context);
+                                                    },
+                                                    style: ElevatedButton.styleFrom(
+                                                      backgroundColor: const Color(0xFF1D5572),
+                                                      elevation: 0,
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius: BorderRadius.circular(8),
+                                                      ),
+                                                    ),
+                                                    child: Text(
+                                                      'Yes,cancel',
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 12,
+                                                        fontWeight: FontWeight.w600,
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: SizedBox(
+                                                  height: 46,
+                                                  child: ElevatedButton(
+                                                    onPressed: () => Navigator.pop(dialogContext),
+                                                    style: ElevatedButton.styleFrom(
+                                                      backgroundColor: const Color(0xFFE0E0E0),
+                                                      elevation: 0,
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius: BorderRadius.circular(8),
+                                                      ),
+                                                    ),
+                                                    child: Text(
+                                                      'NO',
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 12,
+                                                        fontWeight: FontWeight.w600,
+                                                        color: const Color(0xFF555555),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
                             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD9D9D9), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)), elevation: 0),
                             child: Text('Cancel', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF1D5572))),
                           ),
@@ -200,7 +333,7 @@ BottomNavigationBar _buildBottomNav(int currentIndex, [BuildContext? ctx]) {
     unselectedLabelStyle: const TextStyle(fontSize: 12),
     onTap: ctx == null ? null : (index) {
       if (index == 0) {
-        Navigator.pushAndRemoveUntil(ctx, MaterialPageRoute(builder: (_) => const HomeScreen()), (route) => false);
+        Navigator.pushAndRemoveUntil(ctx, MaterialPageRoute(builder: (_) => const StudentHomeScreen()), (route) => false);
       } else if (index == 3) {
         Navigator.push(ctx, MaterialPageRoute(builder: (_) => const ProfileScreen()));
       }

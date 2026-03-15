@@ -10,5 +10,5 @@ router.get('/methods', authMiddleware, controller.listPaymentMethods);
 router.post('/wallet/deposit', authMiddleware, controller.depositToWallet);
 router.get('/wallet', authMiddleware, controller.getWalletSummary);
 router.post('/fawry/checkout', authMiddleware, controller.createFawryCheckout);
-
+router.post('/fawry/webhook', controller.handleFawryWebhook);
 module.exports = router;

@@ -1,6 +1,7 @@
 const asyncHandler = require('../../middlewares/async.middleware');
 const paymentService = require('./payment.service');
 const User = require('../auth/user.model');
+const Transaction = require('./transaction.model');
 const addPaymentMethod = asyncHandler(async (req, res) => {
   const data = await paymentService.addPaymentMethod(req.user._id, req.body);
   res.status(201).json({ success: true, data });
@@ -55,10 +56,73 @@ const createFawryCheckout = asyncHandler(async (req, res) => {
     data,
   });
 });
+const handleFawryWebhook = asyncHandler(async (req, res) => {
+  const payload = req.body || {};
+
+  const merchantRefNum =
+    payload.merchantRefNumber ||
+    payload.merchantRefNum ||
+    payload.orderRefNum ||
+    payload.referenceNumber ||
+    '';
+
+  const paymentStatus =
+    payload.paymentStatus ||
+    payload.orderStatus ||
+    payload.status ||
+    '';
+
+  if (!merchantRefNum) {
+    return res.status(400).json({
+      success: false,
+      message: 'merchantRefNum is missing',
+    });
+  }
+
+  const transaction = await Transaction.findOne({
+    $or: [
+      { providerReference: merchantRefNum },
+      { reference: merchantRefNum },
+    ],
+    provider: 'fawry',
+  });
+
+  if (!transaction) {
+    return res.status(404).json({
+      success: false,
+      message: 'Transaction not found',
+    });
+  }
+
+  transaction.providerStatus = String(paymentStatus || 'UNKNOWN');
+
+  // Keep internal status simple for now
+  if (['PAID', 'SUCCESS', 'COMPLETED'].includes(String(paymentStatus).toUpperCase())) {
+    transaction.status = 'completed';
+  } else if (['FAILED', 'CANCELLED', 'EXPIRED'].includes(String(paymentStatus).toUpperCase())) {
+    transaction.status = 'failed';
+  } else {
+    transaction.status = 'pending';
+  }
+
+  // save raw provider reference if webhook sends a better one
+  if (payload.referenceNumber) {
+    transaction.providerReference = String(payload.referenceNumber);
+  }
+
+  transaction.notes = transaction.notes || 'Fawry webhook received';
+  await transaction.save();
+
+  return res.status(200).json({
+    success: true,
+    message: 'Webhook processed successfully',
+  });
+});
 module.exports = {
   addPaymentMethod,
   listPaymentMethods,
   depositToWallet,
   getWalletSummary,
   createFawryCheckout,
+  handleFawryWebhook,
 };

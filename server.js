@@ -10,13 +10,13 @@ const connectDB = require('./src/config/db');
 const passport = require('./src/config/passport');
 const User = require('./src/modules/auth/user.model');
 const chatService = require('./src/modules/mentor/chat.service');
-const notificationRoutes = require('./src/modules/notification/notification.routes');
 const reminderRoutes = require('./src/modules/notification/reminder.routes');
 const { startReminderCron } = require('./src/modules/notification/reminder.cron');
+const adminRoutes = require('./src/modules/admin/admin.routes');
 connectDB();
 
 const PORT = process.env.PORT || 5000;
-
+app.use('/api/admin', adminRoutes);
 // session + passport middleware
 app.use(
   session({
@@ -27,7 +27,6 @@ app.use(
 );
 app.use(passport.initialize());
 app.use(passport.session());
-app.use('/api/notifications', notificationRoutes);
 app.use('/api/reminders', reminderRoutes);
 const server = http.createServer(app);
 

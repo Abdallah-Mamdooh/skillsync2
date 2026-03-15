@@ -75,6 +75,27 @@ const transactionSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+
+
+    provider: {
+  type: String,
+  enum: ['internal', 'fawry'],
+  default: 'internal',
+  index: true,
+},
+
+providerReference: {
+  type: String,
+  trim: true,
+  default: '',
+  index: true,
+},
+
+providerStatus: {
+  type: String,
+  trim: true,
+  default: '',
+},
   },
   { timestamps: true }
 );

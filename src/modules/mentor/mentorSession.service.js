@@ -3,6 +3,7 @@ const MentorProfile = require('./mentorProfile.model');
 const paymentService = require('../payment/payment.service');
 const PLATFORM_FEE_PERCENT = 0.2; // 20%
 const notificationService = require('../notification/notification.service');
+const User = require('../auth/user.model');
 
 function round2(n) {
   return Math.round((Number(n) || 0) * 100) / 100;
@@ -658,7 +659,123 @@ const expirePendingSessions = async () => {
     expiredCount,
   };
 };
+const createSessionFawryCheckout = async (userId, payload) => {
+  const mentorProfileId = payload.mentorProfileId;
+  const method = validateMethod(payload.method);
+  const durationMinutes = validateDuration(payload.durationMinutes);
+  const userNotes = payload.userNotes || '';
 
+  if (!mentorProfileId) {
+    throw new Error('mentorProfileId is required');
+  }
+
+  const mentorProfile = await MentorProfile.findById(mentorProfileId).populate(
+    'userId',
+    'fullName email phoneNumber role'
+  );
+
+  if (!mentorProfile) {
+    throw new Error('Mentor profile not found');
+  }
+
+  if (!mentorProfile.isVerified) {
+    throw new Error('Mentor is not verified');
+  }
+
+  if (!mentorProfile.isAvailable) {
+    throw new Error('Mentor is not available');
+  }
+
+  if (method === 'chat' && !mentorProfile.supportsChat) {
+    throw new Error('This mentor does not support chat sessions');
+  }
+
+  if (method === 'call' && !mentorProfile.supportsCall) {
+    throw new Error('This mentor does not support call sessions');
+  }
+
+  const pricing = calculatePricing(mentorProfile, method, durationMinutes);
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+  const session = await MentorSession.create({
+    userId,
+    mentorProfileId: mentorProfile._id,
+    mentorUserId: mentorProfile.userId._id,
+    method,
+    durationMinutes,
+
+    baseRate: pricing.baseRate,
+    multiplier: pricing.multiplier,
+    subtotal: pricing.subtotal,
+    platformFee: pricing.platformFee,
+    totalAmount: pricing.totalAmount,
+    mentorNetAmount: pricing.mentorNetAmount,
+    currency: pricing.currency,
+
+    status: 'pending',
+    paymentStatus: 'hold_pending',
+
+    requestedAt: new Date(),
+    expiresAt,
+
+    userNotes,
+  });
+
+  const user = await User.findById(userId).select(
+    'fullName email phoneNumber'
+  );
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  const checkout = await paymentService.createFawryCheckout({
+    user: {
+      _id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+    },
+    amount: pricing.totalAmount,
+    purpose: 'hold',
+    entityType: 'mentor_session',
+    entityId: session._id,
+    description: `Mentor session payment - ${method} - ${durationMinutes} minutes`,
+    paymentMethod: payload.paymentMethod || '',
+  });
+
+  await notificationService.createNotification({
+    userId: mentorProfile.userId._id,
+    type: 'mentor_session_requested',
+    title: 'New session request',
+    message: `You received a new ${method} session request for ${durationMinutes} minutes.`,
+    data: {
+      sessionId: session._id,
+      mentorProfileId: mentorProfile._id,
+      method,
+      durationMinutes,
+      totalAmount: pricing.totalAmount,
+      currency: pricing.currency,
+    },
+  });
+
+  return {
+    sessionId: session._id,
+    mentor: {
+      id: mentorProfile._id,
+      userId: mentorProfile.userId._id,
+      fullName: mentorProfile.userId.fullName,
+      email: mentorProfile.userId.email,
+    },
+    method: session.method,
+    durationMinutes: session.durationMinutes,
+    pricing,
+    status: session.status,
+    paymentStatus: session.paymentStatus,
+    expiresAt: session.expiresAt,
+    checkout,
+  };
+};
 module.exports = {
   requestSession,
   getMySessions,
@@ -669,4 +786,5 @@ module.exports = {
   completeSession,
   startSession,
   expirePendingSessions,
+  createSessionFawryCheckout,
 };

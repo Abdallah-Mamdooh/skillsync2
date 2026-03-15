@@ -99,6 +99,17 @@ const expirePendingSessions = asyncHandler(async (req, res) => {
     data,
   });
 });
+const createSessionFawryCheckout = asyncHandler(async (req, res) => {
+  const data = await mentorSessionService.createSessionFawryCheckout(
+    req.user._id,
+    req.body
+  );
+
+  res.status(201).json({
+    success: true,
+    data,
+  });
+});
 module.exports = {
   requestSession,
   getMySessions,
@@ -109,4 +120,5 @@ module.exports = {
   completeSession,
   startSession,
   expirePendingSessions,
+  createSessionFawryCheckout,
 };

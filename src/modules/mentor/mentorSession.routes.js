@@ -14,7 +14,13 @@ router.post(
   validate(['mentorProfileId', 'method', 'durationMinutes']),
   controller.requestSession
 );
-
+router.post(
+  '/fawry-checkout',
+  authMiddleware,
+  roleMiddleware('user'),
+  validate(['mentorProfileId', 'method', 'durationMinutes']),
+  controller.createSessionFawryCheckout
+);
 router.get('/me', authMiddleware, controller.getMySessions);
 
 // mentor side

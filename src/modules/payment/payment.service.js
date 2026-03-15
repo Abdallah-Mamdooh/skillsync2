@@ -2,6 +2,11 @@ const Wallet = require('./wallet.model');
 const PaymentMethod = require('./paymentMethod.model');
 const Transaction = require('./transaction.model');
 const notificationService = require('../notification/notification.service');
+const {
+  getFawryConfig,
+  generateMerchantRef,
+  buildHostedCheckoutPayload,
+} = require('./providers/fawry.provider');
 function round2(n) {
   return Math.round((Number(n) || 0) * 100) / 100;
 }
@@ -226,7 +231,100 @@ async function getWalletSummary(userId) {
     recentTransactions: transactions,
   };
 }
+async function createFawryCheckout({
+  user,
+  amount,
+  purpose,
+  entityType,
+  entityId = null,
+  description,
+  paymentMethod = '',
+}) {
+  const amt = round2(amount);
 
+  if (amt <= 0) {
+    throw new Error('Amount must be greater than 0');
+  }
+
+  if (!user || !user._id) {
+    throw new Error('Valid user is required');
+  }
+
+  const { baseUrl } = getFawryConfig();
+
+  const merchantRefNum = generateMerchantRef(
+    entityType ? `${entityType}` : 'txn'
+  );
+
+  const transaction = await Transaction.create({
+    userId: user._id,
+    type: purpose || 'deposit',
+    amount: amt,
+    currency: 'EGP',
+    status: 'pending',
+    provider: 'fawry',
+    providerReference: merchantRefNum,
+    providerStatus: 'INITIATED',
+    notes: description || 'Fawry checkout initiated',
+    reference: entityId ? String(entityId) : '',
+  });
+
+  const payload = buildHostedCheckoutPayload({
+    merchantRefNum,
+    customerProfileId: String(user._id),
+    customerName: user.fullName || 'SkillSync User',
+    customerEmail: user.email || '',
+    customerMobile: user.phoneNumber || '',
+    amount: amt,
+    description: description || 'SkillSync payment',
+    returnUrl: process.env.FAWRY_RETURN_URL || '',
+    paymentMethod,
+  });
+
+  const response = await fetch(`${baseUrl}/init`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    transaction.status = 'failed';
+    transaction.providerStatus = data?.statusDescription || 'FAILED';
+    await transaction.save();
+
+    throw new Error(data?.message || data?.statusDescription || 'Fawry checkout failed');
+  }
+
+  // store whatever provider information we got back
+  transaction.providerStatus =
+    data?.paymentStatus ||
+    data?.statusDescription ||
+    data?.statusCode ||
+    'PENDING';
+
+  if (data?.referenceNumber) {
+    transaction.providerReference = String(data.referenceNumber);
+  }
+
+  await transaction.save();
+
+  return {
+    transactionId: transaction._id,
+    merchantRefNum,
+    provider: 'fawry',
+    providerStatus: transaction.providerStatus,
+    redirectUrl:
+      data?.redirectUrl ||
+      data?.paymentLink ||
+      data?.url ||
+      null,
+    raw: data,
+  };
+}
 module.exports = {
   getOrCreateWallet,
   getDefaultPaymentMethod,
@@ -239,4 +337,5 @@ module.exports = {
   creditMentorWallet,
   addPlatformFeeTransaction,
   getWalletSummary,
+  createFawryCheckout,
 };

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'payment.dart';
 
 // ===== MENTOR MODEL =====
 class MentorData {
@@ -33,7 +34,7 @@ class MentorshipScreen extends StatefulWidget {
 
 class _MentorshipScreenState extends State<MentorshipScreen> {
   final TextEditingController _searchController = TextEditingController();
-  
+
   final List<MentorData> _allMentors = [
     MentorData(
       initials: 'SJ', initialsColor: const Color(0xFFF5A100),
@@ -238,65 +239,150 @@ class _MentorshipScreenState extends State<MentorshipScreen> {
     );
   }
 
-  Widget _buildMentorCard({required BuildContext context, required String initials, required Color initialsColor, required String name, required String role, required bool isOnline, required String rating, required String reviews, required String experience, required List<String> expertise, required String price, required Color buttonColor}) {
+  Widget _buildMentorCard({
+    required BuildContext context,
+    required String initials,
+    required Color initialsColor,
+    required String name,
+    required String role,
+    required bool isOnline,
+    required String rating,
+    required String reviews,
+    required String experience,
+    required List<String> expertise,
+    required String price,
+    required Color buttonColor,
+  }) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 0, 26, 16),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: const [BoxShadow(color: Color(0x1E000000), spreadRadius: 0, offset: Offset(0, 2), blurRadius: 8)]),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: const [BoxShadow(color: Color(0x1E000000), spreadRadius: 0, offset: Offset(0, 2), blurRadius: 8)],
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Container(width: 50, height: 50, decoration: BoxDecoration(color: initialsColor, borderRadius: BorderRadius.circular(25)), child: Center(child: Text(initials, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)))),
-              const SizedBox(width: 12),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(name, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF1F2937))),
-                Text(role, style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF6B7280))),
-              ])),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(color: isOnline ? const Color(0xFFD1FAE5) : const Color(0xFFFED7AA), borderRadius: BorderRadius.circular(11)),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Container(width: 6, height: 6, decoration: BoxDecoration(color: isOnline ? const Color(0xFF059669) : const Color(0xFFC2410C), borderRadius: BorderRadius.circular(3))),
-                  const SizedBox(width: 4),
-                  Text(isOnline ? 'ONLINE' : 'OFFLINE', style: GoogleFonts.inter(fontSize: 12, color: isOnline ? const Color(0xFF059669) : const Color(0xFFC2410C))),
-                ]),
+            // ── Card body (padding) ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Container(
+                      width: 50, height: 50,
+                      decoration: BoxDecoration(color: initialsColor, borderRadius: BorderRadius.circular(25)),
+                      child: Center(child: Text(initials, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold))),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(name, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF1F2937))),
+                      Text(role, style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF6B7280))),
+                    ])),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isOnline ? const Color(0xFFD1FAE5) : const Color(0xFFFED7AA),
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Container(
+                          width: 6, height: 6,
+                          decoration: BoxDecoration(
+                            color: isOnline ? const Color(0xFF059669) : const Color(0xFFC2410C),
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          isOnline ? 'ONLINE' : 'OFFLINE',
+                          style: GoogleFonts.inter(fontSize: 12, color: isOnline ? const Color(0xFF059669) : const Color(0xFFC2410C)),
+                        ),
+                      ]),
+                    ),
+                  ]),
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    const Icon(Icons.star, size: 11, color: Color(0xFFFFA629)),
+                    const SizedBox(width: 4),
+                    Text(rating, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFFFFA629))),
+                    const SizedBox(width: 4),
+                    Flexible(child: Text(reviews, style: GoogleFonts.inter(fontSize: 8, color: const Color(0xFF6B7280)), overflow: TextOverflow.ellipsis)),
+                    const SizedBox(width: 8),
+                    Text(experience, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFFFFA629))),
+                    const SizedBox(width: 4),
+                    Flexible(child: Text('Experience', style: GoogleFonts.inter(fontSize: 8, color: const Color(0xFF6B7280)), overflow: TextOverflow.ellipsis)),
+                  ]),
+                  const SizedBox(height: 8),
+                  Text('Expertise:', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFF374151))),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6, runSpacing: 6,
+                    children: expertise.map((e) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F4F6),
+                        border: Border.all(color: const Color(0xFFE9D5FF)),
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: Text(e, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFFF5A100))),
+                    )).toList(),
+                  ),
+                ],
               ),
-            ]),
-            const SizedBox(height: 8),
-            Row(children: [
-              const Icon(Icons.star, size: 11, color: Color(0xFFFFA629)),
-              const SizedBox(width: 4),
-              Text(rating, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFFFFA629))),
-              const SizedBox(width: 4),
-              Flexible(child: Text(reviews, style: GoogleFonts.inter(fontSize: 8, color: const Color(0xFF6B7280)), overflow: TextOverflow.ellipsis)),
-              const SizedBox(width: 8),
-              Text(experience, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFFFFA629))),
-              const SizedBox(width: 4),
-              Flexible(child: Text('Experience', style: GoogleFonts.inter(fontSize: 8, color: const Color(0xFF6B7280)), overflow: TextOverflow.ellipsis)),
-            ]),
-            const SizedBox(height: 8),
-            Text('Expertise:', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFF374151))),
-            const SizedBox(height: 6),
-            Wrap(spacing: 6, runSpacing: 6, children: expertise.map((e) => Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: const Color(0xFFF3F4F6), border: Border.all(color: const Color(0xFFE9D5FF)), borderRadius: BorderRadius.circular(11)), child: Text(e, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFFF5A100))))).toList()),
-            const SizedBox(height: 12),
-            Row(children: [
-              const Icon(Icons.monetization_on_outlined, size: 12, color: Colors.black),
-              const SizedBox(width: 2),
-              Flexible(child: Text(price, style: GoogleFonts.inter(fontSize: 10, color: Colors.black), overflow: TextOverflow.ellipsis)),
-              const SizedBox(width: 8),
-              const Icon(Icons.timer_outlined, size: 12, color: Colors.black),
-              const SizedBox(width: 2),
-              Flexible(child: Text('Max. 2 hrs', style: GoogleFonts.inter(fontSize: 10, color: Colors.black), overflow: TextOverflow.ellipsis)),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => BookSessionScreen(mentorName: name, mentorRole: role, mentorInitials: initials, mentorColor: initialsColor, isOnline: isOnline, rating: rating, reviews: reviews, experience: experience))),
-                style: ElevatedButton.styleFrom(backgroundColor: buttonColor, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                child: Text('BOOK SESSION', style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white)),
+            ),
+
+            // ── Footer bar (matches image) ──
+            Container(
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFFFFF),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(12),
+                  bottomRight: Radius.circular(12),
+                ),
               ),
-            ]),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(children: [
+                const Icon(Icons.access_time, size: 14, color: Color(0xFF6B7280)),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Available from 2:00 AM',
+                    style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF6B7280)),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => BookSessionScreen(
+                        mentorName: name,
+                        mentorRole: role,
+                        mentorInitials: initials,
+                        mentorColor: initialsColor,
+                        isOnline: isOnline,
+                        rating: rating,
+                        reviews: reviews,
+                        experience: experience,
+                      ),
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1D5572),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text('BOOK SESSION', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
+                ),
+              ]),
+            ),
           ],
         ),
       ),
@@ -491,7 +577,24 @@ class _ChatBookSessionScreenState extends State<ChatBookSessionScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a duration and payment method'), backgroundColor: Color(0xFFF5A100)));
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Session booked: ${widget.sessionType} - $_selectedDuration - $_selectedPayment'), backgroundColor: const Color(0xFF1D5572)));
+
+    final selectedDurationData = _durations.firstWhere((d) => d['duration'] == _selectedDuration);
+    final priceString = selectedDurationData['price']!.split(' ')[0];
+    final price = double.parse(priceString);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PaymentScreen(
+          mentorName: widget.mentorName,
+          sessionTime: "May 17, 2026 at 2:00 PM",
+          sessionDuration: _selectedDuration!,
+          sessionType: widget.sessionType == 'chat' ? 'Chat Session' : 'Call Session',
+          sessionPrice: price,
+          walletBalance: 1200.0,
+        ),
+      ),
+    );
   }
 
   @override
@@ -513,56 +616,69 @@ class _ChatBookSessionScreenState extends State<ChatBookSessionScreen> {
                   ])),
                 ]),
                 const SizedBox(height: 24),
+                if (widget.sessionType == 'call') ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF4400).withOpacity(0.25),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: RichText(
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'NOTE:\n',
+                            style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFFF5A100)),
+                          ),
+                          TextSpan(
+                            text: 'A meeting link will be sent to your email after booking .',
+                            style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF1F2937)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
                 Text('Choose Session Duration', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF1F2937))),
                 const SizedBox(height: 12),
                 ..._durations.map((d) => _buildDurationRow(d['duration']!, d['price']!)).toList(),
                 const SizedBox(height: 24),
                 Text('Choose Payment Method', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF1F2937))),
                 const SizedBox(height: 12),
-
-                // SkillSync Wallet
                 _buildPaymentOption(
                   value: 'wallet',
                   child: Row(children: [
-                    const Icon(Icons.account_balance_wallet, color: Color(0xFFF5A100), size: 26),
+                    Expanded(child: Text('SKILLSYNC WALLET', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black))),
                     const SizedBox(width: 12),
-                    Text('SKILLSYNC WALLET', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black)),
+                    Image.asset('assets/images/wallet.png', width: 26, height: 26),
                   ]),
                 ),
                 const SizedBox(height: 8),
-
-                // Mobile Wallet
                 _buildPaymentOption(
                   value: 'mobile',
                   child: Row(children: [
                     Expanded(child: Text('MOBILE WALLET', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black))),
-                    const SizedBox(width: 8),
-                    // Vodafone logo
-                    _VodafoneLogo(),
                     const SizedBox(width: 6),
-                    // WE logo
-                    _WELogo(),
+                    Image.asset('assets/images/vodafone.png', width: 32, height: 32),
                     const SizedBox(width: 6),
-                    // Orange logo
-                    _OrangeLogo(),
+                    Image.asset('assets/images/etisalat.png', width: 32, height: 32),
                     const SizedBox(width: 6),
-                    // Etisalat/e& logo
-                    _EtisalatLogo(),
+                    Image.asset('assets/images/orange.png', width: 32, height: 32),
+                    const SizedBox(width: 6),
+                    Image.asset('assets/images/phone wallet.png', width: 32, height: 32),
                   ]),
                 ),
                 const SizedBox(height: 8),
-
-                // Visa / Mastercard
                 _buildPaymentOption(
                   value: 'card',
                   child: Row(children: [
                     Expanded(child: Text('VISA / MASTERCARD', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black))),
+                    const SizedBox(width: 12),
+                    Image.asset('assets/images/visa.png', width: 50, height: 35),
                     const SizedBox(width: 8),
-                    // Visa logo
-                    _VisaLogo(),
-                    const SizedBox(width: 6),
-                    // Mastercard logo
-                    _MastercardLogo(),
+                    Image.asset('assets/images/mastercard.png', width: 48, height: 30),
                   ]),
                 ),
                 const SizedBox(height: 24),
@@ -611,115 +727,6 @@ class _ChatBookSessionScreenState extends State<ChatBookSessionScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(color: isSelected ? const Color(0xFFFFF7ED) : Colors.white, border: Border.all(color: isSelected ? const Color(0xFFF5A100) : const Color(0xFFE5E7EB), width: isSelected ? 1.5 : 1), borderRadius: BorderRadius.circular(8)),
         child: child,
-      ),
-    );
-  }
-}
-
-// ===== PAYMENT LOGO WIDGETS =====
-
-/// Vodafone — red circle with white "V" notch
-class _VodafoneLogo extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 32, height: 32,
-      decoration: const BoxDecoration(color: Color(0xFFE60000), shape: BoxShape.circle),
-      child: const Center(
-        child: Text('V', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Arial')),
-      ),
-    );
-  }
-}
-
-/// WE (Telecom Egypt) — dark blue/purple square with "WE" text
-class _WELogo extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 32, height: 32,
-      decoration: BoxDecoration(color: const Color(0xFF5C2D91), borderRadius: BorderRadius.circular(6)),
-      child: const Center(
-        child: Text('WE', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'Arial')),
-      ),
-    );
-  }
-}
-
-/// Orange — orange circle with white "O" text
-class _OrangeLogo extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 32, height: 32,
-      decoration: const BoxDecoration(color: Color(0xFFFF6600), shape: BoxShape.circle),
-      child: const Center(
-        child: Text('O', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Arial')),
-      ),
-    );
-  }
-}
-
-/// Etisalat / e& — green circle with "e&" text
-class _EtisalatLogo extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 32, height: 32,
-      decoration: const BoxDecoration(color: Color(0xFF009A44), shape: BoxShape.circle),
-      child: const Center(
-        child: Text('e&', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'Arial')),
-      ),
-    );
-  }
-}
-
-/// Visa — dark blue rectangle with italic "VISA" text
-class _VisaLogo extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 48, height: 30,
-      decoration: BoxDecoration(color: const Color(0xFF1A1F71), borderRadius: BorderRadius.circular(4)),
-      child: const Center(
-        child: Text(
-          'VISA',
-          style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold, fontStyle: FontStyle.italic, fontFamily: 'Arial', letterSpacing: 1),
-        ),
-      ),
-    );
-  }
-}
-
-/// Mastercard — two overlapping circles (red + orange/yellow) with "mastercard" text below
-class _MastercardLogo extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 48, height: 30,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Red circle (left)
-          Positioned(
-            left: 0,
-            child: Container(
-              width: 26, height: 26,
-              decoration: const BoxDecoration(color: Color(0xFFEB001B), shape: BoxShape.circle),
-            ),
-          ),
-          // Orange/yellow circle (right) — overlaps
-          Positioned(
-            right: 0,
-            child: Container(
-              width: 26, height: 26,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF79E1B).withOpacity(0.9),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

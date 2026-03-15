@@ -7,7 +7,7 @@ class ApiService {
   // Default is Android emulator host loopback.
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://192.168.1.2:5000/api',
+    defaultValue: 'http://192.168.1.31:5000/api',
   );
   
   static Future<Map<String, dynamic>> post(

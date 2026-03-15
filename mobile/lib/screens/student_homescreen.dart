@@ -7,6 +7,9 @@ import 'assessment_flow.dart';
 import 'cv_Optimizer.dart';
 import 'profile_screen.dart';
 import 'mentorship_screen.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'Notifications screen.dart';
+import 'ChatsScreen.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -21,6 +24,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   int _roadmapPercent = 0;
   String? _lastToken;
 
+  double _walletBalance = 0;
+  String _walletCurrency = 'EGP';
+  bool _isWalletLoading = true;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -34,6 +41,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         });
       }
       _loadRoadmapStatus();
+      _loadWalletBalance();
     }
   }
 
@@ -72,6 +80,52 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         _isRoadmapLoading = false;
         _roadmapPercent = percent;
       });
+    }
+  }
+
+  Future<void> _loadWalletBalance() async {
+    final token = context.read<AuthProvider>().token;
+    if (token == null || token.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _walletBalance = 0;
+          _walletCurrency = 'EGP';
+          _isWalletLoading = false;
+        });
+      }
+      return;
+    }
+
+    try {
+      final response = await ApiService.get('/payments/wallet', token);
+      double balance = 0;
+      String currency = 'EGP';
+      if (response['success'] == true && response['data'] != null) {
+        final wallet = response['data']['wallet'];
+        if (wallet != null) {
+          final rawBalance = wallet['availableBalance'];
+          if (rawBalance is num) {
+            balance = rawBalance.toDouble();
+          }
+          currency = wallet['currency'] ?? 'EGP';
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _walletBalance = balance;
+          _walletCurrency = currency;
+          _isWalletLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _walletBalance = 0;
+          _walletCurrency = 'EGP';
+          _isWalletLoading = false;
+        });
+      }
     }
   }
 
@@ -147,6 +201,21 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                             ),
                           ],
                         ),
+                        const Spacer(),
+                        IconButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                            );
+                          },
+                          icon: SvgPicture.asset(
+                            'assets/icons/notification.svg',
+                            width: 28,
+                            height: 28,
+                            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 20),
@@ -184,14 +253,23 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                           Positioned(
                             left: 11,
                             top: 42,
-                            child: Text(
-                              '1,000 EGP',
-                              style: GoogleFonts.inter(
-                                color: const Color(0xFF2E2E2E),
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                            child: _isWalletLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Color(0xFF1D5572),
+                                    ),
+                                  )
+                                : Text(
+                                    '${_walletBalance.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')} $_walletCurrency',
+                                    style: GoogleFonts.inter(
+                                      color: const Color(0xFF2E2E2E),
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                           ),
                           Positioned(
                             right: 11,
@@ -913,6 +991,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         } else if (label == 'Profile') {
           Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const ProfileScreen()),
+          );
+        } else if (label == 'Chat') {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const ChatsScreen()),
           );
         }
       },

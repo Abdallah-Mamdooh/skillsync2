@@ -9,6 +9,7 @@ import '../services/profile_service.dart';
 import 'assessment_flow.dart';
 import 'student_homescreen.dart';
 import 'auth/login_screen.dart';
+import 'Notifications screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -19,6 +20,30 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final ImagePicker _picker = ImagePicker();
+
+  List<String> _parseSkills(dynamic raw) {
+    if (raw is List) {
+      return raw.map((s) {
+        if (s is String) return s;
+        if (s is Map) {
+          final map = Map<String, dynamic>.from(s);
+          return map['name']?.toString() ??
+              map['skill']?.toString() ??
+              map['title']?.toString() ??
+              s.toString();
+        }
+        return s.toString();
+      }).where((s) => s.trim().isNotEmpty).toList();
+    }
+    if (raw is String) {
+      return raw
+          .split(',')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+    }
+    return [];
+  }
 
   String getInitials(String name) {
     if (name.isEmpty) return '??';
@@ -116,8 +141,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 final skill = skillController.text.trim();
                 if (skill.isNotEmpty) {
                   final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                  final currentSkills = List<String>.from(authProvider.user?['skills'] ?? []);
-                  if (!currentSkills.contains(skill)) {
+                  final currentSkills = _parseSkills(authProvider.user?['skills']);
+                  final exists = currentSkills.any((s) => s.toLowerCase() == skill.toLowerCase());
+                  if (!exists) {
                     currentSkills.add(skill);
                     final success = await _updateSkillsOnServer(currentSkills);
                     if (success && mounted) {
@@ -147,12 +173,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
         updates: {'skills': newSkills},
       );
       if (response['success'] == true) {
-        authProvider.updateUser(response['data']);
+        final currentUser = Map<String, dynamic>.from(authProvider.user ?? {});
+        Map<String, dynamic>? updatedUser;
+        final data = response['data'];
+        if (data is Map<String, dynamic>) {
+          final userData = data['user'];
+          if (userData is Map<String, dynamic>) {
+            updatedUser = Map<String, dynamic>.from(currentUser)..addAll(userData);
+          } else {
+            updatedUser = Map<String, dynamic>.from(currentUser)..addAll(data);
+          }
+        }
+        updatedUser ??= Map<String, dynamic>.from(currentUser);
+        updatedUser['skills'] = newSkills;
+        authProvider.updateUser(updatedUser);
         return true;
       } else {
+        final message = response['message']?.toString() ?? '';
+        final lower = message.toLowerCase();
+        final isProfileEndpointBroken =
+            lower.contains('updateprofile is not a function') ||
+            lower.contains('profileservice.updateprofile');
+
+        if (isProfileEndpointBroken) {
+          final currentUser = Map<String, dynamic>.from(authProvider.user ?? {});
+          final updatedUser = Map<String, dynamic>.from(currentUser)..['skills'] = newSkills;
+          authProvider.updateUser(updatedUser);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Saved locally. Server profile update is unavailable.'),
+              ),
+            );
+          }
+          return true;
+        }
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(response['message'] ?? 'Failed to update skills')),
+            SnackBar(content: Text(message.isEmpty ? 'Failed to update skills' : message)),
           );
         }
         return false;
@@ -176,6 +235,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final role = user?['role'] ?? 'Member';
     final profilePhoto = user?['profilePhoto'] as String?;
     final isLoading = authProvider.isLoading;
+    final skills = _parseSkills(user?['skills']);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
@@ -330,11 +390,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8, runSpacing: 8,
-                  children: (user?['skills'] as List? ?? ['JavaScript', 'React', 'Node.js', 'Python', 'Git', 'HTML/CSS', 'Problem Solving', 'Team Collaboration'])
-                      .map((s) => _skillTag(s.toString(), filled: true)).toList(),
-                ),
+                if (skills.isEmpty)
+                  Text(
+                    'No skills added yet',
+                    style: GoogleFonts.inter(color: const Color(0xFF6B7280), fontSize: 14, height: 1.1),
+                  )
+                else
+                  Wrap(
+                    spacing: 8, runSpacing: 8,
+                    children: skills.map((s) => _skillTag(s, filled: true)).toList(),
+                  ),
               ],
             ),
             const SizedBox(height: 16),
@@ -377,7 +442,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 12),
                 _accountRow(Icons.settings_outlined, 'Settings & Privacy', const Color(0xFF1F2937), const Color(0xFF6B7280), () {}),
                 const Divider(),
-                _accountRow(Icons.notifications_outlined, 'Notifications', const Color(0xFF1F2937), const Color(0xFF6B7280), () {}),
+                _accountRow(Icons.notifications_outlined, 'Notifications', const Color(0xFF1F2937), const Color(0xFF6B7280), () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                  );
+                }),
                 const Divider(),
                 _accountRow(Icons.logout, 'Sign Out', const Color(0xFFDC2626), const Color(0xFFDC2626), () async {
                   final confirmed = await showDialog<bool>(

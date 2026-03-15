@@ -94,30 +94,27 @@ const handleFawryWebhook = asyncHandler(async (req, res) => {
     });
   }
 
-  transaction.providerStatus = String(paymentStatus || 'UNKNOWN');
+   const normalizedStatus = String(paymentStatus || 'UNKNOWN').toUpperCase();
+  transaction.providerStatus = normalizedStatus;
 
-  // Keep internal status simple for now
-  if (['PAID', 'SUCCESS', 'COMPLETED'].includes(String(paymentStatus).toUpperCase())) {
-    transaction.status = 'completed';
-  } else if (['FAILED', 'CANCELLED', 'EXPIRED'].includes(String(paymentStatus).toUpperCase())) {
-    transaction.status = 'failed';
-  } else {
-    transaction.status = 'pending';
-  }
-
-  // save raw provider reference if webhook sends a better one
   if (payload.referenceNumber) {
     transaction.providerReference = String(payload.referenceNumber);
   }
 
   transaction.notes = transaction.notes || 'Fawry webhook received';
-  await transaction.save();
 
-  return res.status(200).json({
-    success: true,
-    message: 'Webhook processed successfully',
+  if (['PAID', 'SUCCESS', 'COMPLETED'].includes(normalizedStatus)) {
+    await transaction.save();
+    await paymentService.applySuccessfulFawryTopup(transaction);
+  } else if (['FAILED', 'CANCELLED', 'EXPIRED'].includes(normalizedStatus)) {
+    transaction.status = 'failed';
+    await transaction.save();
+  } else {
+    transaction.status = 'pending';
+    await transaction.save();
+  }
   });
-});
+
 module.exports = {
   addPaymentMethod,
   listPaymentMethods,

@@ -325,6 +325,69 @@ async function createFawryCheckout({
     raw: data,
   };
 }
+
+async function applySuccessfulFawryTopup(transaction) {
+  if (!transaction) {
+    throw new Error('Transaction is required');
+  }
+
+  // only handle Fawry wallet top-ups here
+  if (transaction.provider !== 'fawry') {
+    return transaction;
+  }
+
+  if (transaction.type !== 'deposit') {
+    return transaction;
+  }
+
+  // prevent double processing
+  if (transaction.providerStatus === 'TOPUP_APPLIED') {
+    return transaction;
+  }
+
+  const wallet = await getOrCreateWallet(transaction.userId, transaction.currency || 'EGP');
+  const amt = round2(transaction.amount);
+
+  if (amt <= 0) {
+    throw new Error('Invalid top-up amount');
+  }
+
+  wallet.availableBalance = round2(wallet.availableBalance + amt);
+  await wallet.save();
+
+  await Transaction.create({
+    userId: transaction.userId,
+    relatedUserId: null,
+    sessionId: null,
+    type: 'deposit',
+    amount: amt,
+    currency: transaction.currency || 'EGP',
+    status: 'completed',
+    provider: 'internal',
+    providerReference: '',
+    providerStatus: 'TOPUP_CREDIT',
+    reference: transaction._id.toString(),
+    notes: 'Wallet credited from successful Fawry payment',
+  });
+
+  transaction.status = 'completed';
+  transaction.providerStatus = 'TOPUP_APPLIED';
+  await transaction.save();
+
+  await notificationService.createNotification({
+    userId: transaction.userId,
+    type: 'wallet_deposit',
+    title: 'Wallet topped up',
+    message: `${amt} ${transaction.currency || 'EGP'} was added to your wallet from Fawry payment.`,
+    data: {
+      amount: amt,
+      currency: transaction.currency || 'EGP',
+      transactionId: transaction._id,
+    },
+  });
+
+  return transaction;
+}
 module.exports = {
   getOrCreateWallet,
   getDefaultPaymentMethod,
@@ -338,4 +401,5 @@ module.exports = {
   addPlatformFeeTransaction,
   getWalletSummary,
   createFawryCheckout,
+  applySuccessfulFawryTopup,
 };

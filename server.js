@@ -13,10 +13,12 @@ const chatService = require('./src/modules/mentor/chat.service');
 const reminderRoutes = require('./src/modules/notification/reminder.routes');
 const { startReminderCron } = require('./src/modules/notification/reminder.cron');
 const adminRoutes = require('./src/modules/admin/admin.routes');
+const dashboardRoutes = require('./src/modules/dashboard/dashboard.routes');
 connectDB();
 
 const PORT = process.env.PORT || 5000;
 app.use('/api/admin', adminRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 // session + passport middleware
 app.use(
   session({

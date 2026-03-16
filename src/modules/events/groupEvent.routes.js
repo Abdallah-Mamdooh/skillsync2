@@ -69,6 +69,12 @@ router.post(
   controller.registerForEvent
 );
 
+router.post(
+  '/:eventId/register/fawry-checkout',
+  authMiddleware,
+  roleMiddleware('user'),
+  controller.registerForEventWithFawry
+);
 router.get('/me/registrations', authMiddleware, controller.getMyEventRegistrations);
 
 module.exports = router;

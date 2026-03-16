@@ -72,6 +72,18 @@ const completeEvent = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data });
 });
 
+const registerForEventWithFawry = asyncHandler(async (req, res) => {
+  const data = await eventService.registerForEventWithFawry(
+    req.user._id,
+    req.params.eventId,
+    req.body
+  );
+
+  res.status(201).json({
+    success: true,
+    data,
+  });
+});
 module.exports = {
   createEvent,
   updateEvent,
@@ -84,4 +96,5 @@ module.exports = {
   releaseEventRegistrationPayment,
   markRegistrationAttended,
   completeEvent,
+  registerForEventWithFawry,
 };

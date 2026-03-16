@@ -2,6 +2,7 @@ const GroupEvent = require('./groupEvent.model');
 const EventRegistration = require('./eventRegistration.model');
 const MentorProfile = require('../mentor/mentorProfile.model');
 const paymentService = require('../payment/payment.service');
+const User = require('../auth/user.model');
 const createEvent = async (organizerUserId, payload) => {
     const notificationService = require('../notification/notification.service');
   const speakers = Array.isArray(payload.speakers) ? payload.speakers : [];
@@ -390,6 +391,78 @@ const completeEvent = async (organizerUserId, eventId) => {
   };
 };
 
+const registerForEventWithFawry = async (userId, eventId, payload = {}) => {
+  const event = await GroupEvent.findById(eventId);
+
+  if (!event) {
+    throw new Error('Event not found');
+  }
+
+  if (event.status !== 'published') {
+    throw new Error('Only published events can be registered');
+  }
+
+  if (event.registeredCount >= event.capacity) {
+    throw new Error('Event is full');
+  }
+
+  const existing = await EventRegistration.findOne({ eventId, userId });
+  if (existing) {
+    throw new Error('You are already registered for this event');
+  }
+
+  const registration = await EventRegistration.create({
+    eventId,
+    userId,
+    paymentStatus: 'unpaid',
+    amountPaid: event.fee,
+    currency: event.currency,
+    attended: false,
+    checkedInAt: null,
+  });
+
+  event.registeredCount += 1;
+  await event.save();
+
+  const user = await User.findById(userId).select(
+    'fullName email phoneNumber'
+  );
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  const checkout = await paymentService.createFawryCheckout({
+    user: {
+      _id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+    },
+    amount: event.fee,
+    purpose: 'hold',
+    entityType: 'group_event',
+    entityId: registration._id,
+    description: `Event registration payment - ${event.title}`,
+    paymentMethod: payload.paymentMethod || '',
+    sessionId: null,
+    eventRegistrationId: registration._id,
+  });
+
+  return {
+    registrationId: registration._id,
+    event: {
+      id: event._id,
+      title: event.title,
+      fee: event.fee,
+      currency: event.currency,
+      scheduledAt: event.scheduledAt,
+    },
+    paymentStatus: registration.paymentStatus,
+    checkout,
+  };
+};
+
 module.exports = {
   createEvent,
   updateEvent,
@@ -402,4 +475,5 @@ module.exports = {
   releaseEventRegistrationPayment,
   markRegistrationAttended,
   completeEvent,
+  registerForEventWithFawry,
 };

@@ -94,7 +94,7 @@ const handleFawryWebhook = asyncHandler(async (req, res) => {
     });
   }
 
-   const normalizedStatus = String(paymentStatus || 'UNKNOWN').toUpperCase();
+    const normalizedStatus = String(paymentStatus || 'UNKNOWN').toUpperCase();
   transaction.providerStatus = normalizedStatus;
 
   if (payload.referenceNumber) {
@@ -102,10 +102,11 @@ const handleFawryWebhook = asyncHandler(async (req, res) => {
   }
 
   transaction.notes = transaction.notes || 'Fawry webhook received';
+  transaction.rawProviderResponse = payload;
 
   if (['PAID', 'SUCCESS', 'COMPLETED'].includes(normalizedStatus)) {
     await transaction.save();
-    await paymentService.applySuccessfulFawryTopup(transaction);
+    await paymentService.applySuccessfulFawryTransaction(transaction);
   } else if (['FAILED', 'CANCELLED', 'EXPIRED'].includes(normalizedStatus)) {
     transaction.status = 'failed';
     await transaction.save();
@@ -113,9 +114,9 @@ const handleFawryWebhook = asyncHandler(async (req, res) => {
     transaction.status = 'pending';
     await transaction.save();
   }
-  });
-
+});
 module.exports = {
+
   addPaymentMethod,
   listPaymentMethods,
   depositToWallet,

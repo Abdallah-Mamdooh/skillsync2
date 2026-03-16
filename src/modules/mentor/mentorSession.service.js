@@ -4,6 +4,7 @@ const paymentService = require('../payment/payment.service');
 const PLATFORM_FEE_PERCENT = 0.2; // 20%
 const notificationService = require('../notification/notification.service');
 const User = require('../auth/user.model');
+const Transaction = require('../payment/transaction.model');
 
 function round2(n) {
   return Math.round((Number(n) || 0) * 100) / 100;
@@ -473,32 +474,58 @@ const completeSession = async (mentorUserId, sessionId) => {
     session.actualDurationMinutes = session.durationMinutes;
   }
 
-  // Capture held funds from requester
+   // Finalize payment depending on how the session was funded
   if (session.paymentStatus === 'held') {
-    await paymentService.captureHeldFunds({
-      userId: session.userId,
+    const externalPaidTx = await Transaction.findOne({
       sessionId: session._id,
-      amount: session.totalAmount,
-      currency: session.currency,
-    });
+      provider: 'fawry',
+      entityType: 'mentor_session',
+      status: 'completed',
+    }).sort({ createdAt: -1 });
 
-    // credit mentor
-    await paymentService.creditMentorWallet({
-      mentorUserId: session.mentorUserId,
-      sessionId: session._id,
-      amount: session.mentorNetAmount,
-      currency: session.currency,
-    });
+    if (externalPaidTx) {
+      // Fawry path:
+      // money already came externally, so do NOT capture wallet funds again
+      await paymentService.creditMentorWallet({
+        mentorUserId: session.mentorUserId,
+        sessionId: session._id,
+        amount: session.mentorNetAmount,
+        currency: session.currency,
+      });
 
-    // record platform fee
-    await paymentService.addPlatformFeeTransaction({
-      userId: session.userId,
-      sessionId: session._id,
-      amount: session.platformFee,
-      currency: session.currency,
-    });
+      await paymentService.addPlatformFeeTransaction({
+        userId: session.userId,
+        sessionId: session._id,
+        amount: session.platformFee,
+        currency: session.currency,
+      });
 
-    session.paymentStatus = 'captured';
+      session.paymentStatus = 'captured';
+    } else {
+      // Internal wallet path:
+      await paymentService.captureHeldFunds({
+        userId: session.userId,
+        sessionId: session._id,
+        amount: session.totalAmount,
+        currency: session.currency,
+      });
+
+      await paymentService.creditMentorWallet({
+        mentorUserId: session.mentorUserId,
+        sessionId: session._id,
+        amount: session.mentorNetAmount,
+        currency: session.currency,
+      });
+
+      await paymentService.addPlatformFeeTransaction({
+        userId: session.userId,
+        sessionId: session._id,
+        amount: session.platformFee,
+        currency: session.currency,
+      });
+
+      session.paymentStatus = 'captured';
+    }
   }
 
   await session.save();

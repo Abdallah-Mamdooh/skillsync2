@@ -239,6 +239,8 @@ async function createFawryCheckout({
   entityId = null,
   description,
   paymentMethod = '',
+  sessionId = null,
+  eventRegistrationId = null,
 }) {
   const amt = round2(amount);
 
@@ -258,15 +260,24 @@ async function createFawryCheckout({
 
   const transaction = await Transaction.create({
     userId: user._id,
+    relatedUserId: null,
+    sessionId,
+    eventRegistrationId,
     type: purpose || 'deposit',
     amount: amt,
     currency: 'EGP',
     status: 'pending',
+    paymentMethodId: null,
     provider: 'fawry',
     providerReference: merchantRefNum,
     providerStatus: 'INITIATED',
+    entityType: entityType || 'other',
+    entityId: entityId || null,
+    checkoutUrl: '',
+    paymentChannel: paymentMethod || '',
+    reference: merchantRefNum,
     notes: description || 'Fawry checkout initiated',
-    reference: entityId ? String(entityId) : '',
+    rawProviderResponse: null,
   });
 
   const payload = buildHostedCheckoutPayload({
@@ -293,13 +304,19 @@ async function createFawryCheckout({
 
   if (!response.ok) {
     transaction.status = 'failed';
-    transaction.providerStatus = data?.statusDescription || 'FAILED';
+    transaction.providerStatus =
+      data?.statusDescription ||
+      data?.paymentStatus ||
+      data?.statusCode ||
+      'FAILED';
+    transaction.rawProviderResponse = data;
     await transaction.save();
 
-    throw new Error(data?.message || data?.statusDescription || 'Fawry checkout failed');
+    throw new Error(
+      data?.message || data?.statusDescription || 'Fawry checkout failed'
+    );
   }
 
-  // store whatever provider information we got back
   transaction.providerStatus =
     data?.paymentStatus ||
     data?.statusDescription ||
@@ -310,6 +327,14 @@ async function createFawryCheckout({
     transaction.providerReference = String(data.referenceNumber);
   }
 
+  transaction.checkoutUrl =
+    data?.redirectUrl ||
+    data?.paymentLink ||
+    data?.url ||
+    '';
+
+  transaction.rawProviderResponse = data;
+
   await transaction.save();
 
   return {
@@ -317,15 +342,10 @@ async function createFawryCheckout({
     merchantRefNum,
     provider: 'fawry',
     providerStatus: transaction.providerStatus,
-    redirectUrl:
-      data?.redirectUrl ||
-      data?.paymentLink ||
-      data?.url ||
-      null,
+    redirectUrl: transaction.checkoutUrl || null,
     raw: data,
   };
 }
-
 async function applySuccessfulFawryTopup(transaction) {
   if (!transaction) {
     throw new Error('Transaction is required');

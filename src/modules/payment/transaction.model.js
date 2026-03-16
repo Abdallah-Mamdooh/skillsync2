@@ -23,6 +23,13 @@ const transactionSchema = new mongoose.Schema(
       index: true,
     },
 
+    eventRegistrationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'EventRegistration',
+      default: null,
+      index: true,
+    },
+
     type: {
       type: String,
       enum: [
@@ -54,7 +61,7 @@ const transactionSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: ['pending', 'completed', 'failed'],
-      default: 'completed',
+      default: 'pending',
       index: true,
     },
 
@@ -62,6 +69,52 @@ const transactionSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'PaymentMethod',
       default: null,
+    },
+
+    provider: {
+      type: String,
+      enum: ['internal', 'fawry'],
+      default: 'internal',
+      index: true,
+    },
+
+    providerReference: {
+      type: String,
+      trim: true,
+      default: '',
+      index: true,
+    },
+
+    providerStatus: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+
+    // what this payment is for
+    entityType: {
+      type: String,
+      enum: ['wallet_topup', 'mentor_session', 'group_event', 'other'],
+      default: 'other',
+      index: true,
+    },
+
+    entityId: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: null,
+      index: true,
+    },
+
+    checkoutUrl: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+
+    paymentChannel: {
+      type: String,
+      trim: true,
+      default: '',
     },
 
     reference: {
@@ -76,26 +129,10 @@ const transactionSchema = new mongoose.Schema(
       default: '',
     },
 
-
-    provider: {
-  type: String,
-  enum: ['internal', 'fawry'],
-  default: 'internal',
-  index: true,
-},
-
-providerReference: {
-  type: String,
-  trim: true,
-  default: '',
-  index: true,
-},
-
-providerStatus: {
-  type: String,
-  trim: true,
-  default: '',
-},
+    rawProviderResponse: {
+      type: Object,
+      default: null,
+    },
   },
   { timestamps: true }
 );

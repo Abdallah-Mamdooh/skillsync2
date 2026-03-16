@@ -2,6 +2,8 @@ const Wallet = require('./wallet.model');
 const PaymentMethod = require('./paymentMethod.model');
 const Transaction = require('./transaction.model');
 const notificationService = require('../notification/notification.service');
+const MentorSession = require('../mentor/mentorSession.model');
+const EventRegistration = require('../events/eventRegistration.model');
 const {
   getFawryConfig,
   generateMerchantRef,
@@ -408,6 +410,163 @@ async function applySuccessfulFawryTopup(transaction) {
 
   return transaction;
 }
+async function applySuccessfulFawryTransaction(transaction) {
+  if (!transaction) {
+    throw new Error('Transaction is required');
+  }
+
+  if (transaction.provider !== 'fawry') {
+    return transaction;
+  }
+
+  // prevent double processing
+  if (transaction.providerStatus === 'APPLIED_SUCCESS') {
+    return transaction;
+  }
+
+  const entityType = transaction.entityType;
+  const currency = transaction.currency || 'EGP';
+  const amt = round2(transaction.amount);
+
+  if (amt <= 0) {
+    throw new Error('Invalid transaction amount');
+  }
+
+  // 1) Wallet top-up
+  if (entityType === 'wallet_topup') {
+    const wallet = await getOrCreateWallet(transaction.userId, currency);
+
+    wallet.availableBalance = round2(wallet.availableBalance + amt);
+    await wallet.save();
+
+    await Transaction.create({
+      userId: transaction.userId,
+      relatedUserId: null,
+      sessionId: null,
+      eventRegistrationId: null,
+      type: 'deposit',
+      amount: amt,
+      currency,
+      status: 'completed',
+      paymentMethodId: null,
+      provider: 'internal',
+      providerReference: '',
+      providerStatus: 'TOPUP_CREDIT',
+      entityType: 'wallet_topup',
+      entityId: transaction.entityId || null,
+      checkoutUrl: '',
+      paymentChannel: '',
+      reference: transaction._id.toString(),
+      notes: 'Wallet credited from successful Fawry payment',
+      rawProviderResponse: null,
+    });
+
+    transaction.status = 'completed';
+    transaction.providerStatus = 'APPLIED_SUCCESS';
+    await transaction.save();
+
+    await notificationService.createNotification({
+      userId: transaction.userId,
+      type: 'wallet_deposit',
+      title: 'Wallet topped up',
+      message: `${amt} ${currency} was added to your wallet from Fawry payment.`,
+      data: {
+        amount: amt,
+        currency,
+        transactionId: transaction._id,
+      },
+    });
+
+    return transaction;
+  }
+
+  // 2) Mentor session payment
+  if (entityType === 'mentor_session') {
+    const session = await MentorSession.findById(transaction.entityId);
+
+    if (!session) {
+      throw new Error('Related mentor session not found');
+    }
+
+    // We treat successful Fawry payment as the external equivalent of "held"
+    session.paymentStatus = 'held';
+    await session.save();
+
+    transaction.status = 'completed';
+    transaction.providerStatus = 'APPLIED_SUCCESS';
+    transaction.sessionId = session._id;
+    await transaction.save();
+
+    await notificationService.createNotification({
+      userId: session.userId,
+      type: 'payment_held',
+      title: 'Session payment confirmed',
+      message: `Your payment of ${amt} ${currency} for the mentor session was confirmed.`,
+      data: {
+        sessionId: session._id,
+        amount: amt,
+        currency,
+        paymentStatus: session.paymentStatus,
+        transactionId: transaction._id,
+      },
+    });
+
+    await notificationService.createNotification({
+      userId: session.mentorUserId,
+      type: 'mentor_session_requested',
+      title: 'Paid session request received',
+      message: 'A new mentor session request has been paid and is ready for your review.',
+      data: {
+        sessionId: session._id,
+        amount: amt,
+        currency,
+      },
+    });
+
+    return transaction;
+  }
+
+  // 3) Group event registration payment
+  if (entityType === 'group_event') {
+    const registration = await EventRegistration.findById(transaction.entityId).populate('eventId');
+
+    if (!registration) {
+      throw new Error('Related event registration not found');
+    }
+
+    registration.paymentStatus = 'held';
+    await registration.save();
+
+    transaction.status = 'completed';
+    transaction.providerStatus = 'APPLIED_SUCCESS';
+    transaction.eventRegistrationId = registration._id;
+    await transaction.save();
+
+    await notificationService.createNotification({
+      userId: registration.userId,
+      type: 'event_registered',
+      title: 'Event payment confirmed',
+      message: `Your payment for "${registration.eventId?.title || 'event'}" was confirmed.`,
+      data: {
+        registrationId: registration._id,
+        eventId: registration.eventId?._id || null,
+        amount: amt,
+        currency,
+        paymentStatus: registration.paymentStatus,
+        transactionId: transaction._id,
+      },
+    });
+
+    return transaction;
+  }
+
+  // fallback: mark complete but do not apply business action
+  transaction.status = 'completed';
+  transaction.providerStatus = 'APPLIED_SUCCESS';
+  await transaction.save();
+
+  return transaction;
+}
 module.exports = {
   getOrCreateWallet,
   getDefaultPaymentMethod,
@@ -422,4 +581,5 @@ module.exports = {
   getWalletSummary,
   createFawryCheckout,
   applySuccessfulFawryTopup,
+  applySuccessfulFawryTransaction,
 };

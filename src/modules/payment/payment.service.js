@@ -527,15 +527,30 @@ async function applySuccessfulFawryTransaction(transaction) {
   }
 
   // 3) Group event registration payment
-  if (entityType === 'group_event') {
+    if (entityType === 'group_event') {
     const registration = await EventRegistration.findById(transaction.entityId).populate('eventId');
 
     if (!registration) {
       throw new Error('Related event registration not found');
     }
 
+    if (!registration.eventId) {
+      throw new Error('Related event not found');
+    }
+
     registration.paymentStatus = 'held';
     await registration.save();
+
+    const event = registration.eventId;
+
+    // increment only once on successful payment application
+    event.registeredCount = Number(event.registeredCount || 0) + 1;
+
+    if (event.registeredCount > Number(event.capacity || 0)) {
+      event.registeredCount = Number(event.capacity || 0);
+    }
+
+    await event.save();
 
     transaction.status = 'completed';
     transaction.providerStatus = 'APPLIED_SUCCESS';
@@ -546,10 +561,10 @@ async function applySuccessfulFawryTransaction(transaction) {
       userId: registration.userId,
       type: 'event_registered',
       title: 'Event payment confirmed',
-      message: `Your payment for "${registration.eventId?.title || 'event'}" was confirmed.`,
+      message: `Your payment for "${event.title || 'event'}" was confirmed.`,
       data: {
         registrationId: registration._id,
-        eventId: registration.eventId?._id || null,
+        eventId: event._id || null,
         amount: amt,
         currency,
         paymentStatus: registration.paymentStatus,

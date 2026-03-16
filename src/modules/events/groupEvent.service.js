@@ -183,7 +183,7 @@ const registerForEvent = async (userId, eventId) => {
   event.registeredCount += 1;
   await event.save();
 
-    await notificationService.createNotification({
+  await notificationService.createNotification({
     userId,
     type: 'event_registered',
     title: 'Event registration confirmed',
@@ -199,7 +199,6 @@ const registerForEvent = async (userId, eventId) => {
 
   return registration;
 };
-
 const getMyEventRegistrations = async (userId) => {
   return EventRegistration.find({ userId })
     .populate('eventId')
@@ -421,8 +420,7 @@ const registerForEventWithFawry = async (userId, eventId, payload = {}) => {
     checkedInAt: null,
   });
 
-  event.registeredCount += 1;
-  await event.save();
+ 
 
   const user = await User.findById(userId).select(
     'fullName email phoneNumber'

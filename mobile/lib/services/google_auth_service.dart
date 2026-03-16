@@ -1,6 +1,4 @@
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'api_service.dart';
 
 class GoogleAuthService { 
@@ -23,25 +21,10 @@ class GoogleAuthService {
         return {'success': false, 'message': 'User cancelled'};
       }
 
-      final email = user.email;
-
-      final response = await http.post(
-        Uri.parse('$baseUrl/google-login'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email}),
-      );
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        return {
-          'success': false,
-          'message': 'Backend error: ${response.statusCode}'
-        };
-      }
+      return {'success': true, 'email': user.email};
     } catch (e) {
       print("Google Sign In Error: $e");
-      return {'success': false, 'message': e.toString()};
+      return {'success': false, 'message': 'Google Sign-In Error. Note: You must configure SHA-1 keys in Firebase mapped to your app package name for this to work on Android.'};
     }
   }
 

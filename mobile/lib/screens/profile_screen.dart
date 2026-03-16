@@ -56,6 +56,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return '??';
   }
 
+  String _formatJoinDate(dynamic createdAt) {
+    if (createdAt == null) return 'Join date unknown';
+    try {
+      final dt = DateTime.parse(createdAt.toString());
+      const months = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+      return 'Joined ${months[dt.month - 1]} ${dt.year}';
+    } catch (_) {
+      return 'Join date unknown';
+    }
+  }
+
   Future<void> _pickAndUploadImage() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final token = authProvider.token;
@@ -81,7 +95,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         // Send to backend
         final response = await ProfileService.updateProfile(
           token: token,
-          updates: {'profilePhoto': imageUri},
+          updates: {'profileImageUrl': imageUri},
         );
 
         if (response['success'] == true) {
@@ -233,7 +247,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final fullName = user?['fullName'] ?? 'User';
     final email = user?['email'] ?? 'No email';
     final role = user?['role'] ?? 'Member';
-    final profilePhoto = user?['profilePhoto'] as String?;
+    final profilePhoto = user?['profileImageUrl'] as String?;
     final isLoading = authProvider.isLoading;
     final skills = _parseSkills(user?['skills']);
 
@@ -329,12 +343,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       style: GoogleFonts.inter(color: const Color(0xFF6B7280), fontSize: 14, height: 1.1),
                     ),
                     const SizedBox(height: 8),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: Text(
-                        'Passionate about web development and eager to grow my career in tech. Love building user-friendly applications.',
+                        (user?['bio'] != null && (user!['bio'] as String).isNotEmpty)
+                            ? user['bio'] as String
+                            : 'No bio added yet',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Color(0xFF6B7280), fontSize: 14, height: 1.1),
+                        style: const TextStyle(color: Color(0xFF6B7280), fontSize: 14, height: 1.1),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -372,7 +388,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 12),
                 _infoRow(Icons.email_outlined, email),
                 _infoRow(Icons.school_outlined, 'Computer Science, SAMS University'),
-                _infoRow(Icons.calendar_today_outlined, 'Joined January 2026'),
+                _infoRow(Icons.calendar_today_outlined, _formatJoinDate(user?['createdAt'])),
               ],
             ),
             const SizedBox(height: 16),
@@ -414,11 +430,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8, runSpacing: 8,
-                  children: ['Web Development', 'Data Science', 'Cloud Computing', 'UX Design']
-                      .map((s) => _skillTag(s, filled: false)).toList(),
-                ),
+                Builder(builder: (_) {
+                  final interests = _parseSkills(user?['selectedInterests']);
+                  if (interests.isEmpty) {
+                    return Text('No career interests added yet',
+                        style: GoogleFonts.inter(color: const Color(0xFF6B7280), fontSize: 14, height: 1.1));
+                  }
+                  return Wrap(
+                    spacing: 8, runSpacing: 8,
+                    children: interests.map((s) => _skillTag(s, filled: false)).toList(),
+                  );
+                }),
               ],
             ),
             const SizedBox(height: 16),
@@ -509,7 +531,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final user = authProvider.user;
     _nameController = TextEditingController(text: user?['fullName'] ?? '');
     _roleController = TextEditingController(text: user?['role']?.toString().toUpperCase() ?? '');
-    _bioController = TextEditingController(text: 'Passionate about web development and eager to grow my career in tech. Love building user-friendly applications.');
+    _bioController = TextEditingController(text: user?['bio'] ?? '');
   }
 
   @override
@@ -543,7 +565,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
 
     final newName = _nameController.text.trim();
-    if (newName == authProvider.user?['fullName']) {
+    final newBio = _bioController.text.trim();
+    if (newName == authProvider.user?['fullName'] && newBio == (authProvider.user?['bio'] ?? '')) {
       Navigator.pop(context);
       return;
     }
@@ -554,7 +577,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     try {
       final response = await ProfileService.updateProfile(
         token: token,
-        updates: {'fullName': newName},
+        updates: {'fullName': newName, 'bio': newBio},
       );
 
       if (response['success'] == true) {

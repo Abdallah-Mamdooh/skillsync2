@@ -10,6 +10,7 @@ import 'mentorship_screen.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'Notifications screen.dart';
 import 'ChatsScreen.dart';
+import 'roadmap_screen.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -580,57 +581,63 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                           const SizedBox(width: 14),
                           // Roadmaps
                           Expanded(
-                            child: Container(
-                              height: 118,
-                              clipBehavior: Clip.hardEdge,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFD9D9D9),
-                                border: Border.all(color: const Color(0xFFF5A100)),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Stack(
-                                children: [
-                                  Positioned(
-                                    left: 12,
-                                    top: 12,
-                                    child: Container(
-                                      width: 40,
-                                      height: 40,
-                                      decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(12)),
-                                      child: Center(
-                                        child: Image.asset(
-                                          'assets/images/roadmaps_logo.png',
-                                          width: 23,
-                                          height: 23,
-                                          errorBuilder: (_, __, ___) => const Icon(
-                                              Icons.map,
-                                              color: Color(0xFFF5A100)),
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.of(context).push(MaterialPageRoute(
+                                    builder: (_) => const RoadmapScreen()));
+                              },
+                              child: Container(
+                                height: 118,
+                                clipBehavior: Clip.hardEdge,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFD9D9D9),
+                                  border: Border.all(color: const Color(0xFFF5A100)),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Stack(
+                                  children: [
+                                    Positioned(
+                                      left: 12,
+                                      top: 12,
+                                      child: Container(
+                                        width: 40,
+                                        height: 40,
+                                        decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(12)),
+                                        child: Center(
+                                          child: Image.asset(
+                                            'assets/images/roadmaps_logo.png',
+                                            width: 23,
+                                            height: 23,
+                                            errorBuilder: (_, __, ___) => const Icon(
+                                                Icons.map,
+                                                color: Color(0xFFF5A100)),
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                  Positioned(
-                                    left: 13,
-                                    top: 65,
-                                    child: Text('Roadmaps',
-                                        style: GoogleFonts.cairo(
-                                            color: Colors.black,
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.bold,
-                                            height: 1.1)),
-                                  ),
-                                  Positioned(
-                                    left: 13,
-                                    top: 87,
-                                    child: Text('Find your ideal path',
-                                        style: GoogleFonts.cairo(
-                                            color: Colors.black,
-                                            fontSize: 13,
-                                            height: 1.7)),
-                                  ),
-                                ],
+                                    Positioned(
+                                      left: 13,
+                                      top: 65,
+                                      child: Text('Roadmaps',
+                                          style: GoogleFonts.cairo(
+                                              color: Colors.black,
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold,
+                                              height: 1.1)),
+                                    ),
+                                    Positioned(
+                                      left: 13,
+                                      top: 87,
+                                      child: Text('Find your ideal path',
+                                          style: GoogleFonts.cairo(
+                                              color: Colors.black,
+                                              fontSize: 13,
+                                              height: 1.7)),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),

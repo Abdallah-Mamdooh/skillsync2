@@ -425,15 +425,30 @@ const rejectSession = async (mentorUserId, sessionId) => {
 
 
     if (session.paymentStatus === 'held') {
-    await paymentService.releaseHeldFunds({
-      userId: session.userId,
+    const externalPaidTx = await Transaction.findOne({
       sessionId: session._id,
-      amount: session.totalAmount,
-      currency: session.currency,
-    });
+      provider: 'fawry',
+      entityType: 'mentor_session',
+      status: 'completed',
+    }).sort({ createdAt: -1 });
 
-    session.paymentStatus = 'released';
-    await session.save();
+    if (externalPaidTx) {
+      // Fawry path:
+      // do NOT release internal wallet funds because none were held there
+      session.paymentStatus = 'released';
+      await session.save();
+    } else {
+      // Internal wallet path:
+      await paymentService.releaseHeldFunds({
+        userId: session.userId,
+        sessionId: session._id,
+        amount: session.totalAmount,
+        currency: session.currency,
+      });
+
+      session.paymentStatus = 'released';
+      await session.save();
+    }
   }
 
   return {
@@ -641,15 +656,29 @@ const expirePendingSessions = async () => {
   for (const session of sessions) {
     session.status = 'expired';
 
-    if (session.paymentStatus === 'held') {
-      await paymentService.releaseHeldFunds({
-        userId: session.userId,
+      if (session.paymentStatus === 'held') {
+      const externalPaidTx = await Transaction.findOne({
         sessionId: session._id,
-        amount: session.totalAmount,
-        currency: session.currency,
-      });
+        provider: 'fawry',
+        entityType: 'mentor_session',
+        status: 'completed',
+      }).sort({ createdAt: -1 });
 
-      session.paymentStatus = 'released';
+      if (externalPaidTx) {
+        // Fawry path:
+        // no internal wallet hold to release
+        session.paymentStatus = 'released';
+      } else {
+        // Internal wallet path:
+        await paymentService.releaseHeldFunds({
+          userId: session.userId,
+          sessionId: session._id,
+          amount: session.totalAmount,
+          currency: session.currency,
+        });
+
+        session.paymentStatus = 'released';
+      }
     }
 
     await session.save();

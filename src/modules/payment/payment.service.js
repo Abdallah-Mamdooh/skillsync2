@@ -714,25 +714,39 @@ async function getPaymentStatus({ transactionId, userId }) {
   let session = null;
   let eventRegistration = null;
 
-  if (transaction.sessionId) {
+   if (transaction.sessionId) {
+    const sessionPaymentStatus = transaction.sessionId.paymentStatus;
+    const sessionStatus = transaction.sessionId.status;
+
     session = {
       id: transaction.sessionId._id,
-      status: transaction.sessionId.status,
-      paymentStatus: transaction.sessionId.paymentStatus,
+      status: sessionStatus,
+      paymentStatus: sessionPaymentStatus,
       method: transaction.sessionId.method,
       durationMinutes: transaction.sessionId.durationMinutes,
       totalAmount: transaction.sessionId.totalAmount,
       currency: transaction.sessionId.currency,
+
+      // frontend-friendly flags
+      isPaymentConfirmed: ['held', 'captured'].includes(sessionPaymentStatus),
+      isReadyForMentorProcessing:
+        ['held', 'captured'].includes(sessionPaymentStatus) &&
+        ['pending', 'accepted', 'active', 'completed'].includes(sessionStatus),
     };
   }
 
-  if (transaction.eventRegistrationId) {
+    if (transaction.eventRegistrationId) {
+    const registrationPaymentStatus = transaction.eventRegistrationId.paymentStatus;
+
     eventRegistration = {
       id: transaction.eventRegistrationId._id,
-      paymentStatus: transaction.eventRegistrationId.paymentStatus,
+      paymentStatus: registrationPaymentStatus,
       attended: transaction.eventRegistrationId.attended,
       amountPaid: transaction.eventRegistrationId.amountPaid,
       currency: transaction.eventRegistrationId.currency,
+
+      // frontend-friendly flag
+      isConfirmed: ['held', 'captured'].includes(registrationPaymentStatus),
     };
   }
 
@@ -752,6 +766,9 @@ async function getPaymentStatus({ transactionId, userId }) {
       paymentChannel: transaction.paymentChannel,
       createdAt: transaction.createdAt,
       updatedAt: transaction.updatedAt,
+
+      // frontend-friendly flag
+      isSuccessful: transaction.status === 'completed',
     },
     session,
     eventRegistration,

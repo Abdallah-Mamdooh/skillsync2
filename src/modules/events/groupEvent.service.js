@@ -3,6 +3,7 @@ const EventRegistration = require('./eventRegistration.model');
 const MentorProfile = require('../mentor/mentorProfile.model');
 const paymentService = require('../payment/payment.service');
 const User = require('../auth/user.model');
+const Transaction = require('../payment/transaction.model');
 const createEvent = async (organizerUserId, payload) => {
     const notificationService = require('../notification/notification.service');
   const speakers = Array.isArray(payload.speakers) ? payload.speakers : [];
@@ -225,15 +226,30 @@ const captureEventRegistrationPayment = async (organizerUserId, registrationId) 
     throw new Error('Only held registrations can be captured');
   }
 
-  await paymentService.captureHeldFunds({
-    userId: registration.userId,
-    sessionId: null,
-    amount: registration.amountPaid,
-    currency: registration.currency,
-  });
+   const externalPaidTx = await Transaction.findOne({
+    eventRegistrationId: registration._id,
+    provider: 'fawry',
+    entityType: 'group_event',
+    status: 'completed',
+  }).sort({ createdAt: -1 });
 
-  registration.paymentStatus = 'captured';
-  await registration.save();
+  if (externalPaidTx) {
+    // Fawry path:
+    // no internal wallet hold to capture
+    registration.paymentStatus = 'captured';
+    await registration.save();
+  } else {
+    // Internal wallet path:
+    await paymentService.captureHeldFunds({
+      userId: registration.userId,
+      sessionId: null,
+      amount: registration.amountPaid,
+      currency: registration.currency,
+    });
+
+    registration.paymentStatus = 'captured';
+    await registration.save();
+  }
 
     await notificationService.createNotification({
     userId: registration.userId,
@@ -272,15 +288,30 @@ const releaseEventRegistrationPayment = async (organizerUserId, registrationId) 
     throw new Error('Only held registrations can be released');
   }
 
-  await paymentService.releaseHeldFunds({
-    userId: registration.userId,
-    sessionId: null,
-    amount: registration.amountPaid,
-    currency: registration.currency,
-  });
+   const externalPaidTx = await Transaction.findOne({
+    eventRegistrationId: registration._id,
+    provider: 'fawry',
+    entityType: 'group_event',
+    status: 'completed',
+  }).sort({ createdAt: -1 });
 
-  registration.paymentStatus = 'released';
-  await registration.save();
+  if (externalPaidTx) {
+    // Fawry path:
+    // no internal wallet hold to release
+    registration.paymentStatus = 'released';
+    await registration.save();
+  } else {
+    // Internal wallet path:
+    await paymentService.releaseHeldFunds({
+      userId: registration.userId,
+      sessionId: null,
+      amount: registration.amountPaid,
+      currency: registration.currency,
+    });
+
+    registration.paymentStatus = 'released';
+    await registration.save();
+  }
   await notificationService.createNotification({
     userId: registration.userId,
     type: 'event_payment_released',
@@ -339,17 +370,32 @@ const completeEvent = async (organizerUserId, eventId) => {
 
   let capturedCount = 0;
 
-  for (const registration of registrations) {
-    await paymentService.captureHeldFunds({
-      userId: registration.userId,
-      sessionId: null,
-      amount: registration.amountPaid,
-      currency: registration.currency,
-    });
+    for (const registration of registrations) {
+    const externalPaidTx = await Transaction.findOne({
+      eventRegistrationId: registration._id,
+      provider: 'fawry',
+      entityType: 'group_event',
+      status: 'completed',
+    }).sort({ createdAt: -1 });
 
-    registration.paymentStatus = 'captured';
-    await registration.save();
-    capturedCount++;
+    if (externalPaidTx) {
+      // Fawry path:
+      registration.paymentStatus = 'captured';
+      await registration.save();
+      capturedCount++;
+    } else {
+      // Internal wallet path:
+      await paymentService.captureHeldFunds({
+        userId: registration.userId,
+        sessionId: null,
+        amount: registration.amountPaid,
+        currency: registration.currency,
+      });
+
+      registration.paymentStatus = 'captured';
+      await registration.save();
+      capturedCount++;
+    }
   }
 
   event.status = 'completed';

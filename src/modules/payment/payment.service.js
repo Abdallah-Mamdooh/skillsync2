@@ -523,6 +523,19 @@ async function applySuccessfulFawryTransaction(transaction) {
       },
     });
 
+        await notificationService.createNotification({
+      userId: session.userId,
+      type: 'payment_success',
+      title: 'Session payment successful',
+      message: `Your mentor session payment was successful.`,
+      data: {
+        sessionId: session._id,
+        transactionId: transaction._id,
+        amount: amt,
+        currency,
+      },
+    });
+
     return transaction;
   }
 
@@ -569,6 +582,18 @@ async function applySuccessfulFawryTransaction(transaction) {
         currency,
         paymentStatus: registration.paymentStatus,
         transactionId: transaction._id,
+      },
+    });
+        await notificationService.createNotification({
+      userId: registration.userId,
+      type: 'payment_success',
+      title: 'Event payment successful',
+      message: `Your event registration payment was successful.`,
+      data: {
+        registrationId: registration._id,
+        transactionId: transaction._id,
+        amount: amt,
+        currency,
       },
     });
 
@@ -648,11 +673,23 @@ async function applyFailedFawryTransaction(transaction) {
         },
       });
     }
+     await notificationService.createNotification({
+        userId: session.userId,
+        type: 'payment_retry_available',
+        title: 'You can retry payment',
+        message: 'Your mentor session payment failed. You can try again.',
+        data: {
+          sessionId: session._id,
+          transactionId: transaction._id,
+        },
+      });
 
     transaction.status = 'failed';
     await transaction.save();
     return transaction;
   }
+
+       
 
   // Group event payment failure
   if (entityType === 'group_event') {
@@ -683,6 +720,16 @@ async function applyFailedFawryTransaction(transaction) {
         },
       });
     }
+          await notificationService.createNotification({
+        userId: registration.userId,
+        type: 'payment_retry_available',
+        title: 'You can retry payment',
+        message: 'Your event payment failed. You can try again.',
+        data: {
+          registrationId: registration._id,
+          transactionId: transaction._id,
+        },
+      });
 
     transaction.status = 'failed';
     await transaction.save();
@@ -774,6 +821,104 @@ async function getPaymentStatus({ transactionId, userId }) {
     eventRegistration,
   };
 }
+
+async function verifyFawryTransactionStatus({ transactionId, userId }) {
+  if (!transactionId) {
+    throw new Error('transactionId is required');
+  }
+
+  const transaction = await Transaction.findById(transactionId);
+
+  if (!transaction) {
+    throw new Error('Transaction not found');
+  }
+
+  if (String(transaction.userId) !== String(userId)) {
+    throw new Error('You are not allowed to access this transaction');
+  }
+
+  return {
+    id: transaction._id,
+    status: transaction.status,
+    provider: transaction.provider,
+    providerReference: transaction.providerReference,
+    providerStatus: transaction.providerStatus,
+    entityType: transaction.entityType,
+    entityId: transaction.entityId,
+    checkoutUrl: transaction.checkoutUrl,
+    isSuccessful: transaction.status === 'completed',
+  };
+}
+async function retryFawryCheckout({ transactionId, user }) {
+  if (!transactionId) {
+    throw new Error('transactionId is required');
+  }
+
+  const oldTransaction = await Transaction.findById(transactionId);
+
+  if (!oldTransaction) {
+    throw new Error('Transaction not found');
+  }
+
+  if (String(oldTransaction.userId) !== String(user._id)) {
+    throw new Error('You are not allowed to retry this transaction');
+  }
+
+  if (oldTransaction.provider !== 'fawry') {
+    throw new Error('Only Fawry transactions can be retried');
+  }
+
+  if (oldTransaction.status === 'completed') {
+    throw new Error('Completed transactions cannot be retried');
+  }
+
+  return createFawryCheckout({
+    user,
+    amount: oldTransaction.amount,
+    purpose: oldTransaction.type,
+    entityType: oldTransaction.entityType,
+    entityId: oldTransaction.entityId || null,
+    description: oldTransaction.notes || 'Retry Fawry checkout',
+    paymentMethod: oldTransaction.paymentChannel || '',
+    sessionId: oldTransaction.sessionId || null,
+    eventRegistrationId: oldTransaction.eventRegistrationId || null,
+  });
+}
+async function markTransactionRefunded({ transactionId, userId }) {
+  if (!transactionId) {
+    throw new Error('transactionId is required');
+  }
+
+  const transaction = await Transaction.findById(transactionId);
+
+  if (!transaction) {
+    throw new Error('Transaction not found');
+  }
+
+  if (String(transaction.userId) !== String(userId)) {
+    throw new Error('You are not allowed to update this transaction');
+  }
+
+  transaction.providerStatus = 'REFUNDED';
+  transaction.status = 'completed';
+  await transaction.save();
+
+  await notificationService.createNotification({
+    userId,
+    type: 'payment_refunded',
+    title: 'Payment refunded',
+    message: `${transaction.amount} ${transaction.currency} was marked as refunded.`,
+    data: {
+      transactionId: transaction._id,
+      amount: transaction.amount,
+      currency: transaction.currency,
+      entityType: transaction.entityType,
+      entityId: transaction.entityId,
+    },
+  });
+
+  return transaction;
+}
 module.exports = {
   getOrCreateWallet,
   getDefaultPaymentMethod,
@@ -790,5 +935,8 @@ module.exports = {
   applySuccessfulFawryTopup,
   applySuccessfulFawryTransaction,
   applyFailedFawryTransaction,
-  getPaymentStatus, 
+  getPaymentStatus,
+  verifyFawryTransactionStatus,
+  retryFawryCheckout,
+  markTransactionRefunded, 
 };

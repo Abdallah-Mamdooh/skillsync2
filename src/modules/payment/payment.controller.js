@@ -127,6 +127,54 @@ const getPaymentStatus = asyncHandler(async (req, res) => {
     data,
   });
 });
+const verifyFawryTransactionStatus = asyncHandler(async (req, res) => {
+  const data = await paymentService.verifyFawryTransactionStatus({
+    transactionId: req.params.transactionId,
+    userId: req.user._id,
+  });
+
+  res.status(200).json({
+    success: true,
+    data,
+  });
+});
+
+const retryFawryCheckout = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id).select(
+    'fullName email phoneNumber'
+  );
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  const data = await paymentService.retryFawryCheckout({
+    transactionId: req.params.transactionId,
+    user: {
+      _id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+    },
+  });
+
+  res.status(200).json({
+    success: true,
+    data,
+  });
+});
+
+const markTransactionRefunded = asyncHandler(async (req, res) => {
+  const data = await paymentService.markTransactionRefunded({
+    transactionId: req.params.transactionId,
+    userId: req.user._id,
+  });
+
+  res.status(200).json({
+    success: true,
+    data,
+  });
+});
 module.exports = {
 
   addPaymentMethod,
@@ -136,4 +184,7 @@ module.exports = {
   createFawryCheckout,
   handleFawryWebhook,
   getPaymentStatus,
+  verifyFawryTransactionStatus,
+  retryFawryCheckout,
+  markTransactionRefunded,
 };

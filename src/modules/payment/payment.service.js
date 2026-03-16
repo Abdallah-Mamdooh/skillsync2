@@ -582,6 +582,117 @@ async function applySuccessfulFawryTransaction(transaction) {
 
   return transaction;
 }
+
+async function applyFailedFawryTransaction(transaction) {
+  if (!transaction) {
+    throw new Error('Transaction is required');
+  }
+
+  if (transaction.provider !== 'fawry') {
+    return transaction;
+  }
+
+  const entityType = transaction.entityType;
+
+  // Wallet top-up failure: nothing to credit
+  if (entityType === 'wallet_topup') {
+    transaction.status = 'failed';
+    transaction.providerStatus = transaction.providerStatus || 'FAILED';
+    await transaction.save();
+
+    await notificationService.createNotification({
+      userId: transaction.userId,
+      type: 'payment_failed',
+      title: 'Top-up failed',
+      message: `Your wallet top-up payment failed.`,
+      data: {
+        transactionId: transaction._id,
+        entityType,
+        amount: transaction.amount,
+        currency: transaction.currency,
+      },
+    });
+
+    return transaction;
+  }
+
+  // Mentor session failure
+  if (entityType === 'mentor_session') {
+    const session = await MentorSession.findById(transaction.entityId);
+
+    if (session) {
+      session.paymentStatus = 'failed';
+      await session.save();
+
+      await notificationService.createNotification({
+        userId: session.userId,
+        type: 'payment_failed',
+        title: 'Session payment failed',
+        message: 'Your mentor session payment failed.',
+        data: {
+          sessionId: session._id,
+          transactionId: transaction._id,
+          amount: transaction.amount,
+          currency: transaction.currency,
+        },
+      });
+
+      await notificationService.createNotification({
+        userId: session.mentorUserId,
+        type: 'mentor_session_payment_failed',
+        title: 'Session payment failed',
+        message: 'A mentor session request payment failed.',
+        data: {
+          sessionId: session._id,
+          transactionId: transaction._id,
+        },
+      });
+    }
+
+    transaction.status = 'failed';
+    await transaction.save();
+    return transaction;
+  }
+
+  // Group event payment failure
+  if (entityType === 'group_event') {
+    const registration = await EventRegistration.findById(transaction.entityId).populate('eventId');
+
+    if (registration) {
+      registration.paymentStatus = 'released';
+      await registration.save();
+
+      const event = registration.eventId;
+      if (event && Number(event.registeredCount || 0) > 0) {
+        // Safe correction in case count was ever incremented too early
+        event.registeredCount = Math.max(0, Number(event.registeredCount || 0) - 1);
+        await event.save();
+      }
+
+      await notificationService.createNotification({
+        userId: registration.userId,
+        type: 'payment_failed',
+        title: 'Event payment failed',
+        message: `Your payment for "${event?.title || 'event'}" failed.`,
+        data: {
+          registrationId: registration._id,
+          eventId: event?._id || null,
+          transactionId: transaction._id,
+          amount: transaction.amount,
+          currency: transaction.currency,
+        },
+      });
+    }
+
+    transaction.status = 'failed';
+    await transaction.save();
+    return transaction;
+  }
+
+  transaction.status = 'failed';
+  await transaction.save();
+  return transaction;
+}
 module.exports = {
   getOrCreateWallet,
   getDefaultPaymentMethod,
@@ -597,4 +708,5 @@ module.exports = {
   createFawryCheckout,
   applySuccessfulFawryTopup,
   applySuccessfulFawryTransaction,
+  applyFailedFawryTransaction, 
 };

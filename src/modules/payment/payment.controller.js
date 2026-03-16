@@ -107,9 +107,9 @@ const handleFawryWebhook = asyncHandler(async (req, res) => {
   if (['PAID', 'SUCCESS', 'COMPLETED'].includes(normalizedStatus)) {
     await transaction.save();
     await paymentService.applySuccessfulFawryTransaction(transaction);
-  } else if (['FAILED', 'CANCELLED', 'EXPIRED'].includes(normalizedStatus)) {
-    transaction.status = 'failed';
+   } else if (['FAILED', 'CANCELLED', 'EXPIRED'].includes(normalizedStatus)) {
     await transaction.save();
+    await paymentService.applyFailedFawryTransaction(transaction);
   } else {
     transaction.status = 'pending';
     await transaction.save();

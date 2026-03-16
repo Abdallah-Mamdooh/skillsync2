@@ -115,6 +115,18 @@ const handleFawryWebhook = asyncHandler(async (req, res) => {
     await transaction.save();
   }
 });
+
+const getPaymentStatus = asyncHandler(async (req, res) => {
+  const data = await paymentService.getPaymentStatus({
+    transactionId: req.params.transactionId,
+    userId: req.user._id,
+  });
+
+  res.status(200).json({
+    success: true,
+    data,
+  });
+});
 module.exports = {
 
   addPaymentMethod,
@@ -123,4 +135,5 @@ module.exports = {
   getWalletSummary,
   createFawryCheckout,
   handleFawryWebhook,
+  getPaymentStatus,
 };

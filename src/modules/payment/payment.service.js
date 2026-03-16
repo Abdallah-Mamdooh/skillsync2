@@ -693,6 +693,70 @@ async function applyFailedFawryTransaction(transaction) {
   await transaction.save();
   return transaction;
 }
+async function getPaymentStatus({ transactionId, userId }) {
+  if (!transactionId) {
+    throw new Error('transactionId is required');
+  }
+
+  const transaction = await Transaction.findById(transactionId)
+    .populate('sessionId')
+    .populate('eventRegistrationId');
+
+  if (!transaction) {
+    throw new Error('Transaction not found');
+  }
+
+  // owner only
+  if (String(transaction.userId) !== String(userId)) {
+    throw new Error('You are not allowed to access this transaction');
+  }
+
+  let session = null;
+  let eventRegistration = null;
+
+  if (transaction.sessionId) {
+    session = {
+      id: transaction.sessionId._id,
+      status: transaction.sessionId.status,
+      paymentStatus: transaction.sessionId.paymentStatus,
+      method: transaction.sessionId.method,
+      durationMinutes: transaction.sessionId.durationMinutes,
+      totalAmount: transaction.sessionId.totalAmount,
+      currency: transaction.sessionId.currency,
+    };
+  }
+
+  if (transaction.eventRegistrationId) {
+    eventRegistration = {
+      id: transaction.eventRegistrationId._id,
+      paymentStatus: transaction.eventRegistrationId.paymentStatus,
+      attended: transaction.eventRegistrationId.attended,
+      amountPaid: transaction.eventRegistrationId.amountPaid,
+      currency: transaction.eventRegistrationId.currency,
+    };
+  }
+
+  return {
+    transaction: {
+      id: transaction._id,
+      type: transaction.type,
+      amount: transaction.amount,
+      currency: transaction.currency,
+      status: transaction.status,
+      provider: transaction.provider,
+      providerReference: transaction.providerReference,
+      providerStatus: transaction.providerStatus,
+      entityType: transaction.entityType,
+      entityId: transaction.entityId,
+      checkoutUrl: transaction.checkoutUrl,
+      paymentChannel: transaction.paymentChannel,
+      createdAt: transaction.createdAt,
+      updatedAt: transaction.updatedAt,
+    },
+    session,
+    eventRegistration,
+  };
+}
 module.exports = {
   getOrCreateWallet,
   getDefaultPaymentMethod,
@@ -708,5 +772,6 @@ module.exports = {
   createFawryCheckout,
   applySuccessfulFawryTopup,
   applySuccessfulFawryTransaction,
-  applyFailedFawryTransaction, 
+  applyFailedFawryTransaction,
+  getPaymentStatus, 
 };

@@ -15,7 +15,8 @@ const sessionFeedbackRoutes = require('./modules/mentor/sessionFeedback.routes')
 const paymentRoutes = require('./modules/payment/payment.routes');
 const chatRoutes = require('./modules/mentor/chat.routes');
 const groupEventRoutes = require('./modules/events/groupEvent.routes');
-
+const uploadRoutes = require('./modules/upload/upload.routes');
+const path = require('path');
 const app = express();
 
 // global middleware first
@@ -40,5 +41,8 @@ app.use('/api', routes);
 // error handling last
 app.use(notFound);
 app.use(errorHandler);
+
+app.use('/api/uploads', uploadRoutes);
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 module.exports = app;

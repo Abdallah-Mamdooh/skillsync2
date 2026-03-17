@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+
+# environment
+.env
+.env.*
+!.env.example
+
+# uploads
+uploads/
+!uploads/.gitkeep
+
+# logs
+*.log
+logs/
+
+# build/output
+dist/
+build/
+coverage/
+
+# editors
+.idea/
+.vscode/
+
+# misc
+.DS_Store
+Thumbs.db

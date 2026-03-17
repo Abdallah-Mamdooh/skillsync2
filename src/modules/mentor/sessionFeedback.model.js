@@ -56,19 +56,53 @@ const sessionFeedbackSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: '',
+      maxlength: 1000,
     },
 
     complaintText: {
       type: String,
       trim: true,
       default: '',
+      maxlength: 2000,
+    },
+
+    complaintCategory: {
+      type: String,
+      enum: [
+        'none',
+        'mentor_behavior',
+        'late_start',
+        'poor_guidance',
+        'technical_issue',
+        'payment_issue',
+        'other',
+      ],
+      default: 'none',
+      index: true,
     },
 
     complaintStatus: {
       type: String,
-      enum: ['none', 'open', 'reviewed', 'resolved'],
+      enum: ['none', 'open', 'reviewed', 'resolved', 'dismissed'],
       default: 'none',
       index: true,
+    },
+
+    complaintAdminNote: {
+      type: String,
+      trim: true,
+      default: '',
+      maxlength: 2000,
+    },
+
+    complaintReviewedAt: {
+      type: Date,
+      default: null,
+    },
+
+    complaintResolvedAt: {
+      type: Date,
+      default: null,
     },
   },
   { timestamps: true }

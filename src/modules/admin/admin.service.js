@@ -81,8 +81,11 @@ const getOpenComplaints = async () => {
     .sort({ createdAt: -1 });
 };
 
-const updateComplaintStatus = async (feedbackId, complaintStatus) => {
-  const allowed = ['open', 'reviewed', 'resolved'];
+const updateComplaintStatus = async (feedbackId, payload) => {
+  const { complaintStatus, complaintAdminNote = '' } = payload || {};
+
+  const allowed = ['open', 'reviewed', 'resolved', 'dismissed'];
+
   if (!allowed.includes(complaintStatus)) {
     throw new Error('Invalid complaint status');
   }
@@ -98,6 +101,19 @@ const updateComplaintStatus = async (feedbackId, complaintStatus) => {
   }
 
   feedback.complaintStatus = complaintStatus;
+  feedback.complaintAdminNote = String(complaintAdminNote || '').trim();
+
+  if (complaintStatus === 'reviewed' && !feedback.complaintReviewedAt) {
+    feedback.complaintReviewedAt = new Date();
+  }
+
+  if (['resolved', 'dismissed'].includes(complaintStatus)) {
+    feedback.complaintResolvedAt = new Date();
+    if (!feedback.complaintReviewedAt) {
+      feedback.complaintReviewedAt = new Date();
+    }
+  }
+
   await feedback.save();
 
   await notificationService.createNotification({
@@ -108,6 +124,7 @@ const updateComplaintStatus = async (feedbackId, complaintStatus) => {
     data: {
       feedbackId: feedback._id,
       complaintStatus,
+      complaintAdminNote: feedback.complaintAdminNote,
       sessionId: feedback.sessionId,
     },
   });

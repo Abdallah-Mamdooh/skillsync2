@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/page_indicators.dart';
@@ -26,15 +27,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
   }
 
-  void _skip() {
-    _goToLogin();
+  void _goToPage(int index) {
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
   }
+
+  void _skip() => _goToLogin();
 
   void _goToLogin() {
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (context) => const LoginScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
     );
   }
 
@@ -47,33 +52,52 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: const Color(0xFF1A3A4A),
       body: Stack(
         children: [
-          Positioned.fill(
-            child: Image.asset(
-              'assets/images/onboarding_bg2.png',
-              fit: BoxFit.cover,
-            ),
+          // PageView
+          PageView(
+            controller: _pageController,
+            onPageChanged: (index) => setState(() => _currentPage = index),
+            children: [
+              _OnboardingPageOne(
+                onGetStarted: () => _goToPage(1),
+                onLogin: _goToLogin,
+              ),
+              _OnboardingPageWithBg(
+                title: 'START YOUR\nCAREER JOURNEY',
+                description:
+                    "Choosing a career shouldn't be confusing or stressful. "
+                    "SkillSync's intelligent assessment evaluates your skills, "
+                    "interests, and experience to recommend career paths that "
+                    "fit who you are and where the market is going.",
+              ),
+              _OnboardingPageWithBg(
+                title: 'LEARN FROM EXPERTS WHO\u2019VE BEEN IN YOUR PLACE',
+                description:
+                    'Career growth is faster when you learn from someone experienced. SkillSync connects you with verified mentors who understand your challenges and guide you step by step toward your goals.',
+              ),
+              _OnboardingPageWithBg(
+                title: 'TURN YOUR CV INTO \nA CAREER MAGNET',
+                description:
+                    'Your CV shouldn\u2019t just list your experience \u2014 it should tell your story the right way. SkillSync uses advanced AI to deeply analyze your resume, detect missing skills, improve wording, and optimize it for modern recruiters and ATS systems.',
+              ),
+            ],
           ),
-          SafeArea(
-            child: Column(
-              children: [
-                Expanded(
-                  child: PageView(
-                    controller: _pageController,
-                    onPageChanged: (index) => setState(() => _currentPage = index),
-                    children: [
-                      _OnboardingPageOne(),
-                      _OnboardingPageTwo(title: 'Get Started'),
-                      _OnboardingPageTwo(title: 'Your Adventures Starts Here'),
-                      _OnboardingPageTwo(title: 'Your Adventures Starts Here'),
-                    ],
+
+          // Bottom nav — hidden on page 0
+          if (_currentPage != 0)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 28,
+                    vertical: 20,
                   ),
-                ),
-                const SizedBox(height: 24),
-                Padding(
-                  padding: const EdgeInsets.only(left: 24, right: 24, bottom: 32),
                   child: SizedBox(
                     height: 56,
                     child: Stack(
@@ -89,10 +113,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           left: 0,
                           child: TextButton(
                             onPressed: _skip,
-                            child: Text(
+                            child: const Text(
                               'Skip',
                               style: TextStyle(
-                                color: AppColors.accentOrange,
+                                color: Colors.white,
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -107,122 +131,154 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
         ],
       ),
     );
   }
 }
 
+// ─── Page 1 ───────────────────────────────────────────────────────────────────
+
 class _OnboardingPageOne extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: Image.asset(
-            'assets/images/onboarding_bg.png',
-            fit: BoxFit.cover,
-          ),
-        ),
-        Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final size = MediaQuery.sizeOf(context);
-                  final maxW = size.width * 0.85;
-                  final maxH = size.height * 0.4;
-                  return Image.asset(
-                    'assets/images/logo.png',
-                    fit: BoxFit.contain,
-                    filterQuality: FilterQuality.high,
-                    width: maxW,
-                    height: maxH,
-                  );
-                },
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'SKILLSYNC',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 36,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Closer Than You Think',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppColors.accentOrange,
-                      fontSize: 17,
-                    ) ??
-                    const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.accentOrange,
-                    ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
+  const _OnboardingPageOne({
+    required this.onGetStarted,
+    required this.onLogin,
+  });
 
-class _OnboardingPageTwo extends StatelessWidget {
-  const _OnboardingPageTwo({required this.title});
-
-  final String title;
+  final VoidCallback onGetStarted;
+  final VoidCallback onLogin;
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+
     return Stack(
       fit: StackFit.expand,
       children: [
-        Image.asset(
-          'assets/images/onboarding_bg2.png',
-          fit: BoxFit.cover,
+        // Background
+        Container(
+          width: double.infinity,
+          height: double.infinity,
+          color: const Color(0xFF1D5572),
         ),
-        Padding(
-          padding: EdgeInsets.only(
-            top: MediaQuery.sizeOf(context).height * 0.38,
-            left: 32,
-            right: 32,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  color: AppColors.accentOrange,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
+
+        // Content
+        SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Spacer(flex: 2),
+
+                // Logo
+                Image.asset(
+                  'assets/images/logo.png',
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.high,
+                  width: size.width * 0.70,
+                  height: size.height * 0.35,
                 ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Lorem Ipsum is simply dummy text of the printing and typesetting industry. '
-                'Lorem Ipsum has been the industry\'s standard dummy text ever since the 1500s.',
-                style: TextStyle(
-                  color: AppColors.white,
-                  fontSize: 15,
-                  height: 1.5,
-                  fontWeight: FontWeight.w400,
+
+                const SizedBox(height: 16),
+
+                // App name
+                const Text(
+                  'SKILLSYNC',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2.5,
+                  ),
                 ),
-                textAlign: TextAlign.center,
-                maxLines: 4,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+
+                const SizedBox(height: 6),
+
+                // Tagline
+                const Text(
+                  'Closer Than You Think',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.accentOrange,
+                  ),
+                ),
+
+                const Spacer(flex: 2),
+
+                // Subtitle description
+                const Text(
+                  'AI-powered career guidance to help you\ndiscover your perfect path',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    height: 1.5,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+
+                // Get Started button
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: onGetStarted,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: const Color(0xFF1D5572),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text(
+                      'Get Started',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Already have an account
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Already have an account? ',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: onLogin,
+                      child: const Text(
+                        'Login',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          decoration: TextDecoration.underline,
+                          decorationColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const Spacer(flex: 1),
+              ],
+            ),
           ),
         ),
       ],
@@ -230,25 +286,101 @@ class _OnboardingPageTwo extends StatelessWidget {
   }
 }
 
-class _PlaceholderPage extends StatelessWidget {
-  const _PlaceholderPage({required this.title});
+// ─── Pages 2, 3, 4 ────────────────────────────────────────────────────────────
+
+class _OnboardingPageWithBg extends StatelessWidget {
+  const _OnboardingPageWithBg({
+    required this.title,
+    required this.description,
+  });
 
   final String title;
+  final String description;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        title,
-        style: const TextStyle(
-          color: AppColors.white,
-          fontSize: 22,
-          fontWeight: FontWeight.w600,
+    final size = MediaQuery.sizeOf(context);
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // 1. Dark base
+        Container(color: const Color(0xFF1A3A4A)),
+
+        // 2. Gradient overlay
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFFF5A100),
+                Color(0xFF1D5572),
+              ],
+              stops: [0.0, 0.55],
+            ),
+          ),
         ),
-      ),
+
+        // 3. Half-circle image at top
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: SizedBox(
+            height: size.height * 0.55,
+            child: ClipPath(
+              clipper: _BottomHalfCircleClipper(),
+              child: Image.asset(
+                'assets/images/page2.png',
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+        ),
+
+        // 4. Text content — positioned below the image curve
+        Positioned(
+          top: size.height * 0.57,
+          left: 32,
+          right: 32,
+          bottom: 80,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppColors.accentOrange,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                    height: 1.2,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  description,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    height: 1.6,
+                    fontWeight: FontWeight.w400,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
+
+// ─── Next Button ──────────────────────────────────────────────────────────────
 
 class _NextButton extends StatelessWidget {
   const _NextButton({required this.onPressed});
@@ -271,7 +403,7 @@ class _NextButton extends StatelessWidget {
           child: Center(
             child: Icon(
               Icons.arrow_forward_rounded,
-              color: AppColors.white,
+              color: Colors.white,
               size: 28,
             ),
           ),
@@ -279,4 +411,27 @@ class _NextButton extends StatelessWidget {
       ),
     );
   }
+}
+
+// ─── Clipper ──────────────────────────────────────────────────────────────────
+
+class _BottomHalfCircleClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final curveDepth = math.min(size.height * 0.22, 160.0);
+    final path = Path()
+      ..lineTo(0, size.height - curveDepth)
+      ..quadraticBezierTo(
+        size.width / 2,
+        size.height + curveDepth,
+        size.width,
+        size.height - curveDepth,
+      )
+      ..lineTo(size.width, 0)
+      ..close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }

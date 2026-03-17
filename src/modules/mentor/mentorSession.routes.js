@@ -36,6 +36,8 @@ router.post(
 );
 
 router.get('/me', authMiddleware, controller.getMySessions);
+router.post('/:sessionId/join', authMiddleware, roleMiddleware('user'), controller.joinSession);
+router.post('/:sessionId/cancel', authMiddleware, roleMiddleware('user'), controller.cancelSession);
 
 // mentor side
 router.get(
@@ -45,23 +47,13 @@ router.get(
   controller.getMentorIncomingSessions
 );
 
-// shared details
-router.get('/:sessionId', authMiddleware, controller.getSessionById);
+router.post(
+  '/:sessionId/start',
+  authMiddleware,
+  roleMiddleware('mentor'),
+  controller.startSession
+);
 
-// kept mounted for compatibility; lifecycle rewrite comes next
-router.post('/:sessionId/start', authMiddleware, controller.startSession);
-router.post(
-  '/:sessionId/accept',
-  authMiddleware,
-  roleMiddleware('mentor'),
-  controller.acceptSession
-);
-router.post(
-  '/:sessionId/reject',
-  authMiddleware,
-  roleMiddleware('mentor'),
-  controller.rejectSession
-);
 router.post(
   '/:sessionId/complete',
   authMiddleware,
@@ -69,6 +61,27 @@ router.post(
   controller.completeSession
 );
 
+// shared details
+router.get('/:sessionId', authMiddleware, controller.getSessionById);
+router.get('/:sessionId/timer', authMiddleware, controller.getSessionTimer);
+
+// manual sweep for testing/admin ops
+router.post('/lifecycle/run', authMiddleware, controller.runLifecycleSweep);
 router.post('/expire-pending/run', authMiddleware, controller.expirePendingSessions);
+
+// kept only for compatibility
+router.post(
+  '/:sessionId/accept',
+  authMiddleware,
+  roleMiddleware('mentor'),
+  controller.acceptSession
+);
+
+router.post(
+  '/:sessionId/reject',
+  authMiddleware,
+  roleMiddleware('mentor'),
+  controller.rejectSession
+);
 
 module.exports = router;

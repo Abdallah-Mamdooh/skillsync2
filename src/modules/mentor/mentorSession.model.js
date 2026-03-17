@@ -73,6 +73,28 @@ const mentorSessionSchema = new mongoose.Schema(
     noShowDeadline: {
       type: Date,
       default: null,
+      index: true,
+    },
+
+    userJoinedAt: {
+      type: Date,
+      default: null,
+    },
+
+    payoutTransferred: {
+      type: Boolean,
+      default: false,
+    },
+
+    platformFeeLogged: {
+      type: Boolean,
+      default: false,
+    },
+
+    finalizationReason: {
+      type: String,
+      enum: ['normal_end', 'manual_complete', 'user_no_show', 'cancelled', 'expired', ''],
+      default: '',
     },
 
     baseRate: {

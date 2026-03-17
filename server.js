@@ -9,9 +9,10 @@ const connectDB = require('./src/config/db');
 const User = require('./src/modules/auth/user.model');
 const chatService = require('./src/modules/mentor/chat.service');
 const { startReminderCron } = require('./src/modules/notification/reminder.cron');
-
+const { startMentorSessionCron } = require('./src/modules/mentor/mentorSession.cron');
 connectDB();
-
+startReminderCron();
+startMentorSessionCron();
 const PORT = process.env.PORT || 5000;
 
 const server = http.createServer(app);

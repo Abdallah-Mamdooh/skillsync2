@@ -114,23 +114,17 @@ const getUserRoadmapWithProgress = async (userId) => {
   }
 
   const completedSet = new Set((progress.completedSteps || []).map((id) => String(id)));
-const historyMap = new Map(
-  (progress.stepHistory || []).map((entry) => [String(entry.stepId), entry.completedAt])
-);
+  const historyMap = new Map(
+    (progress.stepHistory || []).map((entry) => [String(entry.stepId), entry.completedAt])
+  );
   const roadmapObj = roadmap.toObject();
   roadmapObj.phases = (roadmapObj.phases || []).map((phase) => ({
     ...phase,
-    steps: (phase.steps || []).map((step) => {
-     const historyMap = new Map(
-  (progress.stepHistory || []).map((entry) => [String(entry.stepId), entry.completedAt])
-);
-
-return {
-  ...step,
-  isCompleted: completedSet.has(String(step._id)),
-  completedAt: historyMap.get(String(step._id)) || null,
-};
-    }),
+    steps: (phase.steps || []).map((step) => ({
+      ...step,
+      isCompleted: completedSet.has(String(step._id)),
+      completedAt: historyMap.get(String(step._id)) || null,
+    })),
   }));
 
   return {
@@ -252,8 +246,10 @@ const toggleStep = async (userId, stepId) => {
     isCompleted = true;
 
     const skillTag = normalizeText(step.skillTag);
+
     if (skillTag) {
       const user = await User.findById(userId);
+
       if (!user) {
         throw new Error('User not found');
       }
@@ -262,36 +258,37 @@ const toggleStep = async (userId, stepId) => {
       const alreadyHasSkill = existingSkills.some(
         (s) => normalizeSkill(s) === normalizeSkill(skillTag)
       );
-          await notificationService.createNotification({
-      userId,
-      type: 'roadmap_step_completed',
-      title: 'Roadmap step completed',
-      message: `You completed: ${step.title}`,
-      data: {
-        stepId: step._id,
-        stepTitle: step.title,
-        skillTag: step.skillTag,
-        skillAdded,
-      },
-    });
-
-    if (skillAdded) {
-      await notificationService.createNotification({
-        userId,
-        type: 'skill_added',
-        title: 'New skill added',
-        message: `${step.skillTag} was added to your profile skills.`,
-        data: {
-          stepId: step._id,
-          skillTag: step.skillTag,
-        },
-      });
-    }
 
       if (!alreadyHasSkill) {
         user.skills.push(skillTag);
         await user.save();
         skillAdded = true;
+      }
+
+      await notificationService.createNotification({
+        userId,
+        type: 'roadmap_step_completed',
+        title: 'Roadmap step completed',
+        message: `You completed: ${step.title}`,
+        data: {
+          stepId: step._id,
+          stepTitle: step.title,
+          skillTag: step.skillTag,
+          skillAdded,
+        },
+      });
+
+      if (skillAdded) {
+        await notificationService.createNotification({
+          userId,
+          type: 'skill_added',
+          title: 'New skill added',
+          message: `${step.skillTag} was added to your profile skills.`,
+          data: {
+            stepId: step._id,
+            skillTag: step.skillTag,
+          },
+        });
       }
     }
   }

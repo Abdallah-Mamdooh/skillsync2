@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
-const User = require('./user.model');
 const crypto = require('crypto');
+
+const User = require('./user.model');
 const jwtUtils = require('../../utils/jwt');
 const sendEmail = require('../../utils/sendEmail');
 
@@ -13,13 +14,23 @@ const signup = async (data) => {
     role,
     cvUrl,
     linkedinUrl,
-    additionalInfo
+    additionalInfo,
   } = data;
 
-  const existingUser = await User.findOne({
-    $or: [{ email }, { phoneNumber }]
-  });
+  if (!fullName || !email || !password || !role) {
+    throw new Error('fullName, email, password, and role are required');
+  }
 
+  if (role !== 'admin' && !phoneNumber) {
+    throw new Error('Phone number is required');
+  }
+
+  const orConditions = [{ email }];
+  if (phoneNumber) {
+    orConditions.push({ phoneNumber });
+  }
+
+  const existingUser = await User.findOne({ $or: orConditions });
   if (existingUser) {
     throw new Error('Email or phone number already in use');
   }
@@ -38,14 +49,15 @@ const signup = async (data) => {
     phoneNumber,
     password: hashedPassword,
     role,
+    authProvider: 'local',
+    cvUrl: role === 'mentor' ? cvUrl : (cvUrl || ''),
     mentorProfile:
       role === 'mentor'
         ? {
-            cvUrl,
             linkedinUrl,
-            additionalInfo
+            additionalInfo,
           }
-        : undefined
+        : undefined,
   });
 
   const userObject = user.toObject();
@@ -54,7 +66,7 @@ const signup = async (data) => {
   return {
     success: true,
     message: 'Signup successful',
-    data: userObject
+    data: userObject,
   };
 };
 
@@ -62,57 +74,48 @@ const login = async (data) => {
   const { email, password } = data;
 
   const user = await User.findOne({ email }).select('+password');
-
   if (!user) {
     throw new Error('Invalid email or password');
   }
 
-  const isMatch = await bcrypt.compare(password, user.password);
+  if (!user.password) {
+    throw new Error('This account uses Google login. Please continue with Google.');
+  }
 
+  const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) {
     throw new Error('Invalid email or password');
   }
 
   const token = jwtUtils.generateToken(user);
-
   const userObject = user.toObject();
   delete userObject.password;
 
   return {
     success: true,
     message: 'Login successful',
-    data: {
-      token,
-      user: userObject
-    }
+    data: { token, user: userObject },
   };
 };
 
 const googleLogin = async (email) => {
   if (!email) {
-    throw new Error("Email is required");
+    throw new Error('Email is required');
   }
 
-  // Find user by email
   const user = await User.findOne({ email });
-
   if (!user) {
-    throw new Error("Account not found. Please sign up first.");
+    throw new Error('Account not found. Please sign up first.');
   }
 
-  // Generate token
   const token = jwtUtils.generateToken(user);
 
   return {
     success: true,
-    message: "Google login successful",
-    data: {
-      token,
-      user
-    }
+    message: 'Google login successful',
+    data: { token, user },
   };
 };
-
 
 const forgotPassword = async (email) => {
   if (!email) {
@@ -120,17 +123,12 @@ const forgotPassword = async (email) => {
   }
 
   const user = await User.findOne({ email });
-
   if (!user) {
     throw new Error('No user found with this email');
   }
 
   const resetToken = crypto.randomBytes(32).toString('hex');
-
-  const hashedToken = crypto
-    .createHash('sha256')
-    .update(resetToken)
-    .digest('hex');
+  const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
 
   user.passwordResetToken = hashedToken;
   user.passwordResetExpires = Date.now() + 10 * 60 * 1000;
@@ -143,28 +141,26 @@ const forgotPassword = async (email) => {
     user.email,
     'Password Reset',
     `
-      <h3>Password Reset</h3>
-      <p>Click below to reset your password:</p>
-      <a href="${resetUrl}">${resetUrl}</a>
-    `
+### Password Reset
+
+Click below to reset your password:
+${resetUrl}
+`
   );
 
   return {
     success: true,
-    message: 'Reset link sent to email'
+    message: 'Reset link sent to email',
   };
 };
 
 const resetPassword = async (token, newPassword) => {
-  const hashedToken = crypto
-    .createHash('sha256')
-    .update(token)
-    .digest('hex');
+  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
   const user = await User.findOne({
     passwordResetToken: hashedToken,
-    passwordResetExpires: { $gt: Date.now() }
-  });
+    passwordResetExpires: { $gt: Date.now() },
+  }).select('+password');
 
   if (!user) {
     throw new Error('Invalid or expired token');
@@ -173,6 +169,7 @@ const resetPassword = async (token, newPassword) => {
   const hashedPassword = await bcrypt.hash(newPassword, 10);
 
   user.password = hashedPassword;
+  user.authProvider = 'local';
   user.passwordResetToken = undefined;
   user.passwordResetExpires = undefined;
 
@@ -180,19 +177,21 @@ const resetPassword = async (token, newPassword) => {
 
   return {
     success: true,
-    message: 'Password reset successful'
+    message: 'Password reset successful',
   };
 };
 
 const changePassword = async (userId, oldPassword, newPassword) => {
   const user = await User.findById(userId).select('+password');
-
   if (!user) {
     throw new Error('User not found');
   }
 
-  const isMatch = await bcrypt.compare(oldPassword, user.password);
+  if (!user.password) {
+    throw new Error('This account uses Google login and has no local password yet.');
+  }
 
+  const isMatch = await bcrypt.compare(oldPassword, user.password);
   if (!isMatch) {
     throw new Error('Old password incorrect');
   }
@@ -202,7 +201,7 @@ const changePassword = async (userId, oldPassword, newPassword) => {
 
   return {
     success: true,
-    message: 'Password changed successfully'
+    message: 'Password changed successfully',
   };
 };
 
@@ -212,6 +211,5 @@ module.exports = {
   forgotPassword,
   resetPassword,
   changePassword,
-  googleLogin  
-
+  googleLogin,
 };

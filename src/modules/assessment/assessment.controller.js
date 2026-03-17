@@ -8,7 +8,10 @@ const getSections = asyncHandler(async (req, res) => {
 
 const getQuestionsBySection = asyncHandler(async (req, res) => {
   const { sectionId } = req.params;
-  const questions = await assessmentService.getQuestionsBySection(sectionId, req.user._id);
+  const questions = await assessmentService.getQuestionsBySection(
+    sectionId,
+    req.user._id
+  );
 
   res.status(200).json({
     success: true,
@@ -16,10 +19,8 @@ const getQuestionsBySection = asyncHandler(async (req, res) => {
   });
 });
 
-// ✅ NEW
 const getMyAssessmentResult = asyncHandler(async (req, res) => {
   const result = await assessmentService.getMyAssessmentResult(req.user._id);
-
   res.status(200).json({
     success: true,
     data: result,
@@ -32,12 +33,21 @@ const submitAssessment = asyncHandler(async (req, res) => {
 });
 
 const chooseCareer = asyncHandler(async (req, res) => {
-  const result = await assessmentService.chooseCareer(req.user._id, req.body);
+  const { careerId } = req.body;
+
+  if (!careerId) {
+    return res.status(400).json({
+      success: false,
+      message: 'careerId is required',
+    });
+  }
+
+  const result = await assessmentService.chooseCareer(req.user._id, careerId);
   res.status(200).json({ success: true, data: result });
 });
+
 const saveInterests = asyncHandler(async (req, res) => {
   const result = await assessmentService.saveInterests(req.user._id, req.body);
-
   res.status(200).json({
     success: true,
     data: result,

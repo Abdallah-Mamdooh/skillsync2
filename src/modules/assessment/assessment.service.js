@@ -34,8 +34,10 @@ const getQuestionsBySection = async (sectionId, userId) => {
   const section = await AssessmentSection.findById(sectionId);
   if (!section) throw new Error('Section not found');
 
-  const isTechnical = String(section.title || '').toLowerCase() === 'technical';
-
+const isTechnical =
+  String(section.type || '').toLowerCase() === 'technical' ||
+  String(section.title || '').toLowerCase() === 'technical';
+  
   if (!isTechnical) {
     return Question.find({ sectionId }).sort({ questionCode: 1 });
   }

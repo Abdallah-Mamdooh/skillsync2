@@ -1,28 +1,52 @@
-const updateProfile = async (userId, data) => {
-  const user = await User.findById(userId);
+const User = require('../auth/user.model');
+
+const sanitizeUser = (userDoc) => {
+  const user = userDoc.toObject ? userDoc.toObject() : { ...userDoc };
+  delete user.password;
+  delete user.passwordResetToken;
+  delete user.passwordResetExpires;
+  return user;
+};
+
+const getProfile = async (userId) => {
+  const user = await User.findById(userId).select('-password');
 
   if (!user) {
     throw new Error('User not found');
   }
 
-  // Allowed updates for everyone
-  if (data.fullName !== undefined) {
-    user.fullName = data.fullName;
+  return {
+    success: true,
+    message: 'Profile fetched successfully',
+    data: sanitizeUser(user),
+  };
+};
+
+const updateProfile = async (userId, data) => {
+  const user = await User.findById(userId).select('-password');
+
+  if (!user) {
+    throw new Error('User not found');
   }
 
-  if (data.phoneNumber !== undefined) {
-    user.phoneNumber = data.phoneNumber;
-  }
+  // common profile fields
+  if (data.fullName !== undefined) user.fullName = data.fullName;
+  if (data.phoneNumber !== undefined) user.phoneNumber = data.phoneNumber;
+  if (data.profileImageUrl !== undefined) user.profileImageUrl = data.profileImageUrl;
+  if (data.bio !== undefined) user.bio = data.bio;
+  if (data.cvUrl !== undefined) user.cvUrl = data.cvUrl;
 
   if (data.skills !== undefined) {
-    user.skills = data.skills;
+    user.skills = Array.isArray(data.skills) ? data.skills : [];
   }
 
-  if (data.cvUrl !== undefined) {
-    user.cvUrl = data.cvUrl;
+  if (data.selectedInterests !== undefined) {
+    user.selectedInterests = Array.isArray(data.selectedInterests)
+      ? data.selectedInterests.slice(0, 3)
+      : [];
   }
 
-  // Mentor-specific updates
+  // mentor-only fields
   if (user.role === 'mentor') {
     if (!user.mentorProfile) {
       user.mentorProfile = {};
@@ -39,12 +63,14 @@ const updateProfile = async (userId, data) => {
 
   await user.save();
 
-  const updatedUser = user.toObject();
-  delete updatedUser.password;
-
   return {
     success: true,
     message: 'Profile updated successfully',
-    data: updatedUser
+    data: sanitizeUser(user),
   };
+};
+
+module.exports = {
+  getProfile,
+  updateProfile,
 };

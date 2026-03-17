@@ -5,39 +5,54 @@ const userSchema = new mongoose.Schema(
     fullName: {
       type: String,
       required: true,
-      trim: true
+      trim: true,
     },
+
     profileImageUrl: {
-    type: String,
-    trim: true,
-    default: ''
-},
+      type: String,
+      trim: true,
+      default: '',
+    },
 
     bio: {
-    type: String,
-    trim: true,
-    default: ''
-},
+      type: String,
+      trim: true,
+      default: '',
+    },
 
     email: {
       type: String,
       required: true,
       unique: true,
       lowercase: true,
-      trim: true
+      trim: true,
     },
 
     phoneNumber: {
       type: String,
-      required: true,
       unique: true,
-      trim: true
+      sparse: true,
+      trim: true,
+      default: undefined,
     },
 
     password: {
       type: String,
-      required: true,
-      select: false
+      select: false,
+      default: undefined,
+    },
+
+    authProvider: {
+      type: String,
+      enum: ['local', 'google'],
+      default: 'local',
+    },
+
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      default: undefined,
     },
 
     passwordResetToken: String,
@@ -46,32 +61,30 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       enum: ['user', 'mentor', 'admin'],
-      required: true
+      required: true,
     },
 
-    // ✅ NEW: interest pre-selection for technical questions
-    // store up to 3 (web, data_ai, security, design, product, devops, qa, mobile_game)
     selectedInterests: [
       {
         type: String,
-        trim: true
-      }
+        trim: true,
+      },
     ],
 
-    // Core Profile Data
     skills: [
       {
-        type: String
-      }
+        type: String,
+      },
     ],
 
     cvUrl: {
-      type: String
+      type: String,
+      default: '',
     },
 
     assessmentCompleted: {
       type: Boolean,
-      default: false
+      default: false,
     },
 
     mentorProfile: {
@@ -79,14 +92,14 @@ const userSchema = new mongoose.Schema(
       additionalInfo: String,
       isVerified: {
         type: Boolean,
-        default: false
-      }
+        default: false,
+      },
     },
 
     isActive: {
       type: Boolean,
-      default: true
-    }
+      default: true,
+    },
   },
   { timestamps: true }
 );

@@ -1,35 +1,19 @@
 require('dotenv').config();
 
 const http = require('http');
-const session = require('express-session');
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 
 const app = require('./src/app');
 const connectDB = require('./src/config/db');
-const passport = require('./src/config/passport');
 const User = require('./src/modules/auth/user.model');
 const chatService = require('./src/modules/mentor/chat.service');
-const reminderRoutes = require('./src/modules/notification/reminder.routes');
 const { startReminderCron } = require('./src/modules/notification/reminder.cron');
-const adminRoutes = require('./src/modules/admin/admin.routes');
-const dashboardRoutes = require('./src/modules/dashboard/dashboard.routes');
+
 connectDB();
 
 const PORT = process.env.PORT || 5000;
-app.use('/api/admin', adminRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-// session + passport middleware
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || 'googleauthsecret',
-    resave: false,
-    saveUninitialized: false,
-  })
-);
-app.use(passport.initialize());
-app.use(passport.session());
-app.use('/api/reminders', reminderRoutes);
+
 const server = http.createServer(app);
 
 const io = new Server(server, {
@@ -65,7 +49,6 @@ io.on('connection', (socket) => {
   socket.on('join_session_room', async ({ sessionId, token }) => {
     try {
       const user = await getUserFromSocket(socket, token);
-
       await chatService.getChatMessages(sessionId, user._id);
 
       const room = `session_${sessionId}`;
@@ -109,6 +92,7 @@ io.on('connection', (socket) => {
     }
   });
 });
+
 startReminderCron();
 
 server.listen(PORT, () => {

@@ -69,9 +69,20 @@ const eventCoverUpload = createUploader('events', [
   'image/webp',
 ]);
 
+const chatAttachmentUpload = createUploader('chat-attachments', [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/pdf',
+  'text/plain',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+]);
+
 module.exports = {
   imageUpload,
   cvUpload,
   documentUpload,
   eventCoverUpload,
+  chatAttachmentUpload,
 };

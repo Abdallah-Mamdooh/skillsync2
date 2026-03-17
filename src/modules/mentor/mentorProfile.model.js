@@ -22,6 +22,32 @@ const identityDocSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const availabilityRangeSchema = new mongoose.Schema(
+  {
+    dayOfWeek: {
+      type: Number,
+      required: true,
+      min: 0,
+      max: 6, // 0 Sunday ... 6 Saturday
+    },
+    startTime: {
+      type: String,
+      required: true, // HH:mm
+      trim: true,
+    },
+    endTime: {
+      type: String,
+      required: true, // HH:mm
+      trim: true,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  { _id: false }
+);
+
 const mentorProfileSchema = new mongoose.Schema(
   {
     userId: {
@@ -89,6 +115,17 @@ const mentorProfileSchema = new mongoose.Schema(
     identityDocs: {
       type: [identityDocSchema],
       default: [],
+    },
+
+    availability: {
+      type: [availabilityRangeSchema],
+      default: [],
+    },
+
+    timezone: {
+      type: String,
+      trim: true,
+      default: 'Africa/Cairo',
     },
 
     isVerified: {

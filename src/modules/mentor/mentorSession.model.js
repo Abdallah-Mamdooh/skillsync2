@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 
 const mentorSessionSchema = new mongoose.Schema(
   {
-    // student / user requesting help
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -10,7 +9,6 @@ const mentorSessionSchema = new mongoose.Schema(
       index: true,
     },
 
-    // mentor profile selected
     mentorProfileId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'MentorProfile',
@@ -18,7 +16,6 @@ const mentorSessionSchema = new mongoose.Schema(
       index: true,
     },
 
-    // mentor base user id (useful for populate/filtering)
     mentorUserId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -39,7 +36,45 @@ const mentorSessionSchema = new mongoose.Schema(
       max: 60,
     },
 
-    // pricing snapshot at booking time
+    scheduledDate: {
+      type: String,
+      required: true, // YYYY-MM-DD
+      index: true,
+    },
+
+    scheduledStartTime: {
+      type: String,
+      required: true, // HH:mm
+    },
+
+    scheduledEndTime: {
+      type: String,
+      required: true, // HH:mm
+    },
+
+    timezone: {
+      type: String,
+      default: 'Africa/Cairo',
+      trim: true,
+    },
+
+    startAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+
+    endAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+
+    noShowDeadline: {
+      type: Date,
+      default: null,
+    },
+
     baseRate: {
       type: Number,
       required: true,
@@ -91,15 +126,15 @@ const mentorSessionSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: [
-        'pending',
-        'accepted',
-        'rejected',
+        'scheduled',
+        'started',
         'active',
         'completed',
         'cancelled',
         'expired',
+        'user_no_show',
       ],
-      default: 'pending',
+      default: 'scheduled',
       index: true,
     },
 
@@ -118,7 +153,6 @@ const mentorSessionSchema = new mongoose.Schema(
       index: true,
     },
 
-    // for call sessions using external provider
     meetingProvider: {
       type: String,
       enum: ['google_meet', 'zoom', 'other', 'none'],
@@ -131,14 +165,12 @@ const mentorSessionSchema = new mongoose.Schema(
       default: '',
     },
 
-    // for chat sessions later
     chatRoomId: {
       type: String,
       trim: true,
       default: '',
     },
 
-    // booking lifecycle
     requestedAt: {
       type: Date,
       default: Date.now,
@@ -178,5 +210,11 @@ const mentorSessionSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+mentorSessionSchema.index({
+  mentorProfileId: 1,
+  scheduledDate: 1,
+  scheduledStartTime: 1,
+});
 
 module.exports = mongoose.model('MentorSession', mentorSessionSchema);

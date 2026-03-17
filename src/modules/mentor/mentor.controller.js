@@ -1,9 +1,9 @@
 const asyncHandler = require('../../middlewares/async.middleware');
 const mentorService = require('./mentor.service');
+const availabilityService = require('./mentorAvailability.service');
 
 const createMentorProfile = asyncHandler(async (req, res) => {
   const data = await mentorService.createMentorProfile(req.user._id, req.body);
-
   res.status(201).json({
     success: true,
     data,
@@ -12,7 +12,6 @@ const createMentorProfile = asyncHandler(async (req, res) => {
 
 const updateMentorProfile = asyncHandler(async (req, res) => {
   const data = await mentorService.updateMentorProfile(req.user._id, req.body);
-
   res.status(200).json({
     success: true,
     data,
@@ -21,7 +20,6 @@ const updateMentorProfile = asyncHandler(async (req, res) => {
 
 const getMyMentorProfile = asyncHandler(async (req, res) => {
   const data = await mentorService.getMyMentorProfile(req.user._id);
-
   res.status(200).json({
     success: true,
     data,
@@ -30,7 +28,6 @@ const getMyMentorProfile = asyncHandler(async (req, res) => {
 
 const getPublicMentors = asyncHandler(async (req, res) => {
   const data = await mentorService.getPublicMentors();
-
   res.status(200).json({
     success: true,
     data,
@@ -39,6 +36,20 @@ const getPublicMentors = asyncHandler(async (req, res) => {
 
 const getMentorById = asyncHandler(async (req, res) => {
   const data = await mentorService.getMentorById(req.params.mentorId);
+  res.status(200).json({
+    success: true,
+    data,
+  });
+});
+
+const getMentorAvailableSlots = asyncHandler(async (req, res) => {
+  const { date, durationMinutes } = req.query;
+
+  const data = await availabilityService.getAvailableSlots(
+    req.params.mentorId,
+    date,
+    Number(durationMinutes)
+  );
 
   res.status(200).json({
     success: true,
@@ -52,4 +63,5 @@ module.exports = {
   getMyMentorProfile,
   getPublicMentors,
   getMentorById,
+  getMentorAvailableSlots,
 };

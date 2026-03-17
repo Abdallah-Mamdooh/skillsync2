@@ -1,5 +1,44 @@
 const MentorProfile = require('./mentorProfile.model');
 const User = require('../auth/user.model');
+const {
+  validateAvailabilityRanges,
+} = require('./mentorAvailability.service');
+
+function normalizeProfilePayload(payload = {}) {
+  return {
+    headline: payload.headline || '',
+    bio: payload.bio || '',
+    specialization: Array.isArray(payload.specialization)
+      ? payload.specialization
+      : [],
+    careerField: payload.careerField || '',
+    yearsOfExperience: payload.yearsOfExperience || 0,
+    linkedinUrl: payload.linkedinUrl || '',
+    portfolioUrl: payload.portfolioUrl || '',
+    mentorCvUrl: payload.mentorCvUrl || '',
+    certifications: Array.isArray(payload.certifications)
+      ? payload.certifications
+      : [],
+    identityDocs: Array.isArray(payload.identityDocs)
+      ? payload.identityDocs
+      : [],
+    availability: payload.availability !== undefined
+      ? validateAvailabilityRanges(payload.availability)
+      : [],
+    timezone: payload.timezone || 'Africa/Cairo',
+    isAvailable:
+      typeof payload.isAvailable === 'boolean' ? payload.isAvailable : true,
+    supportsChat:
+      typeof payload.supportsChat === 'boolean' ? payload.supportsChat : true,
+    supportsCall:
+      typeof payload.supportsCall === 'boolean' ? payload.supportsCall : false,
+    baseRate: payload.baseRate || 0,
+    chatMultiplier: payload.chatMultiplier || 1,
+    callMultiplier: payload.callMultiplier || 1.5,
+    currency: payload.currency || 'EGP',
+    quotaLabel: payload.quotaLabel || '',
+  };
+}
 
 const createMentorProfile = async (userId, payload) => {
   const existing = await MentorProfile.findOne({ userId });
@@ -12,26 +51,11 @@ const createMentorProfile = async (userId, payload) => {
     throw new Error('User not found');
   }
 
+  const normalized = normalizeProfilePayload(payload);
+
   const profile = await MentorProfile.create({
     userId,
-    headline: payload.headline || '',
-    bio: payload.bio || '',
-    specialization: Array.isArray(payload.specialization) ? payload.specialization : [],
-    careerField: payload.careerField || '',
-    yearsOfExperience: payload.yearsOfExperience || 0,
-    linkedinUrl: payload.linkedinUrl || '',
-    portfolioUrl: payload.portfolioUrl || '',
-    mentorCvUrl: payload.mentorCvUrl || '',
-    certifications: Array.isArray(payload.certifications) ? payload.certifications : [],
-    identityDocs: Array.isArray(payload.identityDocs) ? payload.identityDocs : [],
-    isAvailable: typeof payload.isAvailable === 'boolean' ? payload.isAvailable : true,
-    supportsChat: typeof payload.supportsChat === 'boolean' ? payload.supportsChat : true,
-    supportsCall: typeof payload.supportsCall === 'boolean' ? payload.supportsCall : false,
-    baseRate: payload.baseRate || 0,
-    chatMultiplier: payload.chatMultiplier || 1,
-    callMultiplier: payload.callMultiplier || 1.5,
-    currency: payload.currency || 'EGP',
-    quotaLabel: payload.quotaLabel || '',
+    ...normalized,
   });
 
   return profile;
@@ -62,12 +86,17 @@ const updateMentorProfile = async (userId, payload) => {
     'callMultiplier',
     'currency',
     'quotaLabel',
+    'timezone',
   ];
 
   for (const field of updatableFields) {
     if (payload[field] !== undefined) {
       profile[field] = payload[field];
     }
+  }
+
+  if (payload.availability !== undefined) {
+    profile.availability = validateAvailabilityRanges(payload.availability);
   }
 
   await profile.save();
@@ -116,6 +145,8 @@ const getPublicMentors = async () => {
     ratingAverage: profile.ratingAverage,
     ratingCount: profile.ratingCount,
     totalSessions: profile.totalSessions,
+    timezone: profile.timezone,
+    availability: profile.availability,
   }));
 };
 
@@ -147,6 +178,8 @@ const getMentorById = async (mentorProfileId) => {
     portfolioUrl: profile.portfolioUrl,
     mentorCvUrl: profile.mentorCvUrl,
     certifications: profile.certifications,
+    availability: profile.availability,
+    timezone: profile.timezone,
     isVerified: profile.isVerified,
     isAvailable: profile.isAvailable,
     supportsChat: profile.supportsChat,

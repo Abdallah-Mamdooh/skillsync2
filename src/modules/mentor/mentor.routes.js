@@ -9,6 +9,7 @@ const controller = require('./mentor.controller');
 // public mentor listing/details
 router.get('/public', controller.getPublicMentors);
 router.get('/public/:mentorId', controller.getMentorById);
+router.get('/public/:mentorId/available-slots', controller.getMentorAvailableSlots);
 
 // mentor's own profile
 router.post(

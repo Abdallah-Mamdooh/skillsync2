@@ -79,6 +79,36 @@ const getTransactions = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data });
 });
 
+const getAnalyticsOverview = asyncHandler(async (req, res) => {
+  const data = await adminService.getAnalyticsOverview();
+  res.status(200).json({ success: true, data });
+});
+
+const getUserGrowthAnalytics = asyncHandler(async (req, res) => {
+  const data = await adminService.getUserGrowthAnalytics(req.query.days);
+  res.status(200).json({ success: true, data });
+});
+
+const getMentorGrowthAnalytics = asyncHandler(async (req, res) => {
+  const data = await adminService.getMentorGrowthAnalytics(req.query.days);
+  res.status(200).json({ success: true, data });
+});
+
+const getSessionTrendAnalytics = asyncHandler(async (req, res) => {
+  const data = await adminService.getSessionTrendAnalytics(req.query.days);
+  res.status(200).json({ success: true, data });
+});
+
+const getTopCareersAnalytics = asyncHandler(async (req, res) => {
+  const data = await adminService.getTopCareersAnalytics(req.query.limit);
+  res.status(200).json({ success: true, data });
+});
+
+const getTopSkillsAnalytics = asyncHandler(async (req, res) => {
+  const data = await adminService.getTopSkillsAnalytics(req.query.limit);
+  res.status(200).json({ success: true, data });
+});
+
 module.exports = {
   getDashboardSummary,
   getUsers,
@@ -94,4 +124,10 @@ module.exports = {
   getOpenComplaints,
   updateComplaintStatus,
   getTransactions,
+  getAnalyticsOverview,
+  getUserGrowthAnalytics,
+  getMentorGrowthAnalytics,
+  getSessionTrendAnalytics,
+  getTopCareersAnalytics,
+  getTopSkillsAnalytics,
 };

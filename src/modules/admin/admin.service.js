@@ -7,6 +7,35 @@ const UserAssessmentResult = require('../assessment/userAssessmentResult.model')
 const Career = require('../career/career.model');
 const notificationService = require('../notification/notification.service');
 
+
+function getDateNDaysAgo(days) {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function formatDateKey(date) {
+  const d = new Date(date);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function buildContinuousDateSeries(days) {
+  const result = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    result.push(formatDateKey(d));
+  }
+
+  return result;
+}
 function normalizeBoolean(value, fieldName) {
   if (typeof value !== 'boolean') {
     throw new Error(`${fieldName} must be a boolean`);
@@ -526,6 +555,192 @@ async function getTransactions(query = {}) {
   };
 }
 
+async function getAnalyticsOverview() {
+  const summary = await getDashboardSummary();
+
+  const completedSessions = await MentorSession.countDocuments({
+    status: 'completed',
+  });
+
+  const noShowSessions = await MentorSession.countDocuments({
+    status: 'user_no_show',
+  });
+
+  const openComplaints = await SessionFeedback.countDocuments({
+    complaintStatus: 'open',
+  });
+
+  const totalTransactions = await Transaction.countDocuments();
+
+  return {
+    ...summary,
+    completedSessions,
+    noShowSessions,
+    openComplaints,
+    totalTransactions,
+  };
+}
+
+async function getUserGrowthAnalytics(days = 30) {
+  const safeDays = Math.max(1, Math.min(Number(days) || 30, 365));
+  const startDate = getDateNDaysAgo(safeDays - 1);
+
+  const rows = await User.aggregate([
+    {
+      $match: {
+        role: 'user',
+        createdAt: { $gte: startDate },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          $dateToString: { format: '%Y-%m-%d', date: '$createdAt' },
+        },
+        count: { $sum: 1 },
+      },
+    },
+    { $sort: { _id: 1 } },
+  ]);
+
+  const countMap = new Map(rows.map((r) => [r._id, r.count]));
+  const labels = buildContinuousDateSeries(safeDays);
+
+  return labels.map((date) => ({
+    date,
+    count: countMap.get(date) || 0,
+  }));
+}
+
+async function getMentorGrowthAnalytics(days = 30) {
+  const safeDays = Math.max(1, Math.min(Number(days) || 30, 365));
+  const startDate = getDateNDaysAgo(safeDays - 1);
+
+  const rows = await User.aggregate([
+    {
+      $match: {
+        role: 'mentor',
+        createdAt: { $gte: startDate },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          $dateToString: { format: '%Y-%m-%d', date: '$createdAt' },
+        },
+        count: { $sum: 1 },
+      },
+    },
+    { $sort: { _id: 1 } },
+  ]);
+
+  const countMap = new Map(rows.map((r) => [r._id, r.count]));
+  const labels = buildContinuousDateSeries(safeDays);
+
+  return labels.map((date) => ({
+    date,
+    count: countMap.get(date) || 0,
+  }));
+}
+
+async function getSessionTrendAnalytics(days = 30) {
+  const safeDays = Math.max(1, Math.min(Number(days) || 30, 365));
+  const startDate = getDateNDaysAgo(safeDays - 1);
+
+  const rows = await MentorSession.aggregate([
+    {
+      $match: {
+        createdAt: { $gte: startDate },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          date: {
+            $dateToString: { format: '%Y-%m-%d', date: '$createdAt' },
+          },
+          status: '$status',
+        },
+        count: { $sum: 1 },
+      },
+    },
+    { $sort: { '_id.date': 1 } },
+  ]);
+
+  const labels = buildContinuousDateSeries(safeDays);
+
+  const grouped = new Map();
+  for (const date of labels) {
+    grouped.set(date, {
+      date,
+      scheduled: 0,
+      started: 0,
+      active: 0,
+      completed: 0,
+      cancelled: 0,
+      expired: 0,
+      user_no_show: 0,
+    });
+  }
+
+  for (const row of rows) {
+    const date = row._id.date;
+    const status = row._id.status;
+
+    if (grouped.has(date) && grouped.get(date)[status] !== undefined) {
+      grouped.get(date)[status] = row.count;
+    }
+  }
+
+  return labels.map((date) => grouped.get(date));
+}
+
+async function getTopCareersAnalytics(limit = 10) {
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 10, 50));
+
+  const topCareerAgg = await UserAssessmentResult.aggregate([
+    { $match: { chosenCareer: { $ne: null } } },
+    {
+      $group: {
+        _id: '$chosenCareer',
+        count: { $sum: 1 },
+      },
+    },
+    { $sort: { count: -1 } },
+    { $limit: safeLimit },
+  ]);
+
+  const careerIds = topCareerAgg.map((item) => item._id);
+  const careers = await Career.find({ _id: { $in: careerIds } }).select('name');
+  const careerMap = new Map(careers.map((c) => [String(c._id), c.name]));
+
+  return topCareerAgg.map((item) => ({
+    careerId: item._id,
+    careerName: careerMap.get(String(item._id)) || 'Unknown Career',
+    count: item.count,
+  }));
+}
+
+async function getTopSkillsAnalytics(limit = 10) {
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 10, 50));
+
+  const topSkillsAgg = await User.aggregate([
+    { $unwind: '$skills' },
+    {
+      $group: {
+        _id: '$skills',
+        count: { $sum: 1 },
+      },
+    },
+    { $sort: { count: -1 } },
+    { $limit: safeLimit },
+  ]);
+
+  return topSkillsAgg.map((item) => ({
+    skill: item._id,
+    count: item.count,
+  }));
+}
 module.exports = {
   getDashboardSummary,
   getUsers,
@@ -541,4 +756,10 @@ module.exports = {
   getOpenComplaints,
   updateComplaintStatus,
   getTransactions,
+  getAnalyticsOverview,
+  getUserGrowthAnalytics,
+  getMentorGrowthAnalytics,
+  getSessionTrendAnalytics,
+  getTopCareersAnalytics,
+  getTopSkillsAnalytics,
 };

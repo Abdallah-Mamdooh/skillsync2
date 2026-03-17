@@ -14,6 +14,48 @@ router.get(
 );
 
 router.get(
+  '/analytics/overview',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.getAnalyticsOverview
+);
+
+router.get(
+  '/analytics/user-growth',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.getUserGrowthAnalytics
+);
+
+router.get(
+  '/analytics/mentor-growth',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.getMentorGrowthAnalytics
+);
+
+router.get(
+  '/analytics/session-trends',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.getSessionTrendAnalytics
+);
+
+router.get(
+  '/analytics/top-careers',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.getTopCareersAnalytics
+);
+
+router.get(
+  '/analytics/top-skills',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.getTopSkillsAnalytics
+);
+
+router.get(
   '/users',
   authMiddleware,
   roleMiddleware('admin'),

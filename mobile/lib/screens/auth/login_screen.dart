@@ -8,6 +8,7 @@ import '../mentorship_screen.dart';
 import '/services/google_auth_service.dart';
 import './forgot_password_screen.dart';
 
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -26,7 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
   static const Color _accentGold = Color(0xFFF5A100);
   static const Color _darkTeal = Color(0xFF1D5572);
   static const Color _hintColor = Color(0xFFAAAAAA);
-  static const Color _borderColor = Color(0xFFDDDDDD);
+  static const Color _borderColor = Color(0xFF6B7280);
 
   @override
   void dispose() {
@@ -210,7 +211,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           hintText: 'your.email@example.com',
                           hintStyle:
                           const TextStyle(color: _hintColor, fontSize: 14),
-                          prefixIcon: const Icon(Icons.email_outlined,
+                          prefixIcon: const Icon(Icons.email,
                               color: _hintColor, size: 20),
                           filled: true,
                           fillColor: const Color(0xFFF5F5F5),
@@ -253,14 +254,14 @@ class _LoginScreenState extends State<LoginScreen> {
                           hintText: 'Enter your password',
                           hintStyle:
                           const TextStyle(color: _hintColor, fontSize: 14),
-                          prefixIcon: const Icon(Icons.lock_outline,
+                          prefixIcon: const Icon(Icons.lock,
                               color: _hintColor, size: 20),
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscurePassword
                                   ? Icons.visibility_off_outlined
                                   : Icons.visibility_outlined,
-                              color: _hintColor,
+                              color: Colors.black,
                               size: 20,
                             ),
                             onPressed: () {
@@ -372,8 +373,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 }
                               },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: _darkTeal,
-                                foregroundColor: _accentGold,
+                                backgroundColor: _accentGold,
+                                foregroundColor: _cardColor,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -491,7 +492,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 'Google',
                                 style: TextStyle(
                                   fontSize: 15,
-                                  fontWeight: FontWeight.w500,
+                                  fontWeight: FontWeight.bold,
                                   color: Color(0xFF333333),
                                 ),
                               ),
@@ -513,14 +514,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       const Text(
                         "Don't have an account? ",
                         style:
-                        TextStyle(color: Colors.white70, fontSize: 14),
+                        TextStyle(color: Colors.white, fontSize: 16),
                       ),
                       GestureDetector(
                         onTap: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (context) =>
-                                  const EmailSignupScreen(role: 'user'),
+                                  EmailSignupScreen(role: 'user'),
                             ),
                           );
                         },
@@ -528,7 +529,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           'Sign Up',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 14,
+                            fontSize: 16,
                             fontWeight: FontWeight.w600,
                             decoration: TextDecoration.underline,
                             decorationColor: Colors.white,
@@ -552,19 +553,11 @@ class _LoginScreenState extends State<LoginScreen> {
 class _GoogleLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return const Text.rich(
-      TextSpan(
-        children: [
-          TextSpan(
-            text: 'G',
-            style: TextStyle(
-              color: Color(0xFF4285F4),
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
+    return Image.asset(
+      'assets/images/Google Logo.png',
+      width: 20,
+      height: 20,
+      fit: BoxFit.contain,
     );
   }
 }

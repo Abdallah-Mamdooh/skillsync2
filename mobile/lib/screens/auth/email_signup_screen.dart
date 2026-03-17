@@ -1,25 +1,9 @@
 import 'package:flutter/material.dart';
-
-void main() {
-  runApp(const SkillSyncApp());
-}
-
-class SkillSyncApp extends StatelessWidget {
-  const SkillSyncApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'SkillSync',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        fontFamily: 'SF Pro Display',
-        scaffoldBackgroundColor: const Color(0xFF2C5364),
-      ),
-      home: const EmailSignupScreen(role: 'user'),
-    );
-  }
-}
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import '../student_homescreen.dart';
+import '../mentorship_screen.dart';
 
 enum UserRole { student, mentor }
 
@@ -33,13 +17,191 @@ class EmailSignupScreen extends StatefulWidget {
 }
 
 class _EmailSignupScreenState extends State<EmailSignupScreen> {
-  UserRole _selectedRole = UserRole.student;
+  late UserRole _selectedRole;
+
+  // ── Signup Failed Dialog ─────────────────────────────────────────────────
+  void _showSignupFailedDialog(BuildContext context, {String? message}) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          backgroundColor: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFFEBEB),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.close_rounded,
+                    color: Color(0xFFD32F2F),
+                    size: 36,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'Signup Failed',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFD32F2F),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  message ?? 'Please check your details\nand try again',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFFD32F2F),
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1D5572),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Text(
+                      'try again',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ── Mentor Thank You Dialog ──────────────────────────────────────────────
+  void _showMentorThankYouDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Animated spinning loader with grey circle background
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFDDDDDD),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Center(
+                    child: SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 5,
+                        backgroundColor: Color(0xFFBBBBBB),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Color(0xFF444444),
+                        ),
+                        strokeCap: StrokeCap.round,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 22),
+
+                // Title
+                const Text(
+                  'Thank You for Applying',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFF5A100),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Body text
+                const Text(
+                  'We are reviewing your CV and experience. You will be notified once your mentor account is approved.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF555555),
+                    height: 1.6,
+                  ),
+                ),
+                const SizedBox(height: 28),
+
+                // OK button
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(dialogContext);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1D5572),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Text(
+                      'OK',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   @override
   void initState() {
     super.initState();
-    _selectedRole =
-        widget.role.toLowerCase() == 'mentor' ? UserRole.mentor : UserRole.student;
+    _selectedRole = widget.role.toLowerCase() == 'mentor'
+        ? UserRole.mentor
+        : UserRole.student;
   }
 
   final _fullNameController = TextEditingController();
@@ -51,12 +213,13 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
 
   bool _obscurePassword = true;
 
-  static const Color _primaryColor = Color(0xFF2C5364);
-  static const Color _accentColor = Color(0xFFF5A623);
+  static const Color _primaryColor = Color(0xFF1D5572);
+  static const Color _accentColor = Color(0xFFF5A100);
   static const Color _cardBg = Colors.white;
-  static const Color _inputBg = Color(0xFFF0F0F0);
+  static const Color _inputBg = Color(0xFFF5F5F5);
   static const Color _labelColor = Color(0xFF1A1A2E);
   static const Color _hintColor = Color(0xFFAAAAAA);
+  static const Color _borderColor = Color(0xFFDDDDDD);
 
   @override
   void dispose() {
@@ -136,9 +299,19 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                             selectedRole: _selectedRole,
                             label: 'Student',
                             subtitle: 'Looking for guidance',
-                            icon: Icons.school_outlined,
-                            onTap: () =>
-                                setState(() => _selectedRole = UserRole.student),
+                            iconBuilder: (isSelected) => SvgPicture.asset(
+                              'assets/icons/student sign up.svg',
+                              width: 30,
+                              height: 30,
+                              colorFilter: ColorFilter.mode(
+                                isSelected
+                                    ? _accentColor
+                                    : const Color(0xFF888888),
+                                BlendMode.srcIn,
+                              ),
+                            ),
+                            onTap: () => setState(
+                                    () => _selectedRole = UserRole.student),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -148,9 +321,15 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                             selectedRole: _selectedRole,
                             label: 'Mentor',
                             subtitle: 'Share expertise',
-                            icon: Icons.people_outline,
-                            onTap: () =>
-                                setState(() => _selectedRole = UserRole.mentor),
+                            iconBuilder: (isSelected) => Icon(
+                              Icons.people,
+                              size: 30,
+                              color: isSelected
+                                  ? _accentColor
+                                  : const Color(0xFF888888),
+                            ),
+                            onTap: () => setState(
+                                    () => _selectedRole = UserRole.mentor),
                           ),
                         ),
                       ],
@@ -212,9 +391,7 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
 
                     // CV URL — only required for mentor
                     _buildLabel(
-                      _selectedRole == UserRole.mentor
-                          ? 'CV url *'
-                          : 'CV url',
+                      _selectedRole == UserRole.mentor ? 'CV url *' : 'CV url',
                     ),
                     _buildTextField(
                       controller: _cvUrlController,
@@ -257,14 +434,120 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                         ],
                       ),
                     ),
+                    const SizedBox(height: 24),
+
+                    // Sign Up Button
+                    Consumer<AuthProvider>(
+                      builder: (context, authProvider, _) {
+                        return SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton(
+                            onPressed: authProvider.isLoading
+                                ? null
+                                : () async {
+                              final fullName =
+                              _fullNameController.text.trim();
+                              final email = _emailController.text.trim();
+                              final password =
+                              _passwordController.text.trim();
+                              final phone = _phoneController.text.trim();
+                              final cvUrl = _cvUrlController.text.trim();
+                              final linkedinUrl =
+                              _linkedinUrlController.text.trim();
+                              final roleStr =
+                              _selectedRole == UserRole.mentor
+                                  ? 'mentor'
+                                  : 'user';
+
+                              if (fullName.isEmpty ||
+                                  email.isEmpty ||
+                                  password.isEmpty ||
+                                  phone.isEmpty) {
+                                _showSignupFailedDialog(context,
+                                    message:
+                                    'Please fill in all required fields');
+                                return;
+                              }
+                              if (roleStr == 'mentor' &&
+                                  (cvUrl.isEmpty ||
+                                      linkedinUrl.isEmpty)) {
+                                _showSignupFailedDialog(context,
+                                    message:
+                                    'Mentors must provide CV and LinkedIn URLs');
+                                return;
+                              }
+
+                              final success = await authProvider.signup(
+                                fullName: fullName,
+                                email: email,
+                                phoneNumber: phone,
+                                password: password,
+                                role: roleStr,
+                                cvUrl:
+                                roleStr == 'mentor' ? cvUrl : null,
+                                linkedinUrl: roleStr == 'mentor'
+                                    ? linkedinUrl
+                                    : null,
+                              );
+
+                              if (success && context.mounted) {
+                                if (roleStr == 'mentor') {
+                                  // ← Show Thank You dialog for mentors
+                                  _showMentorThankYouDialog(context);
+                                } else {
+                                  Navigator.of(context).pushReplacement(
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                      const StudentHomeScreen(),
+                                    ),
+                                  );
+                                }
+                              } else if (context.mounted) {
+                                _showSignupFailedDialog(context,
+                                    message: authProvider.error ??
+                                        'Signup failed. Please try again.');
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _accentColor,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 2,
+                            ),
+                            child: authProvider.isLoading
+                                ? const SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                                : const Text(
+                              'Sign Up',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
 
-              // "Already have an account?" — only shown for student
-              if (_selectedRole == UserRole.student) ...[
-                const SizedBox(height: 24),
-                Center(
+              // Already have an account?
+              const SizedBox(height: 24),
+              Center(
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
                   child: RichText(
                     text: const TextSpan(
                       style: TextStyle(color: Colors.white70, fontSize: 14),
@@ -276,13 +559,14 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                             decoration: TextDecoration.underline,
+                            decorationColor: Colors.white,
                           ),
                         ),
                       ],
                     ),
                   ),
                 ),
-              ],
+              ),
               const SizedBox(height: 24),
             ],
           ),
@@ -327,15 +611,15 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
         const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide.none,
+          borderSide: const BorderSide(color: _borderColor),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide.none,
+          borderSide: const BorderSide(color: _borderColor),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: _accentColor, width: 1.5),
+          borderSide: const BorderSide(color: _primaryColor, width: 1.8),
         ),
       ),
     );
@@ -347,7 +631,7 @@ class _RoleCard extends StatelessWidget {
   final UserRole selectedRole;
   final String label;
   final String subtitle;
-  final IconData icon;
+  final Widget Function(bool isSelected) iconBuilder;
   final VoidCallback onTap;
 
   const _RoleCard({
@@ -355,13 +639,13 @@ class _RoleCard extends StatelessWidget {
     required this.selectedRole,
     required this.label,
     required this.subtitle,
-    required this.icon,
+    required this.iconBuilder,
     required this.onTap,
   });
 
   bool get isSelected => role == selectedRole;
 
-  static const Color _accentColor = Color(0xFFF5A623);
+  static const Color _accentColor = Color(0xFFF5A100);
   static const Color _unselectedIconBg = Color(0xFFE8E8E8);
   static const Color _unselectedText = Color(0xFF555555);
 
@@ -383,7 +667,6 @@ class _RoleCard extends StatelessWidget {
         ),
         child: Column(
           children: [
-            // Icon circle
             Container(
               width: 60,
               height: 60,
@@ -393,29 +676,27 @@ class _RoleCard extends StatelessWidget {
                     : _unselectedIconBg,
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                icon,
-                size: 30,
-                color: isSelected ? _accentColor : const Color(0xFF888888),
-              ),
+              child: Center(child: iconBuilder(isSelected)),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Text(
               label,
               style: TextStyle(
                 color: isSelected ? _accentColor : _unselectedText,
                 fontWeight: FontWeight.w700,
-                fontSize: 15,
+                fontSize: 14,
               ),
             ),
             const SizedBox(height: 2),
             Text(
               subtitle,
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: isSelected
                     ? _accentColor.withOpacity(0.8)
                     : const Color(0xFFAAAAAA),
-                fontSize: 11,
+                fontSize: 10,
               ),
             ),
           ],

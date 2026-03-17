@@ -16,6 +16,11 @@ const publishEvent = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data });
 });
 
+const cancelEvent = asyncHandler(async (req, res) => {
+  const data = await eventService.cancelEvent(req.user._id, req.params.eventId);
+  res.status(200).json({ success: true, data });
+});
+
 const getPublicEvents = asyncHandler(async (req, res) => {
   const data = await eventService.getPublicEvents();
   res.status(200).json({ success: true, data });
@@ -41,7 +46,6 @@ const captureEventRegistrationPayment = asyncHandler(async (req, res) => {
     req.user._id,
     req.params.registrationId
   );
-
   res.status(200).json({ success: true, data });
 });
 
@@ -50,7 +54,6 @@ const releaseEventRegistrationPayment = asyncHandler(async (req, res) => {
     req.user._id,
     req.params.registrationId
   );
-
   res.status(200).json({ success: true, data });
 });
 
@@ -59,16 +62,11 @@ const markRegistrationAttended = asyncHandler(async (req, res) => {
     req.user._id,
     req.params.registrationId
   );
-
   res.status(200).json({ success: true, data });
 });
 
 const completeEvent = asyncHandler(async (req, res) => {
-  const data = await eventService.completeEvent(
-    req.user._id,
-    req.params.eventId
-  );
-
+  const data = await eventService.completeEvent(req.user._id, req.params.eventId);
   res.status(200).json({ success: true, data });
 });
 
@@ -78,16 +76,14 @@ const registerForEventWithFawry = asyncHandler(async (req, res) => {
     req.params.eventId,
     req.body
   );
-
-  res.status(201).json({
-    success: true,
-    data,
-  });
+  res.status(201).json({ success: true, data });
 });
+
 module.exports = {
   createEvent,
   updateEvent,
   publishEvent,
+  cancelEvent,
   getPublicEvents,
   getEventById,
   registerForEvent,

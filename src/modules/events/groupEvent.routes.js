@@ -34,6 +34,13 @@ router.post(
 );
 
 router.post(
+  '/:eventId/cancel',
+  authMiddleware,
+  roleMiddleware('mentor'),
+  controller.cancelEvent
+);
+
+router.post(
   '/registrations/:registrationId/capture',
   authMiddleware,
   roleMiddleware('mentor'),
@@ -75,6 +82,7 @@ router.post(
   roleMiddleware('user'),
   controller.registerForEventWithFawry
 );
+
 router.get('/me/registrations', authMiddleware, controller.getMyEventRegistrations);
 
 module.exports = router;

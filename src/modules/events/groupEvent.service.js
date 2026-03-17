@@ -4,13 +4,78 @@ const MentorProfile = require('../mentor/mentorProfile.model');
 const paymentService = require('../payment/payment.service');
 const User = require('../auth/user.model');
 const Transaction = require('../payment/transaction.model');
-const createEvent = async (organizerUserId, payload) => {
-    const notificationService = require('../notification/notification.service');
-  const speakers = Array.isArray(payload.speakers) ? payload.speakers : [];
+const notificationService = require('../notification/notification.service');
 
+function ensureFutureDate(dateValue) {
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error('Invalid event date');
+  }
+  if (date <= new Date()) {
+    throw new Error('Event must be scheduled in the future');
+  }
+  return date;
+}
+
+function canRegisterForEvent(event) {
+  if (!event) throw new Error('Event not found');
+  if (event.status !== 'published') {
+    throw new Error('Only published events can be registered');
+  }
+  if (new Date(event.scheduledAt) <= new Date()) {
+    throw new Error('Registration is closed because the event time has passed');
+  }
+  if (Number(event.registeredCount || 0) >= Number(event.capacity || 0)) {
+    throw new Error('Event is full');
+  }
+}
+
+async function incrementEventSeatCount(eventId) {
+  const updated = await GroupEvent.findOneAndUpdate(
+    {
+      _id: eventId,
+      $expr: { $lt: ['$registeredCount', '$capacity'] },
+    },
+    { $inc: { registeredCount: 1 } },
+    { new: true }
+  );
+
+  if (!updated) {
+    throw new Error('Event is full');
+  }
+
+  return updated;
+}
+
+async function decrementEventSeatCount(eventId) {
+  await GroupEvent.findByIdAndUpdate(
+    eventId,
+    [
+      {
+        $set: {
+          registeredCount: {
+            $cond: [
+              { $gt: ['$registeredCount', 0] },
+              { $subtract: ['$registeredCount', 1] },
+              0,
+            ],
+          },
+        },
+      },
+    ],
+    { new: true }
+  );
+}
+
+async function normalizeSpeakers(speakers = []) {
   const normalizedSpeakers = [];
+
   for (const s of speakers) {
-    const mentorProfile = await MentorProfile.findById(s.mentorProfileId).populate('userId', '_id');
+    const mentorProfile = await MentorProfile.findById(s.mentorProfileId).populate(
+      'userId',
+      '_id'
+    );
+
     if (!mentorProfile) {
       throw new Error(`Speaker mentor profile not found: ${s.mentorProfileId}`);
     }
@@ -21,6 +86,13 @@ const createEvent = async (organizerUserId, payload) => {
       roleLabel: s.roleLabel || 'Speaker',
     });
   }
+
+  return normalizedSpeakers;
+}
+
+const createEvent = async (organizerUserId, payload) => {
+  const speakers = Array.isArray(payload.speakers) ? payload.speakers : [];
+  const normalizedSpeakers = await normalizeSpeakers(speakers);
 
   const event = await GroupEvent.create({
     organizerUserId,
@@ -33,7 +105,7 @@ const createEvent = async (organizerUserId, payload) => {
     capacity: payload.capacity || 100,
     meetingProvider: payload.meetingProvider || 'google_meet',
     meetingLink: payload.meetingLink,
-    scheduledAt: payload.scheduledAt,
+    scheduledAt: ensureFutureDate(payload.scheduledAt),
     durationMinutes: payload.durationMinutes || 60,
     status: payload.status || 'draft',
     coverImageUrl: payload.coverImageUrl || '',
@@ -52,6 +124,10 @@ const updateEvent = async (organizerUserId, eventId, payload) => {
     throw new Error('You are not allowed to update this event');
   }
 
+  if (['completed', 'cancelled'].includes(event.status)) {
+    throw new Error('Completed or cancelled events cannot be updated');
+  }
+
   const updatableFields = [
     'title',
     'description',
@@ -61,7 +137,6 @@ const updateEvent = async (organizerUserId, eventId, payload) => {
     'capacity',
     'meetingProvider',
     'meetingLink',
-    'scheduledAt',
     'durationMinutes',
     'status',
     'coverImageUrl',
@@ -73,23 +148,16 @@ const updateEvent = async (organizerUserId, eventId, payload) => {
     }
   }
 
+  if (payload.scheduledAt !== undefined) {
+    event.scheduledAt = ensureFutureDate(payload.scheduledAt);
+  }
+
   if (Array.isArray(payload.speakers)) {
-    const normalizedSpeakers = [];
+    event.speakers = await normalizeSpeakers(payload.speakers);
+  }
 
-    for (const s of payload.speakers) {
-      const mentorProfile = await MentorProfile.findById(s.mentorProfileId).populate('userId', '_id');
-      if (!mentorProfile) {
-        throw new Error(`Speaker mentor profile not found: ${s.mentorProfileId}`);
-      }
-
-      normalizedSpeakers.push({
-        mentorProfileId: mentorProfile._id,
-        mentorUserId: mentorProfile.userId._id,
-        roleLabel: s.roleLabel || 'Speaker',
-      });
-    }
-
-    event.speakers = normalizedSpeakers;
+  if (Number(event.capacity || 0) < Number(event.registeredCount || 0)) {
+    throw new Error('Capacity cannot be reduced below current registeredCount');
   }
 
   await event.save();
@@ -106,9 +174,16 @@ const publishEvent = async (organizerUserId, eventId) => {
     throw new Error('You are not allowed to publish this event');
   }
 
+  if (!event.meetingLink) {
+    throw new Error('Event meetingLink is required before publishing');
+  }
+
+  ensureFutureDate(event.scheduledAt);
+
   event.status = 'published';
   await event.save();
-    for (const speaker of event.speakers || []) {
+
+  for (const speaker of event.speakers || []) {
     await notificationService.createNotification({
       userId: speaker.mentorUserId,
       type: 'event_published',
@@ -150,13 +225,7 @@ const registerForEvent = async (userId, eventId) => {
     throw new Error('Event not found');
   }
 
-  if (event.status !== 'published') {
-    throw new Error('Only published events can be registered');
-  }
-
-  if (event.registeredCount >= event.capacity) {
-    throw new Error('Event is full');
-  }
+  canRegisterForEvent(event);
 
   const existing = await EventRegistration.findOne({ eventId, userId });
   if (existing) {
@@ -165,41 +234,123 @@ const registerForEvent = async (userId, eventId) => {
 
   const defaultMethod = await paymentService.getDefaultPaymentMethod(userId);
 
-  const registration = await EventRegistration.create({
-    eventId,
-    userId,
-    paymentStatus: 'held',
-    amountPaid: event.fee,
-    currency: event.currency,
-  });
+  if (!defaultMethod && Number(event.fee || 0) > 0) {
+    throw new Error('No default payment method found');
+  }
 
-  await paymentService.holdFunds({
-    userId,
-    sessionId: null,
-    amount: event.fee,
-    paymentMethodId: defaultMethod?._id || null,
-    currency: event.currency,
-  });
+  const updatedEvent = await incrementEventSeatCount(event._id);
 
-  event.registeredCount += 1;
-  await event.save();
-
-  await notificationService.createNotification({
-    userId,
-    type: 'event_registered',
-    title: 'Event registration confirmed',
-    message: `You registered for "${event.title}". ${event.fee} ${event.currency} was placed on hold.`,
-    data: {
-      eventId: event._id,
-      registrationId: registration._id,
-      amount: event.fee,
+  try {
+    const registration = await EventRegistration.create({
+      eventId,
+      userId,
+      registrationStatus: 'reserved',
+      paymentStatus: Number(event.fee || 0) > 0 ? 'held' : 'captured',
+      amountPaid: event.fee,
       currency: event.currency,
-      paymentStatus: registration.paymentStatus,
-    },
-  });
+    });
 
-  return registration;
+    if (Number(event.fee || 0) > 0) {
+      await paymentService.holdFunds({
+        userId,
+        sessionId: null,
+        amount: event.fee,
+        paymentMethodId: defaultMethod?._id || null,
+        currency: event.currency,
+        eventRegistrationId: registration._id,
+      });
+    }
+
+    await notificationService.createNotification({
+      userId,
+      type: 'event_registered',
+      title: 'Event registration confirmed',
+      message: `You registered for "${updatedEvent.title}".`,
+      data: {
+        eventId: updatedEvent._id,
+        registrationId: registration._id,
+        amount: event.fee,
+        currency: event.currency,
+        paymentStatus: registration.paymentStatus,
+      },
+    });
+
+    return registration;
+  } catch (error) {
+    await decrementEventSeatCount(event._id);
+    throw error;
+  }
 };
+
+const registerForEventWithFawry = async (userId, eventId, payload = {}) => {
+  const event = await GroupEvent.findById(eventId);
+  if (!event) {
+    throw new Error('Event not found');
+  }
+
+  canRegisterForEvent(event);
+
+  const existing = await EventRegistration.findOne({ eventId, userId });
+  if (existing) {
+    throw new Error('You are already registered for this event');
+  }
+
+  const updatedEvent = await incrementEventSeatCount(event._id);
+
+  try {
+    const registration = await EventRegistration.create({
+      eventId,
+      userId,
+      registrationStatus: 'reserved',
+      paymentStatus: 'unpaid',
+      amountPaid: event.fee,
+      currency: event.currency,
+      attended: false,
+      checkedInAt: null,
+    });
+
+    const user = await User.findById(userId).select(
+      'fullName email phoneNumber'
+    );
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    const checkout = await paymentService.createFawryCheckout({
+      user: {
+        _id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+      },
+      amount: event.fee,
+      purpose: 'hold',
+      entityType: 'group_event',
+      entityId: registration._id,
+      description: `Event registration payment - ${event.title}`,
+      paymentMethod: payload.paymentMethod || '',
+      sessionId: null,
+      eventRegistrationId: registration._id,
+    });
+
+    return {
+      registrationId: registration._id,
+      event: {
+        id: updatedEvent._id,
+        title: updatedEvent.title,
+        fee: updatedEvent.fee,
+        currency: updatedEvent.currency,
+        scheduledAt: updatedEvent.scheduledAt,
+      },
+      paymentStatus: registration.paymentStatus,
+      checkout,
+    };
+  } catch (error) {
+    await decrementEventSeatCount(event._id);
+    throw error;
+  }
+};
+
 const getMyEventRegistrations = async (userId) => {
   return EventRegistration.find({ userId })
     .populate('eventId')
@@ -208,7 +359,6 @@ const getMyEventRegistrations = async (userId) => {
 
 const captureEventRegistrationPayment = async (organizerUserId, registrationId) => {
   const registration = await EventRegistration.findById(registrationId).populate('eventId');
-
   if (!registration) {
     throw new Error('Registration not found');
   }
@@ -226,32 +376,29 @@ const captureEventRegistrationPayment = async (organizerUserId, registrationId) 
     throw new Error('Only held registrations can be captured');
   }
 
-   const externalPaidTx = await Transaction.findOne({
+  const externalPaidTx = await Transaction.findOne({
     eventRegistrationId: registration._id,
     provider: 'fawry',
     entityType: 'group_event',
     status: 'completed',
   }).sort({ createdAt: -1 });
 
-  if (externalPaidTx) {
-    // Fawry path:
-    // no internal wallet hold to capture
-    registration.paymentStatus = 'captured';
-    await registration.save();
-  } else {
-    // Internal wallet path:
+  if (!externalPaidTx) {
     await paymentService.captureHeldFunds({
       userId: registration.userId,
       sessionId: null,
       amount: registration.amountPaid,
       currency: registration.currency,
+      eventRegistrationId: registration._id,
     });
-
-    registration.paymentStatus = 'captured';
-    await registration.save();
   }
 
-    await notificationService.createNotification({
+  registration.paymentStatus = 'captured';
+  registration.capturedAt = new Date();
+  registration.registrationStatus = 'confirmed';
+  await registration.save();
+
+  await notificationService.createNotification({
     userId: registration.userId,
     type: 'event_payment_captured',
     title: 'Event payment captured',
@@ -270,7 +417,6 @@ const captureEventRegistrationPayment = async (organizerUserId, registrationId) 
 
 const releaseEventRegistrationPayment = async (organizerUserId, registrationId) => {
   const registration = await EventRegistration.findById(registrationId).populate('eventId');
-
   if (!registration) {
     throw new Error('Registration not found');
   }
@@ -288,35 +434,36 @@ const releaseEventRegistrationPayment = async (organizerUserId, registrationId) 
     throw new Error('Only held registrations can be released');
   }
 
-   const externalPaidTx = await Transaction.findOne({
+  const externalPaidTx = await Transaction.findOne({
     eventRegistrationId: registration._id,
     provider: 'fawry',
     entityType: 'group_event',
     status: 'completed',
   }).sort({ createdAt: -1 });
 
-  if (externalPaidTx) {
-    // Fawry path:
-    // no internal wallet hold to release
-    registration.paymentStatus = 'released';
-    await registration.save();
-  } else {
-    // Internal wallet path:
+  if (!externalPaidTx) {
     await paymentService.releaseHeldFunds({
       userId: registration.userId,
       sessionId: null,
       amount: registration.amountPaid,
       currency: registration.currency,
+      eventRegistrationId: registration._id,
+      reason: 'event_registration_release',
     });
-
-    registration.paymentStatus = 'released';
-    await registration.save();
   }
+
+  registration.paymentStatus = 'released';
+  registration.releasedAt = new Date();
+  registration.registrationStatus = 'cancelled';
+  await registration.save();
+
+  await decrementEventSeatCount(event._id);
+
   await notificationService.createNotification({
     userId: registration.userId,
     type: 'event_payment_released',
     title: 'Event payment released',
-    message: `Your held registration payment for "${event.title}" was released back to your wallet.`,
+    message: `Your held registration payment for "${event.title}" was released back.`,
     data: {
       eventId: event._id,
       registrationId: registration._id,
@@ -325,13 +472,12 @@ const releaseEventRegistrationPayment = async (organizerUserId, registrationId) 
       paymentStatus: registration.paymentStatus,
     },
   });
+
   return registration;
 };
 
-
 const markRegistrationAttended = async (organizerUserId, registrationId) => {
   const registration = await EventRegistration.findById(registrationId).populate('eventId');
-
   if (!registration) {
     throw new Error('Registration not found');
   }
@@ -345,8 +491,19 @@ const markRegistrationAttended = async (organizerUserId, registrationId) => {
     throw new Error('You are not allowed to mark attendance for this event');
   }
 
+  if (event.status !== 'published') {
+    throw new Error('Attendance can only be marked for published events');
+  }
+
   registration.attended = true;
   registration.checkedInAt = new Date();
+
+  if (registration.paymentStatus === 'held') {
+    registration.paymentStatus = 'captured';
+    registration.capturedAt = new Date();
+    registration.registrationStatus = 'confirmed';
+  }
+
   await registration.save();
 
   return registration;
@@ -354,7 +511,6 @@ const markRegistrationAttended = async (organizerUserId, registrationId) => {
 
 const completeEvent = async (organizerUserId, eventId) => {
   const event = await GroupEvent.findById(eventId);
-
   if (!event) {
     throw new Error('Event not found');
   }
@@ -363,45 +519,53 @@ const completeEvent = async (organizerUserId, eventId) => {
     throw new Error('You are not allowed to complete this event');
   }
 
-  const registrations = await EventRegistration.find({
-    eventId: event._id,
-    paymentStatus: 'held',
-  });
+  if (event.status !== 'published') {
+    throw new Error('Only published events can be completed');
+  }
+
+  const registrations = await EventRegistration.find({ eventId: event._id });
 
   let capturedCount = 0;
+  let releasedCount = 0;
 
-    for (const registration of registrations) {
-    const externalPaidTx = await Transaction.findOne({
-      eventRegistrationId: registration._id,
-      provider: 'fawry',
-      entityType: 'group_event',
-      status: 'completed',
-    }).sort({ createdAt: -1 });
+  for (const registration of registrations) {
+    if (registration.paymentStatus === 'held') {
+      const externalPaidTx = await Transaction.findOne({
+        eventRegistrationId: registration._id,
+        provider: 'fawry',
+        entityType: 'group_event',
+        status: 'completed',
+      }).sort({ createdAt: -1 });
 
-    if (externalPaidTx) {
-      // Fawry path:
+      if (!externalPaidTx) {
+        await paymentService.captureHeldFunds({
+          userId: registration.userId,
+          sessionId: null,
+          amount: registration.amountPaid,
+          currency: registration.currency,
+          eventRegistrationId: registration._id,
+        });
+      }
+
       registration.paymentStatus = 'captured';
+      registration.capturedAt = new Date();
+      registration.registrationStatus = 'confirmed';
       await registration.save();
-      capturedCount++;
+      capturedCount += 1;
+    }
+
+    if (registration.registrationStatus !== 'cancelled') {
+      registration.registrationStatus = 'completed';
+      await registration.save();
     } else {
-      // Internal wallet path:
-      await paymentService.captureHeldFunds({
-        userId: registration.userId,
-        sessionId: null,
-        amount: registration.amountPaid,
-        currency: registration.currency,
-      });
-
-      registration.paymentStatus = 'captured';
-      await registration.save();
-      capturedCount++;
+      releasedCount += 1;
     }
   }
 
   event.status = 'completed';
   await event.save();
 
-    const allRegistrations = await EventRegistration.find({ eventId: event._id });
+  const allRegistrations = await EventRegistration.find({ eventId: event._id });
 
   for (const registration of allRegistrations) {
     await notificationService.createNotification({
@@ -425,6 +589,7 @@ const completeEvent = async (organizerUserId, eventId) => {
     data: {
       eventId: event._id,
       capturedCount,
+      releasedCount,
       status: event.status,
     },
   });
@@ -433,78 +598,78 @@ const completeEvent = async (organizerUserId, eventId) => {
     eventId: event._id,
     status: event.status,
     capturedCount,
+    releasedCount,
   };
 };
 
-const registerForEventWithFawry = async (userId, eventId, payload = {}) => {
+const cancelEvent = async (organizerUserId, eventId) => {
   const event = await GroupEvent.findById(eventId);
-
   if (!event) {
     throw new Error('Event not found');
   }
 
-  if (event.status !== 'published') {
-    throw new Error('Only published events can be registered');
+  if (String(event.organizerUserId) !== String(organizerUserId)) {
+    throw new Error('You are not allowed to cancel this event');
   }
 
-  if (event.registeredCount >= event.capacity) {
-    throw new Error('Event is full');
+  if (['cancelled', 'completed'].includes(event.status)) {
+    throw new Error('This event cannot be cancelled');
   }
 
-  const existing = await EventRegistration.findOne({ eventId, userId });
-  if (existing) {
-    throw new Error('You are already registered for this event');
-  }
-
-  const registration = await EventRegistration.create({
-    eventId,
-    userId,
-    paymentStatus: 'unpaid',
-    amountPaid: event.fee,
-    currency: event.currency,
-    attended: false,
-    checkedInAt: null,
+  const registrations = await EventRegistration.find({
+    eventId: event._id,
+    paymentStatus: { $in: ['held', 'captured'] },
   });
 
- 
+  for (const registration of registrations) {
+    if (registration.paymentStatus === 'held') {
+      const externalPaidTx = await Transaction.findOne({
+        eventRegistrationId: registration._id,
+        provider: 'fawry',
+        entityType: 'group_event',
+        status: 'completed',
+      }).sort({ createdAt: -1 });
 
-  const user = await User.findById(userId).select(
-    'fullName email phoneNumber'
-  );
+      if (!externalPaidTx) {
+        await paymentService.releaseHeldFunds({
+          userId: registration.userId,
+          sessionId: null,
+          amount: registration.amountPaid,
+          currency: registration.currency,
+          eventRegistrationId: registration._id,
+          reason: 'event_cancelled',
+        });
+      }
 
-  if (!user) {
-    throw new Error('User not found');
+      registration.paymentStatus = 'released';
+      registration.releasedAt = new Date();
+    } else if (registration.paymentStatus === 'captured') {
+      registration.paymentStatus = 'refunded';
+      registration.refundedAt = new Date();
+    }
+
+    registration.registrationStatus = 'cancelled';
+    registration.cancelledAt = new Date();
+    await registration.save();
+
+    await notificationService.createNotification({
+      userId: registration.userId,
+      type: 'event_cancelled',
+      title: 'Event cancelled',
+      message: `The event "${event.title}" was cancelled.`,
+      data: {
+        eventId: event._id,
+        registrationId: registration._id,
+        paymentStatus: registration.paymentStatus,
+      },
+    });
   }
 
-  const checkout = await paymentService.createFawryCheckout({
-    user: {
-      _id: user._id,
-      fullName: user.fullName,
-      email: user.email,
-      phoneNumber: user.phoneNumber,
-    },
-    amount: event.fee,
-    purpose: 'hold',
-    entityType: 'group_event',
-    entityId: registration._id,
-    description: `Event registration payment - ${event.title}`,
-    paymentMethod: payload.paymentMethod || '',
-    sessionId: null,
-    eventRegistrationId: registration._id,
-  });
+  event.status = 'cancelled';
+  event.registeredCount = 0;
+  await event.save();
 
-  return {
-    registrationId: registration._id,
-    event: {
-      id: event._id,
-      title: event.title,
-      fee: event.fee,
-      currency: event.currency,
-      scheduledAt: event.scheduledAt,
-    },
-    paymentStatus: registration.paymentStatus,
-    checkout,
-  };
+  return event;
 };
 
 module.exports = {
@@ -520,4 +685,5 @@ module.exports = {
   markRegistrationAttended,
   completeEvent,
   registerForEventWithFawry,
+  cancelEvent,
 };

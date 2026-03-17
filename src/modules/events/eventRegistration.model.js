@@ -8,39 +8,55 @@ const eventRegistrationSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
       index: true,
     },
-
+    registrationStatus: {
+      type: String,
+      enum: ['reserved', 'confirmed', 'cancelled', 'completed'],
+      default: 'reserved',
+      index: true,
+    },
     paymentStatus: {
       type: String,
       enum: ['unpaid', 'held', 'captured', 'released', 'refunded'],
       default: 'unpaid',
       index: true,
     },
-
     amountPaid: {
       type: Number,
       default: 0,
       min: 0,
     },
-
     currency: {
       type: String,
       default: 'EGP',
       trim: true,
     },
-
     attended: {
       type: Boolean,
       default: false,
     },
-
     checkedInAt: {
+      type: Date,
+      default: null,
+    },
+    releasedAt: {
+      type: Date,
+      default: null,
+    },
+    capturedAt: {
+      type: Date,
+      default: null,
+    },
+    refundedAt: {
+      type: Date,
+      default: null,
+    },
+    cancelledAt: {
       type: Date,
       default: null,
     },

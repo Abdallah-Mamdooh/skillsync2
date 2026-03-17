@@ -53,20 +53,61 @@ function findStepInRoadmap(roadmap, stepId) {
   return null;
 }
 
-function calculateProgressPercentageFromRoadmap(progress, roadmap) {
+function countRoadmapSteps(roadmap) {
   let totalSteps = 0;
-  (roadmap.phases || []).forEach((phase) => {
+  for (const phase of roadmap.phases || []) {
     totalSteps += (phase.steps || []).length;
-  });
+  }
+  return totalSteps;
+}
 
+function calculateProgressPercentageFromRoadmap(progress, roadmap) {
+  const totalSteps = countRoadmapSteps(roadmap);
   const completed = (progress.completedSteps || []).length;
-  if (totalSteps === 0) return 0;
 
+  if (totalSteps === 0) return 0;
   return Math.round((completed / totalSteps) * 100);
 }
 
+function buildProgressSummary(progress, roadmap, career) {
+  const totalSteps = countRoadmapSteps(roadmap);
+  const completedStepsCount = Array.isArray(progress.completedSteps)
+    ? progress.completedSteps.length
+    : 0;
+
+  const remainingStepsCount = Math.max(totalSteps - completedStepsCount, 0);
+
+  const sortedHistory = Array.isArray(progress.stepHistory)
+    ? [...progress.stepHistory].sort(
+        (a, b) => new Date(b.completedAt) - new Date(a.completedAt)
+      )
+    : [];
+
+  const latestCompletedStep = sortedHistory[0] || null;
+
+  return {
+    career: {
+      id: career._id,
+      name: career.name,
+    },
+    roadmapId: roadmap._id,
+    totalSteps,
+    completedStepsCount,
+    remainingStepsCount,
+    completionPercent: progress.completionPercent || 0,
+    latestCompletedStep: latestCompletedStep
+      ? {
+          stepId: latestCompletedStep.stepId,
+          completedAt: latestCompletedStep.completedAt,
+        }
+      : null,
+  };
+}
+
 async function getChosenCareerAndRoadmap(userId) {
-  const assessment = await UserAssessmentResult.findOne({ userId }).populate('chosenCareer');
+  const assessment = await UserAssessmentResult.findOne({ userId }).populate(
+    'chosenCareer'
+  );
 
   if (!assessment || !assessment.chosenCareer) {
     throw new Error('Assessment not completed or career not selected');
@@ -89,6 +130,107 @@ async function getChosenCareerAndRoadmap(userId) {
   };
 }
 
+async function getOrCreateProgress(userId, careerId, roadmapId) {
+  let progress = await UserRoadmapProgress.findOne({
+    userId,
+    careerId,
+  });
+
+  if (!progress) {
+    progress = await UserRoadmapProgress.create({
+      userId,
+      careerId,
+      roadmapId,
+      completedSteps: [],
+      stepHistory: [],
+      completionPercent: 0,
+    });
+  }
+
+  return progress;
+}
+
+async function syncUserSkillOnComplete(userId, skillTag) {
+  const cleanSkill = normalizeText(skillTag);
+  if (!cleanSkill) {
+    return false;
+  }
+
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  const existingSkills = Array.isArray(user.skills) ? user.skills : [];
+  const alreadyHasSkill = existingSkills.some(
+    (s) => normalizeSkill(s) === normalizeSkill(cleanSkill)
+  );
+
+  if (alreadyHasSkill) {
+    return false;
+  }
+
+  user.skills.push(cleanSkill);
+  await user.save();
+
+  return true;
+}
+
+async function syncUserSkillOnUncomplete(userId, progress, roadmap, removedStep) {
+  const cleanSkill = normalizeText(removedStep.skillTag);
+  if (!cleanSkill) {
+    return false;
+  }
+
+  const stillCompletedStepIds = new Set(
+    (progress.completedSteps || []).map((id) => String(id))
+  );
+
+  let skillStillExistsInCompletedSteps = false;
+
+  for (const phase of roadmap.phases || []) {
+    for (const step of phase.steps || []) {
+      const sameSkill =
+        normalizeSkill(step.skillTag) === normalizeSkill(cleanSkill);
+
+      const isStillCompleted = stillCompletedStepIds.has(String(step._id));
+
+      if (sameSkill && isStillCompleted) {
+        skillStillExistsInCompletedSteps = true;
+        break;
+      }
+    }
+
+    if (skillStillExistsInCompletedSteps) {
+      break;
+    }
+  }
+
+  if (skillStillExistsInCompletedSteps) {
+    return false;
+  }
+
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  const before = Array.isArray(user.skills) ? user.skills.length : 0;
+
+  user.skills = (user.skills || []).filter(
+    (s) => normalizeSkill(s) !== normalizeSkill(cleanSkill)
+  );
+
+  const after = user.skills.length;
+
+  if (after !== before) {
+    await user.save();
+    return true;
+  }
+
+  return false;
+}
+
 // ---------- main ----------
 const getUserRoadmap = async (userId) => {
   const { roadmap } = await getChosenCareerAndRoadmap(userId);
@@ -98,26 +240,21 @@ const getUserRoadmap = async (userId) => {
 const getUserRoadmapWithProgress = async (userId) => {
   const { career, roadmap } = await getChosenCareerAndRoadmap(userId);
 
-  let progress = await UserRoadmapProgress.findOne({
-    userId,
-    careerId: career._id,
-  });
+  const progress = await getOrCreateProgress(userId, career._id, roadmap._id);
 
-  if (!progress) {
-    progress = await UserRoadmapProgress.create({
-      userId,
-      careerId: career._id,
-      roadmapId: roadmap._id,
-      completedSteps: [],
-      completionPercent: 0,
-    });
-  }
-
-  const completedSet = new Set((progress.completedSteps || []).map((id) => String(id)));
-  const historyMap = new Map(
-    (progress.stepHistory || []).map((entry) => [String(entry.stepId), entry.completedAt])
+  const completedSet = new Set(
+    (progress.completedSteps || []).map((id) => String(id))
   );
+
+  const historyMap = new Map(
+    (progress.stepHistory || []).map((entry) => [
+      String(entry.stepId),
+      entry.completedAt,
+    ])
+  );
+
   const roadmapObj = roadmap.toObject();
+
   roadmapObj.phases = (roadmapObj.phases || []).map((phase) => ({
     ...phase,
     steps: (phase.steps || []).map((step) => ({
@@ -135,6 +272,7 @@ const getUserRoadmapWithProgress = async (userId) => {
     roadmap: roadmapObj,
     completedSteps: progress.completedSteps || [],
     completionPercent: progress.completionPercent || 0,
+    summary: buildProgressSummary(progress, roadmap, career),
   };
 };
 
@@ -156,27 +294,32 @@ const initializeProgress = async (userId) => {
   await UserRoadmapProgress.deleteMany({ userId });
 
   const progress = await UserRoadmapProgress.create({
-  userId,
-  careerId: assessment.chosenCareer,
-  roadmapId: roadmap._id,
-  completedSteps: [],
-  stepHistory: [],
-  completionPercent: 0,
-});
+    userId,
+    careerId: assessment.chosenCareer,
+    roadmapId: roadmap._id,
+    completedSteps: [],
+    stepHistory: [],
+    completionPercent: 0,
+  });
 
   return progress;
 };
 
 const calculateProgressPercentage = async (userId) => {
   const assessment = await UserAssessmentResult.findOne({ userId });
-  if (!assessment || !assessment.chosenCareer) return 0;
+
+  if (!assessment || !assessment.chosenCareer) {
+    return 0;
+  }
 
   const progress = await UserRoadmapProgress.findOne({
     userId,
     careerId: assessment.chosenCareer,
   }).populate('roadmapId');
 
-  if (!progress || !progress.roadmapId) return 0;
+  if (!progress || !progress.roadmapId) {
+    return 0;
+  }
 
   let totalSteps = 0;
   (progress.roadmapId.phases || []).forEach((phase) => {
@@ -188,6 +331,13 @@ const calculateProgressPercentage = async (userId) => {
   if (totalSteps === 0) return 0;
 
   return Math.round((completed / totalSteps) * 100);
+};
+
+const getProgressSummary = async (userId) => {
+  const { career, roadmap } = await getChosenCareerAndRoadmap(userId);
+  const progress = await getOrCreateProgress(userId, career._id, roadmap._id);
+
+  return buildProgressSummary(progress, roadmap, career);
 };
 
 const toggleStep = async (userId, stepId) => {
@@ -207,6 +357,7 @@ const toggleStep = async (userId, stepId) => {
   }
 
   const found = findStepInRoadmap(roadmap, stepId);
+
   if (!found) {
     throw new Error('Step does not belong to this roadmap');
   }
@@ -220,24 +371,44 @@ const toggleStep = async (userId, stepId) => {
 
   let isCompleted = false;
   let skillAdded = false;
+  let skillRemoved = false;
 
-  progress.stepHistory = Array.isArray(progress.stepHistory) ? progress.stepHistory : [];
+  progress.stepHistory = Array.isArray(progress.stepHistory)
+    ? progress.stepHistory
+    : [];
 
   if (existingIndex >= 0) {
     // uncomplete
     progress.completedSteps.splice(existingIndex, 1);
+
     progress.stepHistory = progress.stepHistory.filter(
       (entry) => String(entry.stepId) !== stepIdStr
     );
+
     isCompleted = false;
+
+    skillRemoved = await syncUserSkillOnUncomplete(userId, progress, roadmap, step);
+
+    await notificationService.createNotification({
+      userId,
+      type: 'roadmap_step_uncompleted',
+      title: 'Roadmap step unchecked',
+      message: `You unchecked: ${step.title}`,
+      data: {
+        stepId: step._id,
+        stepTitle: step.title,
+        skillTag: step.skillTag,
+        skillRemoved,
+      },
+    });
   } else {
     // complete
     progress.completedSteps.push(step._id);
 
-    // add/replace history entry
     progress.stepHistory = progress.stepHistory.filter(
       (entry) => String(entry.stepId) !== stepIdStr
     );
+
     progress.stepHistory.push({
       stepId: step._id,
       completedAt: new Date(),
@@ -245,55 +416,40 @@ const toggleStep = async (userId, stepId) => {
 
     isCompleted = true;
 
-    const skillTag = normalizeText(step.skillTag);
+    skillAdded = await syncUserSkillOnComplete(userId, step.skillTag);
 
-    if (skillTag) {
-      const user = await User.findById(userId);
+    await notificationService.createNotification({
+      userId,
+      type: 'roadmap_step_completed',
+      title: 'Roadmap step completed',
+      message: `You completed: ${step.title}`,
+      data: {
+        stepId: step._id,
+        stepTitle: step.title,
+        skillTag: step.skillTag,
+        skillAdded,
+      },
+    });
 
-      if (!user) {
-        throw new Error('User not found');
-      }
-
-      const existingSkills = Array.isArray(user.skills) ? user.skills : [];
-      const alreadyHasSkill = existingSkills.some(
-        (s) => normalizeSkill(s) === normalizeSkill(skillTag)
-      );
-
-      if (!alreadyHasSkill) {
-        user.skills.push(skillTag);
-        await user.save();
-        skillAdded = true;
-      }
-
+    if (skillAdded) {
       await notificationService.createNotification({
         userId,
-        type: 'roadmap_step_completed',
-        title: 'Roadmap step completed',
-        message: `You completed: ${step.title}`,
+        type: 'skill_added',
+        title: 'New skill added',
+        message: `${step.skillTag} was added to your profile skills.`,
         data: {
           stepId: step._id,
-          stepTitle: step.title,
           skillTag: step.skillTag,
-          skillAdded,
         },
       });
-
-      if (skillAdded) {
-        await notificationService.createNotification({
-          userId,
-          type: 'skill_added',
-          title: 'New skill added',
-          message: `${step.skillTag} was added to your profile skills.`,
-          data: {
-            stepId: step._id,
-            skillTag: step.skillTag,
-          },
-        });
-      }
     }
   }
 
-  progress.completionPercent = calculateProgressPercentageFromRoadmap(progress, roadmap);
+  progress.completionPercent = calculateProgressPercentageFromRoadmap(
+    progress,
+    roadmap
+  );
+
   await progress.save();
 
   const historyEntry = progress.stepHistory.find(
@@ -301,15 +457,20 @@ const toggleStep = async (userId, stepId) => {
   );
 
   return {
-    message: isCompleted ? 'Step marked as completed' : 'Step uncompleted',
+    message: isCompleted
+      ? 'Step marked as completed'
+      : 'Step uncompleted',
     isCompleted,
     skillTag: step.skillTag,
     skillAdded,
+    skillRemoved,
     completedAt: historyEntry ? historyEntry.completedAt : null,
     completedStepsCount: progress.completedSteps.length,
     completionPercent: progress.completionPercent,
+    summary: buildProgressSummary(progress, roadmap, career),
   };
 };
+
 const generateResourcesForCurrentRoadmap = async (userId) => {
   const { career, roadmap } = await getChosenCareerAndRoadmap(userId);
 
@@ -321,7 +482,8 @@ const generateResourcesForCurrentRoadmap = async (userId) => {
     for (const step of phase.steps || []) {
       stepsCount += 1;
 
-      const hasResources = Array.isArray(step.resources) && step.resources.length > 0;
+      const hasResources =
+        Array.isArray(step.resources) && step.resources.length > 0;
 
       if (!hasResources) {
         step.resources = buildSearchResources(step.skillTag, step.title);
@@ -349,7 +511,9 @@ const generateResourcesForCurrentRoadmap = async (userId) => {
 };
 
 const getRecentCompletions = async (userId, limit = 10) => {
-  const assessment = await UserAssessmentResult.findOne({ userId }).populate('chosenCareer');
+  const assessment = await UserAssessmentResult.findOne({ userId }).populate(
+    'chosenCareer'
+  );
 
   if (!assessment || !assessment.chosenCareer) {
     return [];
@@ -360,7 +524,11 @@ const getRecentCompletions = async (userId, limit = 10) => {
     careerId: assessment.chosenCareer._id,
   });
 
-  if (!progress || !Array.isArray(progress.stepHistory) || progress.stepHistory.length === 0) {
+  if (
+    !progress ||
+    !Array.isArray(progress.stepHistory) ||
+    progress.stepHistory.length === 0
+  ) {
     return [];
   }
 
@@ -399,12 +567,14 @@ const getRecentCompletions = async (userId, limit = 10) => {
       };
     });
 };
+
 module.exports = {
   getUserRoadmap,
   getUserRoadmapWithProgress,
   initializeProgress,
   toggleStep,
   calculateProgressPercentage,
+  getProgressSummary,
   generateResourcesForCurrentRoadmap,
   getRecentCompletions,
 };

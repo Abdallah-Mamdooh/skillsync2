@@ -9,9 +9,17 @@ const Notification = require('../notification/notification.model');
 const SessionFeedback = require('../mentor/sessionFeedback.model');
 const Wallet = require('../payment/wallet.model');
 
+function countRoadmapSteps(roadmap) {
+  let totalSteps = 0;
+  for (const phase of roadmap?.phases || []) {
+    totalSteps += (phase.steps || []).length;
+  }
+  return totalSteps;
+}
+
 const getUserDashboardSummary = async (userId) => {
   const user = await User.findById(userId).select(
-    'fullName email phoneNumber role skills cvUrl assessmentCompleted'
+    'fullName email phoneNumber role skills cvUrl assessmentCompleted profileImageUrl bio'
   );
 
   if (!user) {
@@ -23,11 +31,31 @@ const getUserDashboardSummary = async (userId) => {
     isRead: false,
   });
 
-  const assessment = await UserAssessmentResult.findOne({ userId }).populate('chosenCareer');
+  const assessment = await UserAssessmentResult.findOne({ userId }).populate(
+    'chosenCareer'
+  );
 
   const roadmapProgress = await UserRoadmapProgress.findOne({ userId })
     .populate('careerId', 'name')
     .populate('roadmapId');
+
+  const totalSteps = roadmapProgress?.roadmapId
+    ? countRoadmapSteps(roadmapProgress.roadmapId)
+    : 0;
+
+  const completedStepsCount = Array.isArray(roadmapProgress?.completedSteps)
+    ? roadmapProgress.completedSteps.length
+    : 0;
+
+  const remainingStepsCount = Math.max(totalSteps - completedStepsCount, 0);
+
+  const latestCompletedStep =
+    Array.isArray(roadmapProgress?.stepHistory) &&
+    roadmapProgress.stepHistory.length > 0
+      ? [...roadmapProgress.stepHistory].sort(
+          (a, b) => new Date(b.completedAt) - new Date(a.completedAt)
+        )[0]
+      : null;
 
   const mySessions = await MentorSession.find({
     userId,
@@ -53,12 +81,19 @@ const getUserDashboardSummary = async (userId) => {
       : null,
     roadmap: roadmapProgress
       ? {
+          roadmapId: roadmapProgress.roadmapId?._id || null,
           careerId: roadmapProgress.careerId?._id || null,
           careerName: roadmapProgress.careerId?.name || '',
           completionPercent: roadmapProgress.completionPercent || 0,
-          completedStepsCount: Array.isArray(roadmapProgress.completedSteps)
-            ? roadmapProgress.completedSteps.length
-            : 0,
+          completedStepsCount,
+          totalSteps,
+          remainingStepsCount,
+          latestCompletedStep: latestCompletedStep
+            ? {
+                stepId: latestCompletedStep.stepId,
+                completedAt: latestCompletedStep.completedAt,
+              }
+            : null,
         }
       : null,
     skillsCount: Array.isArray(user.skills) ? user.skills.length : 0,
@@ -97,7 +132,6 @@ const getMentorDashboardSummary = async (userId) => {
   }
 
   const mentorProfile = await MentorProfile.findOne({ userId });
-
   if (!mentorProfile) {
     throw new Error('Mentor profile not found');
   }

@@ -22,16 +22,19 @@ const toggleStep = asyncHandler(async (req, res) => {
 });
 
 const getProgress = asyncHandler(async (req, res) => {
-  const percentage = await roadmapService.calculateProgressPercentage(req.user._id);
+  const data = await roadmapService.getProgressSummary(req.user._id);
 
   res.status(200).json({
     success: true,
-    progress: percentage,
+    progress: data.completionPercent,
+    data,
   });
 });
 
 const generateResources = asyncHandler(async (req, res) => {
-  const result = await roadmapService.generateResourcesForCurrentRoadmap(req.user._id);
+  const result = await roadmapService.generateResourcesForCurrentRoadmap(
+    req.user._id
+  );
 
   res.status(200).json({
     success: true,
@@ -39,10 +42,8 @@ const generateResources = asyncHandler(async (req, res) => {
   });
 });
 
-// ✅ new
 const getRecentCompletions = asyncHandler(async (req, res) => {
   const limit = Number(req.query.limit) || 10;
-
   const data = await roadmapService.getRecentCompletions(req.user._id, limit);
 
   res.status(200).json({

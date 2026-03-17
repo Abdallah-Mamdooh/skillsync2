@@ -109,6 +109,45 @@ const getTopSkillsAnalytics = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data });
 });
 
+const getCareers = asyncHandler(async (req, res) => {
+  const data = await adminService.getCareers(req.query);
+  res.status(200).json({ success: true, data });
+});
+
+const getCareerDetails = asyncHandler(async (req, res) => {
+  const data = await adminService.getCareerDetails(req.params.careerId);
+  res.status(200).json({ success: true, data });
+});
+
+const createCareer = asyncHandler(async (req, res) => {
+  const data = await adminService.createCareer(req.body);
+  res.status(201).json({ success: true, data });
+});
+
+const updateCareer = asyncHandler(async (req, res) => {
+  const data = await adminService.updateCareer(req.params.careerId, req.body);
+  res.status(200).json({ success: true, data });
+});
+
+const deleteCareer = asyncHandler(async (req, res) => {
+  const data = await adminService.deleteCareer(req.params.careerId);
+  res.status(200).json({ success: true, data });
+});
+
+const getCareerRoadmap = asyncHandler(async (req, res) => {
+  const data = await adminService.getCareerRoadmap(req.params.careerId);
+  res.status(200).json({ success: true, data });
+});
+
+const updateRoadmapStepResources = asyncHandler(async (req, res) => {
+  const data = await adminService.updateRoadmapStepResources(
+    req.params.careerId,
+    req.params.stepId,
+    req.body
+  );
+  res.status(200).json({ success: true, data });
+});
+
 module.exports = {
   getDashboardSummary,
   getUsers,
@@ -130,4 +169,11 @@ module.exports = {
   getSessionTrendAnalytics,
   getTopCareersAnalytics,
   getTopSkillsAnalytics,
+  getCareers,
+  getCareerDetails,
+  createCareer,
+  updateCareer,
+  deleteCareer,
+  getCareerRoadmap,
+  updateRoadmapStepResources,
 };

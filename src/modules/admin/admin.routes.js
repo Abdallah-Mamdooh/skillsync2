@@ -56,6 +56,56 @@ router.get(
 );
 
 router.get(
+  '/careers',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.getCareers
+);
+
+router.get(
+  '/careers/:careerId',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.getCareerDetails
+);
+
+router.post(
+  '/careers',
+  authMiddleware,
+  roleMiddleware('admin'),
+  validate(['name']),
+  controller.createCareer
+);
+
+router.patch(
+  '/careers/:careerId',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.updateCareer
+);
+
+router.delete(
+  '/careers/:careerId',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.deleteCareer
+);
+
+router.get(
+  '/careers/:careerId/roadmap',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.getCareerRoadmap
+);
+
+router.patch(
+  '/careers/:careerId/roadmap/steps/:stepId/resources',
+  authMiddleware,
+  roleMiddleware('admin'),
+  validate(['resources']),
+  controller.updateRoadmapStepResources
+);
+router.get(
   '/users',
   authMiddleware,
   roleMiddleware('admin'),

@@ -6,6 +6,7 @@ const Transaction = require('../payment/transaction.model');
 const UserAssessmentResult = require('../assessment/userAssessmentResult.model');
 const Career = require('../career/career.model');
 const notificationService = require('../notification/notification.service');
+const Roadmap = require('../roadmap/roadmap.model');
 
 
 function getDateNDaysAgo(days) {
@@ -49,6 +50,30 @@ function todayDateString() {
   const m = String(now.getMonth() + 1).padStart(2, '0');
   const d = String(now.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+function normalizeStringArray(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => String(item || '').trim())
+    .filter(Boolean);
+}
+
+function normalizeResources(value) {
+  if (!Array.isArray(value)) {
+    throw new Error('resources must be an array');
+  }
+
+  return value.map((item) => {
+    const title = String(item.title || '').trim();
+    const type = String(item.type || '').trim();
+    const url = String(item.url || '').trim();
+
+    if (!title || !type || !url) {
+      throw new Error('Each resource must include title, type, and url');
+    }
+
+    return { title, type, url };
+  });
 }
 
 async function getDashboardSummary() {
@@ -133,6 +158,8 @@ async function getDashboardSummary() {
     topSkills,
   };
 }
+
+
 
 async function getUsers(query = {}) {
   const {
@@ -741,6 +768,227 @@ async function getTopSkillsAnalytics(limit = 10) {
     count: item.count,
   }));
 }
+async function getCareers(query = {}) {
+  const {
+    search = '',
+    page = 1,
+    limit = 20,
+  } = query;
+
+  const filters = {};
+
+  if (search) {
+    filters.$or = [
+      { name: { $regex: search, $options: 'i' } },
+      { description: { $regex: search, $options: 'i' } },
+      { requiredSkills: { $regex: search, $options: 'i' } },
+    ];
+  }
+
+  const skip = (Number(page) - 1) * Number(limit);
+
+  const [items, total] = await Promise.all([
+    Career.find(filters)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(Number(limit)),
+    Career.countDocuments(filters),
+  ]);
+
+  return {
+    items,
+    pagination: {
+      page: Number(page),
+      limit: Number(limit),
+      total,
+      pages: Math.ceil(total / Number(limit)),
+    },
+  };
+}
+
+async function getCareerDetails(careerId) {
+  const career = await Career.findById(careerId);
+
+  if (!career) {
+    throw new Error('Career not found');
+  }
+
+  const roadmap = await Roadmap.findOne({ careerId: career._id });
+
+  let roadmapStats = null;
+
+  if (roadmap) {
+    let totalPhases = roadmap.phases?.length || 0;
+    let totalSteps = 0;
+
+    for (const phase of roadmap.phases || []) {
+      totalSteps += (phase.steps || []).length;
+    }
+
+    roadmapStats = {
+      roadmapId: roadmap._id,
+      totalPhases,
+      totalSteps,
+    };
+  }
+
+  return {
+    career,
+    roadmapStats,
+  };
+}
+
+async function createCareer(payload = {}) {
+  const name = String(payload.name || '').trim();
+  const description = String(payload.description || '').trim();
+  const requiredSkills = normalizeStringArray(payload.requiredSkills);
+  const skills = normalizeStringArray(payload.skills);
+
+  if (!name) {
+    throw new Error('name is required');
+  }
+
+  const existing = await Career.findOne({ name });
+  if (existing) {
+    throw new Error('Career with this name already exists');
+  }
+
+  const career = await Career.create({
+    name,
+    description,
+    requiredSkills,
+    skills,
+  });
+
+  return career;
+}
+
+async function updateCareer(careerId, payload = {}) {
+  const career = await Career.findById(careerId);
+
+  if (!career) {
+    throw new Error('Career not found');
+  }
+
+  if (payload.name !== undefined) {
+    const name = String(payload.name || '').trim();
+
+    if (!name) {
+      throw new Error('name cannot be empty');
+    }
+
+    const existing = await Career.findOne({
+      name,
+      _id: { $ne: careerId },
+    });
+
+    if (existing) {
+      throw new Error('Another career with this name already exists');
+    }
+
+    career.name = name;
+  }
+
+  if (payload.description !== undefined) {
+    career.description = String(payload.description || '').trim();
+  }
+
+  if (payload.requiredSkills !== undefined) {
+    career.requiredSkills = normalizeStringArray(payload.requiredSkills);
+  }
+
+  if (payload.skills !== undefined) {
+    career.skills = normalizeStringArray(payload.skills);
+  }
+
+  await career.save();
+  return career;
+}
+
+async function deleteCareer(careerId) {
+  const career = await Career.findById(careerId);
+
+  if (!career) {
+    throw new Error('Career not found');
+  }
+
+  const linkedRoadmap = await Roadmap.findOne({ careerId });
+
+  if (linkedRoadmap) {
+    throw new Error(
+      'Cannot delete career while a roadmap is linked to it. Delete or reassign the roadmap first.'
+    );
+  }
+
+  await career.deleteOne();
+
+  return {
+    deleted: true,
+    careerId,
+  };
+}
+
+async function getCareerRoadmap(careerId) {
+  const career = await Career.findById(careerId);
+
+  if (!career) {
+    throw new Error('Career not found');
+  }
+
+  const roadmap = await Roadmap.findOne({ careerId });
+
+  if (!roadmap) {
+    throw new Error('Roadmap not found for this career');
+  }
+
+  return {
+    career,
+    roadmap,
+  };
+}
+
+async function updateRoadmapStepResources(careerId, stepId, payload = {}) {
+  const career = await Career.findById(careerId);
+
+  if (!career) {
+    throw new Error('Career not found');
+  }
+
+  const roadmap = await Roadmap.findOne({ careerId });
+
+  if (!roadmap) {
+    throw new Error('Roadmap not found for this career');
+  }
+
+  const resources = normalizeResources(payload.resources);
+
+  let foundStep = null;
+
+  for (const phase of roadmap.phases || []) {
+    for (const step of phase.steps || []) {
+      if (String(step._id) === String(stepId)) {
+        step.resources = resources;
+        foundStep = step;
+        break;
+      }
+    }
+
+    if (foundStep) break;
+  }
+
+  if (!foundStep) {
+    throw new Error('Step not found in roadmap');
+  }
+
+  await roadmap.save();
+
+  return {
+    careerId: career._id,
+    roadmapId: roadmap._id,
+    stepId: foundStep._id,
+    resources: foundStep.resources,
+  };
+}
 module.exports = {
   getDashboardSummary,
   getUsers,
@@ -762,4 +1010,11 @@ module.exports = {
   getSessionTrendAnalytics,
   getTopCareersAnalytics,
   getTopSkillsAnalytics,
+  getCareers,
+  getCareerDetails,
+  createCareer,
+  updateCareer,
+  deleteCareer,
+  getCareerRoadmap,
+  updateRoadmapStepResources,
 };

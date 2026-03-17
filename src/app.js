@@ -24,7 +24,7 @@ const notificationRoutes = require('./modules/notification/notification.routes')
 const reminderRoutes = require('./modules/notification/reminder.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
 const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
-
+const complaintRoutes = require('./modules/complaint/complaint.routes');
 const app = express();
 
 // global middleware
@@ -69,5 +69,6 @@ app.use('/api', routes);
 // error handling LAST
 app.use(notFound);
 app.use(errorHandler);
+app.use('/api/complaints', complaintRoutes);
 
 module.exports = app;

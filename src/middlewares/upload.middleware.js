@@ -79,10 +79,21 @@ const chatAttachmentUpload = createUploader('chat-attachments', [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ]);
 
+const complaintAttachmentUpload = createUploader('complaints', [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/pdf',
+  'text/plain',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+]);
+
 module.exports = {
   imageUpload,
   cvUpload,
   documentUpload,
   eventCoverUpload,
   chatAttachmentUpload,
+  complaintAttachmentUpload,
 };

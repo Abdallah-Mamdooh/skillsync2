@@ -4,6 +4,7 @@ const Transaction = require('./transaction.model');
 const notificationService = require('../notification/notification.service');
 const MentorSession = require('../mentor/mentorSession.model');
 const EventRegistration = require('../events/eventRegistration.model');
+const GroupEvent = require('../events/groupEvent.model');
 const {
   getFawryConfig,
   generateMerchantRef,
@@ -762,25 +763,30 @@ async function getPaymentStatus({ transactionId, userId }) {
   let eventRegistration = null;
 
    if (transaction.sessionId) {
-    const sessionPaymentStatus = transaction.sessionId.paymentStatus;
-    const sessionStatus = transaction.sessionId.status;
+  const sessionPaymentStatus = transaction.sessionId.paymentStatus;
+  const sessionStatus = transaction.sessionId.status;
 
-    session = {
-      id: transaction.sessionId._id,
-      status: sessionStatus,
-      paymentStatus: sessionPaymentStatus,
-      method: transaction.sessionId.method,
-      durationMinutes: transaction.sessionId.durationMinutes,
-      totalAmount: transaction.sessionId.totalAmount,
-      currency: transaction.sessionId.currency,
-
-      // frontend-friendly flags
-      isPaymentConfirmed: ['held', 'captured'].includes(sessionPaymentStatus),
-      isReadyForMentorProcessing:
-        ['held', 'captured'].includes(sessionPaymentStatus) &&
-        ['pending', 'accepted', 'active', 'completed'].includes(sessionStatus),
-    };
-  }
+  session = {
+    id: transaction.sessionId._id,
+    status: sessionStatus,
+    paymentStatus: sessionPaymentStatus,
+    method: transaction.sessionId.method,
+    durationMinutes: transaction.sessionId.durationMinutes,
+    totalAmount: transaction.sessionId.totalAmount,
+    currency: transaction.sessionId.currency,
+    scheduledDate: transaction.sessionId.scheduledDate,
+    scheduledStartTime: transaction.sessionId.scheduledStartTime,
+    scheduledEndTime: transaction.sessionId.scheduledEndTime,
+    isPaymentConfirmed: ['held', 'captured'].includes(sessionPaymentStatus),
+    isReadyForMentorProcessing:
+      ['held', 'captured'].includes(sessionPaymentStatus) &&
+      ['scheduled', 'started', 'active', 'completed'].includes(sessionStatus),
+    isRefunded: sessionPaymentStatus === 'refunded',
+    isClosed: ['completed', 'cancelled', 'expired', 'user_no_show'].includes(
+      sessionStatus
+    ),
+  };
+}
 
     if (transaction.eventRegistrationId) {
     const registrationPaymentStatus = transaction.eventRegistrationId.paymentStatus;
@@ -890,7 +896,6 @@ async function markTransactionRefunded({ transactionId, userId }) {
   }
 
   const transaction = await Transaction.findById(transactionId);
-
   if (!transaction) {
     throw new Error('Transaction not found');
   }
@@ -901,6 +906,7 @@ async function markTransactionRefunded({ transactionId, userId }) {
 
   transaction.providerStatus = 'REFUNDED';
   transaction.status = 'completed';
+  transaction.notes = 'Marked refunded manually';
   await transaction.save();
 
   await notificationService.createNotification({
@@ -914,10 +920,300 @@ async function markTransactionRefunded({ transactionId, userId }) {
       currency: transaction.currency,
       entityType: transaction.entityType,
       entityId: transaction.entityId,
+      isManual: true,
     },
   });
 
   return transaction;
+}
+async function debitMentorWalletForRefund({
+  mentorUserId,
+  sessionId = null,
+  amount,
+  currency = 'EGP',
+  reason = 'mentor_session_refund',
+}) {
+  if (!mentorUserId) {
+    throw new Error('mentorUserId is required');
+  }
+
+  const wallet = await getOrCreateWallet(mentorUserId, currency);
+
+  if (Number(wallet.availableBalance || 0) < Number(amount || 0)) {
+    throw new Error(
+      'Mentor wallet balance is insufficient to reverse payout. Manual admin settlement is required.'
+    );
+  }
+
+  wallet.availableBalance = Number(wallet.availableBalance || 0) - Number(amount || 0);
+  await wallet.save();
+
+  const debitTx = await Transaction.create({
+    userId: mentorUserId,
+    sessionId,
+    amount: Number(amount || 0),
+    currency,
+    type: 'refund',
+    provider: 'internal',
+    providerStatus: 'REFUND_DEBIT',
+    status: 'completed',
+    entityType: 'mentor_session_refund',
+    entityId: sessionId || null,
+    notes: reason,
+  });
+
+  return debitTx;
+}
+
+async function refundMentorSessionPayment({
+  sessionId,
+  initiatedByUserId,
+  reason = '',
+}) {
+  if (!sessionId) {
+    throw new Error('sessionId is required');
+  }
+
+  const session = await MentorSession.findById(sessionId);
+
+  if (!session) {
+    throw new Error('Session not found');
+  }
+
+  const transaction = await Transaction.findOne({
+    entityType: 'mentor_session',
+    entityId: session._id,
+    status: { $in: ['pending', 'completed', 'failed'] },
+  }).sort({ createdAt: -1 });
+
+  if (!transaction) {
+    throw new Error('No transaction found for this session');
+  }
+
+  if (String(transaction.userId) !== String(initiatedByUserId)) {
+    throw new Error('You are not allowed to refund this session');
+  }
+
+  if (session.status === 'user_no_show') {
+    throw new Error('No refund is allowed for user no-show sessions');
+  }
+
+  if (session.paymentStatus === 'refunded') {
+    throw new Error('This session has already been refunded');
+  }
+
+  // Case 1: held only, not captured yet
+  if (session.paymentStatus === 'held') {
+    await releaseHeldFunds({
+      userId: session.userId,
+      sessionId: session._id,
+      amount: session.totalAmount,
+      currency: session.currency,
+      reason: reason || 'mentor_session_refund_before_capture',
+    });
+
+    session.paymentStatus = 'refunded';
+    await session.save();
+
+    transaction.providerStatus = 'REFUNDED';
+    transaction.status = 'completed';
+    transaction.notes = reason || transaction.notes || 'Refunded from held payment';
+    await transaction.save();
+
+    await notificationService.createNotification({
+      userId: session.userId,
+      type: 'payment_refunded',
+      title: 'Session payment refunded',
+      message: `${session.totalAmount} ${session.currency} was refunded for your session.`,
+      data: {
+        sessionId: session._id,
+        transactionId: transaction._id,
+        amount: session.totalAmount,
+        currency: session.currency,
+      },
+    });
+
+    return {
+      session,
+      transaction,
+      refundMode: 'release_hold',
+    };
+  }
+
+  // Case 2: captured and maybe paid out already
+  if (session.paymentStatus === 'captured') {
+    if (session.payoutTransferred) {
+      await debitMentorWalletForRefund({
+        mentorUserId: session.mentorUserId,
+        sessionId: session._id,
+        amount: session.mentorNetAmount,
+        currency: session.currency,
+        reason:
+          reason || `Reversal of mentor payout for refunded session ${session._id}`,
+      });
+
+      session.payoutTransferred = false;
+    }
+
+    session.paymentStatus = 'refunded';
+    await session.save();
+
+    transaction.providerStatus = 'REFUNDED';
+    transaction.status = 'completed';
+    transaction.notes = reason || transaction.notes || 'Refunded after capture';
+    await transaction.save();
+
+    await notificationService.createNotification({
+      userId: session.userId,
+      type: 'payment_refunded',
+      title: 'Session payment refunded',
+      message: `${session.totalAmount} ${session.currency} was refunded for your session.`,
+      data: {
+        sessionId: session._id,
+        transactionId: transaction._id,
+        amount: session.totalAmount,
+        currency: session.currency,
+      },
+    });
+
+    await notificationService.createNotification({
+      userId: session.mentorUserId,
+      type: 'mentor_payout_reversed',
+      title: 'Mentor payout reversed',
+      message: `A payout for session ${session._id} was reversed بسبب refund.`,
+      data: {
+        sessionId: session._id,
+        mentorNetAmount: session.mentorNetAmount,
+        currency: session.currency,
+      },
+    });
+
+    return {
+      session,
+      transaction,
+      refundMode: 'captured_refund',
+    };
+  }
+
+  throw new Error('This session is not in a refundable payment state');
+}
+
+async function refundEventRegistrationPayment({
+  registrationId,
+  initiatedByUserId,
+  reason = '',
+}) {
+  if (!registrationId) {
+    throw new Error('registrationId is required');
+  }
+
+  const registration = await EventRegistration.findById(registrationId).populate('eventId');
+
+  if (!registration) {
+    throw new Error('Event registration not found');
+  }
+
+  const transaction = await Transaction.findOne({
+    entityType: 'group_event',
+    entityId: registration._id,
+    status: { $in: ['pending', 'completed', 'failed'] },
+  }).sort({ createdAt: -1 });
+
+  if (!transaction) {
+    throw new Error('No transaction found for this event registration');
+  }
+
+  if (String(transaction.userId) !== String(initiatedByUserId)) {
+    throw new Error('You are not allowed to refund this event payment');
+  }
+
+  if (registration.paymentStatus === 'refunded') {
+    throw new Error('This event registration has already been refunded');
+  }
+
+  if (registration.paymentStatus === 'held') {
+    await releaseHeldFunds({
+      userId: registration.userId,
+      amount: registration.amountPaid,
+      currency: registration.currency,
+      reason: reason || 'group_event_refund_before_capture',
+      eventRegistrationId: registration._id,
+    });
+
+    registration.paymentStatus = 'refunded';
+    await registration.save();
+
+    if (registration.eventId && Number(registration.eventId.registeredCount || 0) > 0) {
+      registration.eventId.registeredCount = Math.max(
+        0,
+        Number(registration.eventId.registeredCount || 0) - 1
+      );
+      await registration.eventId.save();
+    }
+
+    transaction.providerStatus = 'REFUNDED';
+    transaction.status = 'completed';
+    transaction.notes = reason || transaction.notes || 'Event refund from held payment';
+    await transaction.save();
+
+    await notificationService.createNotification({
+      userId: registration.userId,
+      type: 'payment_refunded',
+      title: 'Event payment refunded',
+      message: `${registration.amountPaid} ${registration.currency} was refunded for your event registration.`,
+      data: {
+        registrationId: registration._id,
+        transactionId: transaction._id,
+        amount: registration.amountPaid,
+        currency: registration.currency,
+      },
+    });
+
+    return {
+      registration,
+      transaction,
+      refundMode: 'release_hold',
+    };
+  }
+
+  if (registration.paymentStatus === 'captured') {
+    registration.paymentStatus = 'refunded';
+    await registration.save();
+
+    if (registration.eventId && Number(registration.eventId.registeredCount || 0) > 0) {
+      registration.eventId.registeredCount = Math.max(
+        0,
+        Number(registration.eventId.registeredCount || 0) - 1
+      );
+      await registration.eventId.save();
+    }
+
+    transaction.providerStatus = 'REFUNDED';
+    transaction.status = 'completed';
+    transaction.notes = reason || transaction.notes || 'Event refund after capture';
+    await transaction.save();
+
+    await notificationService.createNotification({
+      userId: registration.userId,
+      type: 'payment_refunded',
+      title: 'Event payment refunded',
+      message: `${registration.amountPaid} ${registration.currency} was refunded for your event registration.`,
+      data: {
+        registrationId: registration._id,
+        transactionId: transaction._id,
+        amount: registration.amountPaid,
+        currency: registration.currency,
+      },
+    });
+
+    return {
+      registration,
+      transaction,
+      refundMode: 'captured_refund',
+    };
+  }
+
+  throw new Error('This event payment is not in a refundable state');
 }
 module.exports = {
   getOrCreateWallet,
@@ -938,5 +1234,7 @@ module.exports = {
   getPaymentStatus,
   verifyFawryTransactionStatus,
   retryFawryCheckout,
-  markTransactionRefunded, 
+  markTransactionRefunded,
+  refundMentorSessionPayment,
+  refundEventRegistrationPayment,
 };

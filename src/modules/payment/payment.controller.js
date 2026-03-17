@@ -175,6 +175,31 @@ const markTransactionRefunded = asyncHandler(async (req, res) => {
     data,
   });
 });
+const refundMentorSessionPayment = asyncHandler(async (req, res) => {
+  const data = await paymentService.refundMentorSessionPayment({
+    sessionId: req.params.sessionId,
+    initiatedByUserId: req.user._id,
+    reason: req.body.reason || '',
+  });
+
+  res.status(200).json({
+    success: true,
+    data,
+  });
+});
+
+const refundEventRegistrationPayment = asyncHandler(async (req, res) => {
+  const data = await paymentService.refundEventRegistrationPayment({
+    registrationId: req.params.registrationId,
+    initiatedByUserId: req.user._id,
+    reason: req.body.reason || '',
+  });
+
+  res.status(200).json({
+    success: true,
+    data,
+  });
+});
 module.exports = {
 
   addPaymentMethod,
@@ -187,4 +212,6 @@ module.exports = {
   verifyFawryTransactionStatus,
   retryFawryCheckout,
   markTransactionRefunded,
+  refundMentorSessionPayment,
+  refundEventRegistrationPayment,
 };

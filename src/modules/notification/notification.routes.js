@@ -5,8 +5,17 @@ const authMiddleware = require('../../middlewares/auth.middleware');
 const controller = require('./notification.controller');
 
 router.get('/me', authMiddleware, controller.getMyNotifications);
-router.get('/me/unread-count', authMiddleware, controller.getUnreadCount);
-router.post('/:notificationId/read', authMiddleware, controller.markAsRead);
-router.post('/me/read-all', authMiddleware, controller.markAllAsRead);
+
+router.patch(
+  '/:notificationId/read',
+  authMiddleware,
+  controller.markNotificationAsRead
+);
+
+router.patch(
+  '/read-all',
+  authMiddleware,
+  controller.markAllNotificationsAsRead
+);
 
 module.exports = router;

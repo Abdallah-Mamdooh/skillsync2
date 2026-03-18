@@ -12,6 +12,7 @@ const notificationSchema = new mongoose.Schema(
     type: {
       type: String,
       required: true,
+      trim: true,
       index: true,
     },
 
@@ -19,12 +20,19 @@ const notificationSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      maxlength: 200,
     },
 
     message: {
       type: String,
       required: true,
       trim: true,
+      maxlength: 2000,
+    },
+
+    data: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
     },
 
     isRead: {
@@ -33,9 +41,9 @@ const notificationSchema = new mongoose.Schema(
       index: true,
     },
 
-    data: {
-      type: Object,
-      default: {},
+    readAt: {
+      type: Date,
+      default: null,
     },
   },
   { timestamps: true }

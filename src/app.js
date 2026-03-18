@@ -26,6 +26,7 @@ const adminRoutes = require('./modules/admin/admin.routes');
 const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
 const complaintRoutes = require('./modules/complaint/complaint.routes');
 const supportRoutes = require('./modules/support/support.routes');
+const settingsRoutes = require('./modules/settings/settings.routes');
 const app = express();
 
 // global middleware
@@ -72,5 +73,6 @@ app.use(notFound);
 app.use(errorHandler);
 app.use('/api/complaints', complaintRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/settings', settingsRoutes);
 
 module.exports = app;

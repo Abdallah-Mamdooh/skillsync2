@@ -1,8 +1,19 @@
-// src/modules/assessment/scoring/personality.scorer.js
-
 const { LIKERT_SCORE } = require('./constants');
 const { safeNumber, safeDivide, clamp } = require('./helpers');
 const { getCareerProfileByName } = require('./careerProfiles');
+
+const DIMENSION_POLES = {
+  EI: ['E', 'I'],
+  SN: ['S', 'N'],
+  TF: ['T', 'F'],
+  JP: ['J', 'P'],
+};
+
+function getOppositePole(dimension, pole) {
+  const poles = DIMENSION_POLES[dimension];
+  if (!poles) return null;
+  return poles[0] === pole ? poles[1] : poles[0];
+}
 
 function scorePersonality({ answersWithQuestions, careers }) {
   const dimTotals = {
@@ -22,87 +33,94 @@ function scorePersonality({ answersWithQuestions, careers }) {
     const key = option?.key; // A..E
     if (!key || !LIKERT_SCORE[key]) continue;
 
-    const score = LIKERT_SCORE[key]; // 1..5
-    const dim = q.meta?.personality?.dimension;
-    const agreePole = q.meta?.personality?.agreePole; // E/I etc
+    const score = LIKERT_SCORE[key]; // A=5 .. E=1
+    const dimension = q.meta?.personality?.dimension;
 
-    if (!dim || !agreePole) continue;
+    // support both old and new naming so nothing breaks
+    const targetPole =
+      q.meta?.personality?.targetPole || q.meta?.personality?.agreePole;
 
-    // AgreePole gets "score", opposite gets reversed (6-score)
-    const opposite = dim === 'EI'
-      ? (agreePole === 'E' ? 'I' : 'E')
-      : dim === 'SN'
-      ? (agreePole === 'S' ? 'N' : 'S')
-      : dim === 'TF'
-      ? (agreePole === 'T' ? 'F' : 'T')
-      : (agreePole === 'J' ? 'P' : 'J');
+    if (!dimension || !DIMENSION_POLES[dimension] || !targetPole) continue;
+    if (!DIMENSION_POLES[dimension].includes(targetPole)) continue;
 
-    dimTotals[dim][agreePole] += score;
-    dimTotals[dim][opposite] += (6 - score);
+    const oppositePole = getOppositePole(dimension, targetPole);
+    if (!oppositePole) continue;
 
-    answeredCount++;
+    // target pole gets direct score, opposite pole gets reversed score
+    dimTotals[dimension][targetPole] += score;
+    dimTotals[dimension][oppositePole] += 6 - score;
+
+    answeredCount += 1;
   }
 
-  function pickLetter(dim, a, b) {
-    return dimTotals[dim][a] >= dimTotals[dim][b] ? a : b;
+  function pickLetter(dimension, firstPole, secondPole) {
+    return dimTotals[dimension][firstPole] >= dimTotals[dimension][secondPole]
+      ? firstPole
+      : secondPole;
   }
 
-  const type =
+  const mbtiType =
     pickLetter('EI', 'E', 'I') +
     pickLetter('SN', 'S', 'N') +
     pickLetter('TF', 'T', 'F') +
     pickLetter('JP', 'J', 'P');
 
-  const ratios = {};
+  const dimensionRatios = {};
   let confidenceSum = 0;
-  let dimsCounted = 0;
+  let countedDimensions = 0;
 
-  for (const dim of Object.keys(dimTotals)) {
-    const poles = dimTotals[dim];
-    const keys = Object.keys(poles);
-    const total = poles[keys[0]] + poles[keys[1]];
+  for (const dimension of Object.keys(dimTotals)) {
+    const poles = dimTotals[dimension];
+    const [firstPole, secondPole] = DIMENSION_POLES[dimension];
+
+    const total = safeNumber(poles[firstPole]) + safeNumber(poles[secondPole]);
     if (total <= 0) continue;
 
-    ratios[keys[0]] = safeDivide(poles[keys[0]], total);
-    ratios[keys[1]] = safeDivide(poles[keys[1]], total);
+    const firstRatio = safeDivide(poles[firstPole], total);
+    const secondRatio = safeDivide(poles[secondPole], total);
 
-    const diff = Math.abs(ratios[keys[0]] - ratios[keys[1]]); // 0..1
+    dimensionRatios[firstPole] = firstRatio;
+    dimensionRatios[secondPole] = secondRatio;
+
+    const diff = Math.abs(firstRatio - secondRatio); // 0..1
     confidenceSum += diff;
-    dimsCounted++;
+    countedDimensions += 1;
   }
 
-  const confidence = dimsCounted ? clamp(confidenceSum / dimsCounted, 0, 1) : 0;
+  const confidence = countedDimensions
+    ? clamp(confidenceSum / countedDimensions, 0, 1)
+    : 0;
 
-  // Career personality fit
   const careerPersonalityFit = {};
+
   for (const career of careers) {
     const profile = getCareerProfileByName(career.name);
+
     if (!profile?.personality) {
-      careerPersonalityFit[String(career._id)] = 50; // neutral
+      careerPersonalityFit[String(career._id)] = 50;
       continue;
     }
 
-    const pref = profile.personality; // {EI:'I', SN:'S'...}
-    const dimToPoles = { EI: ['E', 'I'], SN: ['S', 'N'], TF: ['T', 'F'], JP: ['J', 'P'] };
+    const preferred = profile.personality; // { EI:'I', SN:'N', ... }
 
     let sum = 0;
     let count = 0;
 
-    for (const dim of Object.keys(dimToPoles)) {
-      const prefer = pref[dim];
-      if (!prefer) continue;
+    for (const dimension of Object.keys(DIMENSION_POLES)) {
+      const preferredPole = preferred[dimension];
+      if (!preferredPole) continue;
 
-      const poleRatio = safeNumber(ratios[prefer], 0.5);
+      const poleRatio = safeNumber(dimensionRatios[preferredPole], 0.5);
       sum += poleRatio * 100;
-      count++;
+      count += 1;
     }
 
-    careerPersonalityFit[String(career._id)] = count ? (sum / count) : 50;
+    careerPersonalityFit[String(career._id)] = count ? sum / count : 50;
   }
 
   return {
-    mbtiType: type,
-    dimensionRatios: ratios,
+    mbtiType,
+    dimensionRatios,
     confidence,
     answeredCount,
     careerPersonalityFit,

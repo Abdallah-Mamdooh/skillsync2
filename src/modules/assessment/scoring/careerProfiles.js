@@ -1,7 +1,3 @@
-// careerProfiles.js
-// Maps "career name" -> expected traits.
-// We match using normalized name (lowercase).
-
 function norm(name) {
   return String(name || '')
     .toLowerCase()
@@ -10,93 +6,480 @@ function norm(name) {
 }
 
 /**
- * Personality preference means: which pole is preferred in each MBTI dimension.
- * EI: 'E' or 'I'
- * SN: 'S' or 'N'
- * TF: 'T' or 'F'
- * JP: 'J' or 'P'
+ * Personality:
+ * EI -> E / I
+ * SN -> S / N
+ * TF -> T / F
+ * JP -> J / P
  *
- * softWeights indicates importance of soft categories (sum doesn't need to be 1, we normalize)
+ * Soft skill categories MUST match seeded question categories:
+ * - communication
+ * - teamwork
+ * - adaptability
+ * - problem_solving
+ * - leadership
+ * - self_management
  */
 const PROFILES_BY_NAME = {
-  // Web
+  // ---------------- WEB / SOFTWARE ----------------
   [norm('Frontend')]: {
     personality: { EI: 'E', SN: 'N', TF: 'F', JP: 'P' },
-    softWeights: { communication: 2, teamwork: 2, adaptability: 2, problemSolving: 2, leadership: 1, timeManagement: 1 },
+    softWeights: {
+      communication: 3,
+      teamwork: 2,
+      adaptability: 2,
+      problem_solving: 2,
+      leadership: 1,
+      self_management: 1,
+    },
   },
   [norm('Frontend Beginner')]: {
     personality: { EI: 'E', SN: 'N', TF: 'F', JP: 'P' },
-    softWeights: { communication: 2, teamwork: 2, adaptability: 2, problemSolving: 2, leadership: 1, timeManagement: 1 },
+    softWeights: {
+      communication: 3,
+      teamwork: 2,
+      adaptability: 2,
+      problem_solving: 2,
+      leadership: 1,
+      self_management: 1,
+    },
   },
+  [norm('Frontend Developer')]: {
+    personality: { EI: 'E', SN: 'N', TF: 'F', JP: 'P' },
+    softWeights: {
+      communication: 3,
+      teamwork: 2,
+      adaptability: 2,
+      problem_solving: 2,
+      leadership: 1,
+      self_management: 1,
+    },
+  },
+
   [norm('Backend')]: {
     personality: { EI: 'I', SN: 'S', TF: 'T', JP: 'J' },
-    softWeights: { communication: 2, teamwork: 2, adaptability: 1, problemSolving: 3, leadership: 1, timeManagement: 2 },
+    softWeights: {
+      communication: 2,
+      teamwork: 2,
+      adaptability: 1,
+      problem_solving: 4,
+      leadership: 1,
+      self_management: 3,
+    },
   },
   [norm('Backend Beginner')]: {
     personality: { EI: 'I', SN: 'S', TF: 'T', JP: 'J' },
-    softWeights: { communication: 2, teamwork: 2, adaptability: 1, problemSolving: 3, leadership: 1, timeManagement: 2 },
+    softWeights: {
+      communication: 2,
+      teamwork: 2,
+      adaptability: 1,
+      problem_solving: 4,
+      leadership: 1,
+      self_management: 3,
+    },
   },
+  [norm('Backend Developer')]: {
+    personality: { EI: 'I', SN: 'S', TF: 'T', JP: 'J' },
+    softWeights: {
+      communication: 2,
+      teamwork: 2,
+      adaptability: 1,
+      problem_solving: 4,
+      leadership: 1,
+      self_management: 3,
+    },
+  },
+
   [norm('Full Stack')]: {
     personality: { EI: 'E', SN: 'N', TF: 'T', JP: 'P' },
-    softWeights: { communication: 2, teamwork: 2, adaptability: 3, problemSolving: 3, leadership: 1, timeManagement: 2 },
+    softWeights: {
+      communication: 2,
+      teamwork: 2,
+      adaptability: 3,
+      problem_solving: 3,
+      leadership: 1,
+      self_management: 2,
+    },
   },
 
-  // Data / AI
+  [norm('React')]: {
+    personality: { EI: 'E', SN: 'N', TF: 'F', JP: 'P' },
+    softWeights: {
+      communication: 3,
+      teamwork: 2,
+      adaptability: 2,
+      problem_solving: 2,
+      leadership: 1,
+      self_management: 1,
+    },
+  },
+
+  [norm('Angular')]: {
+    personality: { EI: 'E', SN: 'N', TF: 'T', JP: 'J' },
+    softWeights: {
+      communication: 2,
+      teamwork: 2,
+      adaptability: 2,
+      problem_solving: 2,
+      leadership: 1,
+      self_management: 2,
+    },
+  },
+
+  [norm('Vue')]: {
+    personality: { EI: 'E', SN: 'N', TF: 'F', JP: 'P' },
+    softWeights: {
+      communication: 3,
+      teamwork: 2,
+      adaptability: 2,
+      problem_solving: 2,
+      leadership: 1,
+      self_management: 1,
+    },
+  },
+
+  [norm('Nodejs')]: {
+    personality: { EI: 'I', SN: 'S', TF: 'T', JP: 'J' },
+    softWeights: {
+      communication: 2,
+      teamwork: 2,
+      adaptability: 1,
+      problem_solving: 4,
+      leadership: 1,
+      self_management: 3,
+    },
+  },
+
+  [norm('Javascript')]: {
+    personality: { EI: 'E', SN: 'N', TF: 'T', JP: 'P' },
+    softWeights: {
+      communication: 2,
+      teamwork: 2,
+      adaptability: 2,
+      problem_solving: 2,
+      leadership: 1,
+      self_management: 2,
+    },
+  },
+
+  [norm('Typescript')]: {
+    personality: { EI: 'I', SN: 'N', TF: 'T', JP: 'J' },
+    softWeights: {
+      communication: 2,
+      teamwork: 2,
+      adaptability: 2,
+      problem_solving: 3,
+      leadership: 1,
+      self_management: 2,
+    },
+  },
+
+  // ---------------- DATA / AI ----------------
+  [norm('Data Analyst')]: {
+    personality: { EI: 'I', SN: 'S', TF: 'T', JP: 'J' },
+    softWeights: {
+      communication: 2,
+      teamwork: 1,
+      adaptability: 2,
+      problem_solving: 4,
+      leadership: 1,
+      self_management: 2,
+    },
+  },
+
   [norm('Data Engineer')]: {
     personality: { EI: 'I', SN: 'S', TF: 'T', JP: 'J' },
-    softWeights: { communication: 1, teamwork: 2, adaptability: 2, problemSolving: 4, leadership: 1, timeManagement: 2 },
-  },
-  [norm('Machine Learning')]: {
-    personality: { EI: 'I', SN: 'N', TF: 'T', JP: 'P' },
-    softWeights: { communication: 1, teamwork: 2, adaptability: 2, problemSolving: 4, leadership: 1, timeManagement: 2 },
-  },
-  [norm('Mlops')]: {
-    personality: { EI: 'I', SN: 'S', TF: 'T', JP: 'J' },
-    softWeights: { communication: 2, teamwork: 2, adaptability: 3, problemSolving: 3, leadership: 1, timeManagement: 2 },
+    softWeights: {
+      communication: 1,
+      teamwork: 2,
+      adaptability: 2,
+      problem_solving: 4,
+      leadership: 1,
+      self_management: 2,
+    },
   },
 
-  // DevOps / Infra
+  [norm('Machine Learning')]: {
+    personality: { EI: 'I', SN: 'N', TF: 'T', JP: 'P' },
+    softWeights: {
+      communication: 1,
+      teamwork: 2,
+      adaptability: 2,
+      problem_solving: 4,
+      leadership: 1,
+      self_management: 2,
+    },
+  },
+
+  [norm('Mlops')]: {
+    personality: { EI: 'I', SN: 'S', TF: 'T', JP: 'J' },
+    softWeights: {
+      communication: 2,
+      teamwork: 2,
+      adaptability: 3,
+      problem_solving: 3,
+      leadership: 1,
+      self_management: 2,
+    },
+  },
+
+  [norm('Ai Engineer')]: {
+    personality: { EI: 'I', SN: 'N', TF: 'T', JP: 'P' },
+    softWeights: {
+      communication: 1,
+      teamwork: 2,
+      adaptability: 2,
+      problem_solving: 4,
+      leadership: 1,
+      self_management: 2,
+    },
+  },
+
+  [norm('Ai Data Scientist')]: {
+    personality: { EI: 'I', SN: 'N', TF: 'T', JP: 'P' },
+    softWeights: {
+      communication: 1,
+      teamwork: 2,
+      adaptability: 2,
+      problem_solving: 4,
+      leadership: 1,
+      self_management: 2,
+    },
+  },
+
+  [norm('Ai Agents')]: {
+    personality: { EI: 'N', SN: 'N', TF: 'T', JP: 'P' },
+    softWeights: {
+      communication: 2,
+      teamwork: 2,
+      adaptability: 3,
+      problem_solving: 4,
+      leadership: 1,
+      self_management: 2,
+    },
+  },
+
+  // ---------------- DEVOPS / INFRA ----------------
   [norm('Devops')]: {
     personality: { EI: 'I', SN: 'S', TF: 'T', JP: 'P' },
-    softWeights: { communication: 2, teamwork: 2, adaptability: 3, problemSolving: 3, leadership: 1, timeManagement: 2 },
+    softWeights: {
+      communication: 2,
+      teamwork: 2,
+      adaptability: 3,
+      problem_solving: 3,
+      leadership: 1,
+      self_management: 2,
+    },
   },
   [norm('Devops Beginner')]: {
     personality: { EI: 'I', SN: 'S', TF: 'T', JP: 'P' },
-    softWeights: { communication: 2, teamwork: 2, adaptability: 3, problemSolving: 3, leadership: 1, timeManagement: 2 },
+    softWeights: {
+      communication: 2,
+      teamwork: 2,
+      adaptability: 3,
+      problem_solving: 3,
+      leadership: 1,
+      self_management: 2,
+    },
+  },
+  [norm('Cloudflare')]: {
+    personality: { EI: 'I', SN: 'S', TF: 'T', JP: 'J' },
+    softWeights: {
+      communication: 2,
+      teamwork: 2,
+      adaptability: 2,
+      problem_solving: 3,
+      leadership: 1,
+      self_management: 2,
+    },
+  },
+  [norm('Kubernetes')]: {
+    personality: { EI: 'I', SN: 'S', TF: 'T', JP: 'J' },
+    softWeights: {
+      communication: 1,
+      teamwork: 2,
+      adaptability: 3,
+      problem_solving: 3,
+      leadership: 1,
+      self_management: 2,
+    },
+  },
+  [norm('Terraform')]: {
+    personality: { EI: 'I', SN: 'S', TF: 'T', JP: 'J' },
+    softWeights: {
+      communication: 1,
+      teamwork: 2,
+      adaptability: 2,
+      problem_solving: 3,
+      leadership: 1,
+      self_management: 2,
+    },
   },
 
-  // Security
+  // ---------------- SECURITY ----------------
   [norm('Cyber Security')]: {
     personality: { EI: 'I', SN: 'S', TF: 'T', JP: 'J' },
-    softWeights: { communication: 1, teamwork: 2, adaptability: 2, problemSolving: 4, leadership: 1, timeManagement: 2, conflictManagement: 2 },
+    softWeights: {
+      communication: 1,
+      teamwork: 2,
+      adaptability: 2,
+      problem_solving: 4,
+      leadership: 1,
+      self_management: 2,
+    },
+  },
+  [norm('Ai Red Teaming')]: {
+    personality: { EI: 'I', SN: 'N', TF: 'T', JP: 'P' },
+    softWeights: {
+      communication: 1,
+      teamwork: 2,
+      adaptability: 2,
+      problem_solving: 4,
+      leadership: 1,
+      self_management: 2,
+    },
   },
 
-  // QA
+  // ---------------- QA ----------------
   [norm('Qa')]: {
     personality: { EI: 'I', SN: 'S', TF: 'T', JP: 'J' },
-    softWeights: { communication: 2, teamwork: 2, adaptability: 1, problemSolving: 3, leadership: 1, timeManagement: 3 },
+    softWeights: {
+      communication: 2,
+      teamwork: 2,
+      adaptability: 1,
+      problem_solving: 3,
+      leadership: 1,
+      self_management: 3,
+    },
   },
 
-  // Design
+  // ---------------- DESIGN ----------------
   [norm('Ux Design')]: {
     personality: { EI: 'E', SN: 'N', TF: 'F', JP: 'P' },
-    softWeights: { communication: 4, teamwork: 3, adaptability: 2, problemSolving: 2, leadership: 1, timeManagement: 1 },
+    softWeights: {
+      communication: 4,
+      teamwork: 3,
+      adaptability: 2,
+      problem_solving: 2,
+      leadership: 1,
+      self_management: 1,
+    },
+  },
+  [norm('Design System')]: {
+    personality: { EI: 'E', SN: 'N', TF: 'F', JP: 'J' },
+    softWeights: {
+      communication: 3,
+      teamwork: 3,
+      adaptability: 2,
+      problem_solving: 2,
+      leadership: 1,
+      self_management: 2,
+    },
   },
 
-  // Product
+  // ---------------- PRODUCT ----------------
   [norm('Product Manager')]: {
     personality: { EI: 'E', SN: 'N', TF: 'F', JP: 'J' },
-    softWeights: { communication: 4, teamwork: 3, adaptability: 2, problemSolving: 2, leadership: 3, timeManagement: 2, conflictManagement: 3 },
+    softWeights: {
+      communication: 4,
+      teamwork: 3,
+      adaptability: 2,
+      problem_solving: 2,
+      leadership: 3,
+      self_management: 2,
+    },
   },
 
-  // Architecture
+  // ---------------- ARCHITECTURE ----------------
   [norm('Software Architect')]: {
     personality: { EI: 'I', SN: 'N', TF: 'T', JP: 'J' },
-    softWeights: { communication: 2, teamwork: 2, adaptability: 2, problemSolving: 4, leadership: 2, timeManagement: 2 },
+    softWeights: {
+      communication: 2,
+      teamwork: 2,
+      adaptability: 2,
+      problem_solving: 4,
+      leadership: 2,
+      self_management: 2,
+    },
   },
   [norm('System Design')]: {
     personality: { EI: 'I', SN: 'N', TF: 'T', JP: 'J' },
-    softWeights: { communication: 2, teamwork: 2, adaptability: 2, problemSolving: 4, leadership: 2, timeManagement: 2 },
+    softWeights: {
+      communication: 2,
+      teamwork: 2,
+      adaptability: 2,
+      problem_solving: 4,
+      leadership: 2,
+      self_management: 2,
+    },
+  },
+
+  // ---------------- MOBILE / GAME ----------------
+  [norm('Flutter')]: {
+    personality: { EI: 'E', SN: 'N', TF: 'F', JP: 'P' },
+    softWeights: {
+      communication: 2,
+      teamwork: 2,
+      adaptability: 2,
+      problem_solving: 2,
+      leadership: 1,
+      self_management: 2,
+    },
+  },
+  [norm('Android')]: {
+    personality: { EI: 'I', SN: 'S', TF: 'T', JP: 'J' },
+    softWeights: {
+      communication: 1,
+      teamwork: 2,
+      adaptability: 2,
+      problem_solving: 3,
+      leadership: 1,
+      self_management: 2,
+    },
+  },
+  [norm('Ios')]: {
+    personality: { EI: 'I', SN: 'S', TF: 'T', JP: 'J' },
+    softWeights: {
+      communication: 1,
+      teamwork: 2,
+      adaptability: 2,
+      problem_solving: 3,
+      leadership: 1,
+      self_management: 2,
+    },
+  },
+  [norm('React Native')]: {
+    personality: { EI: 'E', SN: 'N', TF: 'F', JP: 'P' },
+    softWeights: {
+      communication: 2,
+      teamwork: 2,
+      adaptability: 2,
+      problem_solving: 2,
+      leadership: 1,
+      self_management: 2,
+    },
+  },
+  [norm('Game Developer')]: {
+    personality: { EI: 'I', SN: 'N', TF: 'T', JP: 'P' },
+    softWeights: {
+      communication: 1,
+      teamwork: 2,
+      adaptability: 3,
+      problem_solving: 3,
+      leadership: 1,
+      self_management: 2,
+    },
+  },
+  [norm('Server Side Game Developer')]: {
+    personality: { EI: 'I', SN: 'S', TF: 'T', JP: 'P' },
+    softWeights: {
+      communication: 1,
+      teamwork: 2,
+      adaptability: 3,
+      problem_solving: 4,
+      leadership: 1,
+      self_management: 2,
+    },
   },
 };
 

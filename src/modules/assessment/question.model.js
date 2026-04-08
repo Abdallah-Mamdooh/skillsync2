@@ -2,19 +2,10 @@ const mongoose = require('mongoose');
 
 const optionSchema = new mongoose.Schema(
   {
-    // For MCQ/Behavior/SJT: A/B/C/D ... (optional but useful)
-    key: { type: String, trim: true },
-
-    // Text shown to the user
+    key: { type: String, trim: true }, // A, B, C, D, E
     text: { type: String, required: true },
-
-    // For technical MCQ: which option is correct (optional for likert)
     isCorrect: { type: Boolean, default: false },
 
-    /**
-     * You already use this in your scoring today.
-     * Keep it for compatibility + for career scoring later.
-     */
     careerWeights: [
       {
         careerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Career' },
@@ -31,9 +22,9 @@ const questionSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'AssessmentSection',
       required: true,
+      index: true,
     },
 
-    // New: quick filtering (personality / technical / soft)
     category: {
       type: String,
       enum: ['personality', 'technical', 'soft'],
@@ -41,7 +32,6 @@ const questionSchema = new mongoose.Schema(
       index: true,
     },
 
-    // New: stable code like P01, T33, S61 (helps scoring & debugging)
     questionCode: {
       type: String,
       required: true,
@@ -50,13 +40,12 @@ const questionSchema = new mongoose.Schema(
       trim: true,
     },
 
-    text: { type: String, required: true },
+    text: {
+      type: String,
+      required: true,
+      trim: true,
+    },
 
-    /**
-     * New: how the answer is interpreted
-     * - likert: A-E (Strongly Agree -> Strongly Disagree)
-     * - single: one correct answer (technical MCQ)
-     */
     answerType: {
       type: String,
       enum: ['likert', 'single'],
@@ -64,38 +53,33 @@ const questionSchema = new mongoose.Schema(
       index: true,
     },
 
-    /**
-     * Options:
-     * - For technical MCQ: 4 options, one isCorrect=true
-     * - For behavior/SJT: 4 options (no isCorrect) OR you can score via careerWeights
-     * - For likert: you can omit options (frontend can render fixed A-E),
-     *   but keeping options is fine if you want full DB-driven rendering.
-     */
-    options: { type: [optionSchema], default: [] },
+    options: {
+      type: [optionSchema],
+      default: [],
+    },
 
-    /**
-     * New: metadata used by scorers (personality / technical / soft).
-     * Keep it flexible so you don’t keep changing schema.
-     */
+    // NEW: cleaner technical scoring support
+    correctOptionIndex: {
+      type: Number,
+      default: null,
+    },
+
     meta: {
-      // Personality scoring metadata
       personality: {
-        dimension: { type: String, trim: true }, // "EI", "SN", "TF", "JP"
-        targetPole: { type: String, trim: true }, // "E" or "I" ... etc
+        dimension: { type: String, trim: true }, // EI, SN, TF, JP
+        targetPole: { type: String, trim: true }, // E / I / S / N / T / F / J / P
       },
 
-      // Technical scoring metadata
       technical: {
-        area: { type: String, trim: true }, // "core", "frontend", "backend", "data", ...
-        interest: { type: String, trim: true }, // "web", "data_ai", "security", ...
+        area: { type: String, trim: true }, // core / concept / tool / applied
+        interest: { type: String, trim: true }, // web / data_ai / security / ...
         isSpecialty: { type: Boolean, default: false },
-        multiplier: { type: Number, default: 1 }, // weight importance
+        multiplier: { type: Number, default: 1 },
       },
 
-      // Soft skills scoring metadata
       soft: {
-        softType: { type: String, trim: true }, // "likert" | "behavior" | "sjt"
-        softCategory: { type: String, trim: true }, // communication, teamwork, etc
+        softType: { type: String, trim: true }, // likert / behavior / sjt
+        softCategory: { type: String, trim: true }, // communication / teamwork / ...
         isReverse: { type: Boolean, default: false },
       },
     },

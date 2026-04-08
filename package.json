@@ -28,7 +28,8 @@
 
     "debug:tech": "node scripts/debugTechnicalQuestions.js",
 
-    "seed:soft-questions": "node scripts/seedSoftSkillsQuestions.js"
+    "seed:soft-questions": "node scripts/seedSoftSkillsQuestions.js",
+    "seed:assessment": "node seeds/seedAssessment.js"
 
   },
 

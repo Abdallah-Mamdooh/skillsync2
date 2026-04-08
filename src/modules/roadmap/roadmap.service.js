@@ -13,6 +13,24 @@ function normalizeSkill(value) {
   return normalizeText(value).toLowerCase();
 }
 
+function pickBestSkillName(step) {
+  const title = normalizeText(step?.title);
+  const skillTag = normalizeText(step?.skillTag);
+
+  // Prefer meaningful step title unless it is clearly noisy/import boilerplate
+  const badTitlePatterns = [
+    /^find the interactive version/i,
+    /^roadmap\.sh/i,
+    /^untitled$/i,
+  ];
+
+  const titleLooksBad = !title || badTitlePatterns.some((rx) => rx.test(title));
+
+  if (!titleLooksBad) return title;
+  if (skillTag) return skillTag;
+  return title || '';
+}
+
 function sortRoadmap(roadmap) {
   roadmap.phases.sort((a, b) => a.order - b.order);
   roadmap.phases.forEach((phase) => {
@@ -21,21 +39,27 @@ function sortRoadmap(roadmap) {
 }
 
 function buildSearchResources(skillTag, stepTitle) {
-  const query = encodeURIComponent(normalizeText(skillTag || stepTitle));
+  const keyword = normalizeText(skillTag || stepTitle);
+  const query = encodeURIComponent(keyword);
 
   return [
     {
-      title: `YouTube: ${normalizeText(skillTag || stepTitle)}`,
+      title: `YouTube: ${keyword}`,
       type: 'video',
       url: `https://www.youtube.com/results?search_query=${query}`,
     },
     {
-      title: `Coursera: ${normalizeText(skillTag || stepTitle)}`,
+      title: `Coursera: ${keyword}`,
       type: 'course',
       url: `https://www.coursera.org/search?query=${query}`,
     },
     {
-      title: `Documentation: ${normalizeText(skillTag || stepTitle)}`,
+      title: `Udemy: ${keyword}`,
+      type: 'course',
+      url: `https://www.udemy.com/courses/search/?q=${query}`,
+    },
+    {
+      title: `Documentation: ${keyword}`,
       type: 'documentation',
       url: `https://www.google.com/search?q=${query}+documentation`,
     },
@@ -104,17 +128,38 @@ function buildProgressSummary(progress, roadmap, career) {
   };
 }
 
-async function getChosenCareerAndRoadmap(userId) {
-  const assessment = await UserAssessmentResult.findOne({ userId }).populate(
-    'chosenCareer'
-  );
+async function getSelectedCareerForUser(userId) {
+  const [assessment, user] = await Promise.all([
+    UserAssessmentResult.findOne({ userId }).populate('chosenCareer'),
+    User.findById(userId).populate('chosenCareer'),
+  ]);
 
-  if (!assessment || !assessment.chosenCareer) {
-    throw new Error('Assessment not completed or career not selected');
+  if (assessment?.chosenCareer) {
+    return {
+      source: 'assessment',
+      career: assessment.chosenCareer,
+      assessment,
+      user,
+    };
   }
 
+  if (user?.chosenCareer) {
+    return {
+      source: 'user',
+      career: user.chosenCareer,
+      assessment,
+      user,
+    };
+  }
+
+  throw new Error('Assessment not completed or career not selected');
+}
+
+async function getChosenCareerAndRoadmap(userId) {
+  const { assessment, career } = await getSelectedCareerForUser(userId);
+
   const roadmap = await Roadmap.findOne({
-    careerId: assessment.chosenCareer._id,
+    careerId: career._id,
   });
 
   if (!roadmap) {
@@ -125,7 +170,7 @@ async function getChosenCareerAndRoadmap(userId) {
 
   return {
     assessment,
-    career: assessment.chosenCareer,
+    career,
     roadmap,
   };
 }
@@ -150,10 +195,12 @@ async function getOrCreateProgress(userId, careerId, roadmapId) {
   return progress;
 }
 
-async function syncUserSkillOnComplete(userId, skillTag) {
-  const cleanSkill = normalizeText(skillTag);
+async function syncUserSkillOnComplete(userId, step) {
+  const bestSkill = pickBestSkillName(step);
+  const cleanSkill = normalizeText(bestSkill);
+
   if (!cleanSkill) {
-    return false;
+    return { added: false, skill: null };
   }
 
   const user = await User.findById(userId);
@@ -167,19 +214,19 @@ async function syncUserSkillOnComplete(userId, skillTag) {
   );
 
   if (alreadyHasSkill) {
-    return false;
+    return { added: false, skill: cleanSkill };
   }
 
   user.skills.push(cleanSkill);
   await user.save();
 
-  return true;
+  return { added: true, skill: cleanSkill };
 }
 
 async function syncUserSkillOnUncomplete(userId, progress, roadmap, removedStep) {
-  const cleanSkill = normalizeText(removedStep.skillTag);
+  const cleanSkill = normalizeText(pickBestSkillName(removedStep));
   if (!cleanSkill) {
-    return false;
+    return { removed: false, skill: null };
   }
 
   const stillCompletedStepIds = new Set(
@@ -191,7 +238,7 @@ async function syncUserSkillOnUncomplete(userId, progress, roadmap, removedStep)
   for (const phase of roadmap.phases || []) {
     for (const step of phase.steps || []) {
       const sameSkill =
-        normalizeSkill(step.skillTag) === normalizeSkill(cleanSkill);
+        normalizeSkill(pickBestSkillName(step)) === normalizeSkill(cleanSkill);
 
       const isStillCompleted = stillCompletedStepIds.has(String(step._id));
 
@@ -207,7 +254,7 @@ async function syncUserSkillOnUncomplete(userId, progress, roadmap, removedStep)
   }
 
   if (skillStillExistsInCompletedSteps) {
-    return false;
+    return { removed: false, skill: cleanSkill };
   }
 
   const user = await User.findById(userId);
@@ -225,10 +272,10 @@ async function syncUserSkillOnUncomplete(userId, progress, roadmap, removedStep)
 
   if (after !== before) {
     await user.save();
-    return true;
+    return { removed: true, skill: cleanSkill };
   }
 
-  return false;
+  return { removed: false, skill: cleanSkill };
 }
 
 // ---------- main ----------
@@ -259,6 +306,7 @@ const getUserRoadmapWithProgress = async (userId) => {
     ...phase,
     steps: (phase.steps || []).map((step) => ({
       ...step,
+      displaySkill: pickBestSkillName(step),
       isCompleted: completedSet.has(String(step._id)),
       completedAt: historyMap.get(String(step._id)) || null,
     })),
@@ -277,25 +325,13 @@ const getUserRoadmapWithProgress = async (userId) => {
 };
 
 const initializeProgress = async (userId) => {
-  const assessment = await UserAssessmentResult.findOne({ userId });
-
-  if (!assessment || !assessment.chosenCareer) {
-    throw new Error('Career must be selected first');
-  }
-
-  const roadmap = await Roadmap.findOne({
-    careerId: assessment.chosenCareer,
-  });
-
-  if (!roadmap) {
-    throw new Error('Roadmap not found');
-  }
+  const { career, roadmap } = await getChosenCareerAndRoadmap(userId);
 
   await UserRoadmapProgress.deleteMany({ userId });
 
   const progress = await UserRoadmapProgress.create({
     userId,
-    careerId: assessment.chosenCareer,
+    careerId: career._id,
     roadmapId: roadmap._id,
     completedSteps: [],
     stepHistory: [],
@@ -306,15 +342,11 @@ const initializeProgress = async (userId) => {
 };
 
 const calculateProgressPercentage = async (userId) => {
-  const assessment = await UserAssessmentResult.findOne({ userId });
-
-  if (!assessment || !assessment.chosenCareer) {
-    return 0;
-  }
+  const { career } = await getSelectedCareerForUser(userId);
 
   const progress = await UserRoadmapProgress.findOne({
     userId,
-    careerId: assessment.chosenCareer,
+    careerId: career._id,
   }).populate('roadmapId');
 
   if (!progress || !progress.roadmapId) {
@@ -372,13 +404,13 @@ const toggleStep = async (userId, stepId) => {
   let isCompleted = false;
   let skillAdded = false;
   let skillRemoved = false;
+  let syncedSkillName = null;
 
   progress.stepHistory = Array.isArray(progress.stepHistory)
     ? progress.stepHistory
     : [];
 
   if (existingIndex >= 0) {
-    // uncomplete
     progress.completedSteps.splice(existingIndex, 1);
 
     progress.stepHistory = progress.stepHistory.filter(
@@ -387,7 +419,9 @@ const toggleStep = async (userId, stepId) => {
 
     isCompleted = false;
 
-    skillRemoved = await syncUserSkillOnUncomplete(userId, progress, roadmap, step);
+    const removalResult = await syncUserSkillOnUncomplete(userId, progress, roadmap, step);
+    skillRemoved = removalResult.removed;
+    syncedSkillName = removalResult.skill;
 
     await notificationService.createNotification({
       userId,
@@ -398,11 +432,11 @@ const toggleStep = async (userId, stepId) => {
         stepId: step._id,
         stepTitle: step.title,
         skillTag: step.skillTag,
+        syncedSkillName,
         skillRemoved,
       },
     });
   } else {
-    // complete
     progress.completedSteps.push(step._id);
 
     progress.stepHistory = progress.stepHistory.filter(
@@ -416,7 +450,9 @@ const toggleStep = async (userId, stepId) => {
 
     isCompleted = true;
 
-    skillAdded = await syncUserSkillOnComplete(userId, step.skillTag);
+    const addResult = await syncUserSkillOnComplete(userId, step);
+    skillAdded = addResult.added;
+    syncedSkillName = addResult.skill;
 
     await notificationService.createNotification({
       userId,
@@ -427,19 +463,21 @@ const toggleStep = async (userId, stepId) => {
         stepId: step._id,
         stepTitle: step.title,
         skillTag: step.skillTag,
+        syncedSkillName,
         skillAdded,
       },
     });
 
-    if (skillAdded) {
+    if (skillAdded && syncedSkillName) {
       await notificationService.createNotification({
         userId,
         type: 'skill_added',
         title: 'New skill added',
-        message: `${step.skillTag} was added to your profile skills.`,
+        message: `${syncedSkillName} was added to your profile skills.`,
         data: {
           stepId: step._id,
           skillTag: step.skillTag,
+          syncedSkillName,
         },
       });
     }
@@ -457,11 +495,10 @@ const toggleStep = async (userId, stepId) => {
   );
 
   return {
-    message: isCompleted
-      ? 'Step marked as completed'
-      : 'Step uncompleted',
+    message: isCompleted ? 'Step marked as completed' : 'Step uncompleted',
     isCompleted,
     skillTag: step.skillTag,
+    syncedSkillName,
     skillAdded,
     skillRemoved,
     completedAt: historyEntry ? historyEntry.completedAt : null,
@@ -511,17 +548,18 @@ const generateResourcesForCurrentRoadmap = async (userId) => {
 };
 
 const getRecentCompletions = async (userId, limit = 10) => {
-  const assessment = await UserAssessmentResult.findOne({ userId }).populate(
-    'chosenCareer'
-  );
-
-  if (!assessment || !assessment.chosenCareer) {
+  let selected;
+  try {
+    selected = await getSelectedCareerForUser(userId);
+  } catch {
     return [];
   }
 
+  const career = selected.career;
+
   const progress = await UserRoadmapProgress.findOne({
     userId,
-    careerId: assessment.chosenCareer._id,
+    careerId: career._id,
   });
 
   if (
@@ -533,7 +571,7 @@ const getRecentCompletions = async (userId, limit = 10) => {
   }
 
   const roadmap = await Roadmap.findOne({
-    careerId: assessment.chosenCareer._id,
+    careerId: career._id,
   });
 
   if (!roadmap) {
@@ -559,10 +597,11 @@ const getRecentCompletions = async (userId, limit = 10) => {
         stepId: entry.stepId,
         title: step?.title || null,
         skillTag: step?.skillTag || null,
+        syncedSkillName: step ? pickBestSkillName(step) : null,
         completedAt: entry.completedAt,
         career: {
-          id: assessment.chosenCareer._id,
-          name: assessment.chosenCareer.name,
+          id: career._id,
+          name: career.name,
         },
       };
     });

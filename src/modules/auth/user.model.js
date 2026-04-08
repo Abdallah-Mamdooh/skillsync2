@@ -74,8 +74,16 @@ const userSchema = new mongoose.Schema(
     skills: [
       {
         type: String,
+        trim: true,
       },
     ],
+
+    chosenCareer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Career',
+      default: null,
+      index: true,
+    },
 
     cvUrl: {
       type: String,

@@ -9,52 +9,137 @@ const { initializeProgress } = require('../roadmap/roadmap.service');
 // -------------------- helpers --------------------
 function shuffle(arr) {
   const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
+  for (let i = a.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
 }
 
-function normalizeInterest(s) {
-  return String(s || '').toLowerCase().trim();
+function normalizeInterest(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+    .replace(/[/-]+/g, '_');
+}
+
+function isTechnicalSection(section) {
+  const type = String(section?.type || '').toLowerCase();
+  const title = String(section?.title || '').toLowerCase();
+  return type === 'technical' || title === 'technical';
+}
+
+function toObjectIdString(value) {
+  return String(value || '');
+}
+
+function ensureArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+// -------------------- interests --------------------
+const ALLOWED_INTERESTS = [
+  'web',
+  'data_ai',
+  'security',
+  'design',
+  'product',
+  'devops',
+  'qa',
+  'mobile_game',
+];
+
+// optional aliases so frontend labels can still work
+const INTEREST_ALIASES = {
+  web_development: 'web',
+  webdevelopment: 'web',
+  'web development': 'web',
+  data: 'data_ai',
+  ai: 'data_ai',
+  'data / ai': 'data_ai',
+  data_ai: 'data_ai',
+  infrastructure: 'devops',
+  infrastructure_devops: 'devops',
+  'infrastructure / devops': 'devops',
+  testing: 'qa',
+  qa_testing: 'qa',
+  'qa / testing': 'qa',
+  mobile: 'mobile_game',
+  game: 'mobile_game',
+  mobile_game: 'mobile_game',
+  'mobile / game': 'mobile_game',
+};
+
+function cleanInterest(value) {
+  const normalized = normalizeInterest(value);
+  return INTEREST_ALIASES[normalized] || normalized;
+}
+
+function buildSuggestions(arr) {
+  const list = ensureArray(arr);
+
+  return list
+    .map((item) => {
+      const finalScore = Number(item.finalScore ?? item.score ?? item.percentage ?? 0);
+      const safeScore = Math.max(0, Math.min(100, Math.round(finalScore)));
+
+      return {
+        careerId: item.careerId || item.id || item._id || null,
+        name: item.name || 'Unknown Career',
+        percentage: safeScore,
+        distance: 100 - safeScore,
+        breakdown: {
+          technical: Math.max(0, Math.min(100, Math.round(Number(item.technical || 0)))),
+          personality: Math.max(0, Math.min(100, Math.round(Number(item.personality || 0)))),
+          soft: Math.max(0, Math.min(100, Math.round(Number(item.soft || 0)))),
+        },
+      };
+    })
+    .sort((a, b) => b.percentage - a.percentage);
 }
 
 // -------------------- base queries --------------------
 const getSections = async () => {
-  return AssessmentSection.find().sort({ order: 1 });
+  return AssessmentSection.find().sort({ order: 1 }).lean();
 };
 
 /**
- * ✅ Smart questions loader
- * - For non-technical sections: return all questions ordered by questionCode
- * - For Technical: return (core + specialty) based on user's selectedInterests
+ * For non-technical sections:
+ *   return all questions ordered by questionCode
+ *
+ * For technical section:
+ *   return core + specialty questions based on user selected interests
  */
 const getQuestionsBySection = async (sectionId, userId) => {
-  const section = await AssessmentSection.findById(sectionId);
-  if (!section) throw new Error('Section not found');
-
-const isTechnical =
-  String(section.type || '').toLowerCase() === 'technical' ||
-  String(section.title || '').toLowerCase() === 'technical';
-  
-  if (!isTechnical) {
-    return Question.find({ sectionId }).sort({ questionCode: 1 });
+  const section = await AssessmentSection.findById(sectionId).lean();
+  if (!section) {
+    throw new Error('Section not found');
   }
 
-  // Technical section needs user interests
-  if (!userId) throw new Error('userId is required for technical questions');
+  if (!isTechnicalSection(section)) {
+    return Question.find({ sectionId }).sort({ questionCode: 1 }).lean();
+  }
 
-  const user = await User.findById(userId);
-  const selectedInterests = Array.isArray(user?.selectedInterests) ? user.selectedInterests : [];
+  if (!userId) {
+    throw new Error('userId is required for technical questions');
+  }
+
+  const user = await User.findById(userId).lean();
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  const selectedInterests = ensureArray(user.selectedInterests).map(cleanInterest);
 
   if (!selectedInterests.length) {
-    // If they didn't pick interests yet, return only non-specialty technical questions (core)
     return Question.find({
       sectionId,
       category: 'technical',
       'meta.technical.isSpecialty': { $ne: true },
-    }).sort({ questionCode: 1 });
+    })
+      .sort({ questionCode: 1 })
+      .lean();
   }
 
   const techBundle = await generateTechnicalQuestions({
@@ -66,88 +151,100 @@ const isTechnical =
 };
 
 /**
- * ✅ Technical generator (matches YOUR schema)
+ * Technical question generator
  *
  * Rules:
- * - base/core questions = technical questions where meta.technical.isSpecialty !== true
+ * - core questions = technical questions where meta.technical.isSpecialty !== true
  * - specialty questions = technical questions where meta.technical.isSpecialty === true
  * - for each selected interest (max 3):
  *   pick 3 questions: 1 concept + 1 tool + 1 applied
- *
- * We map "kind" using meta.technical.area:
- *   area: "concept" | "tool" | "applied"
- *   interest: "web" | "data_ai" | "security" | ...
  */
 const generateTechnicalQuestions = async ({ sectionId, selectedInterests }) => {
-  if (!Array.isArray(selectedInterests) || selectedInterests.length === 0) {
+  const interests = ensureArray(selectedInterests)
+    .map(cleanInterest)
+    .filter((x) => ALLOWED_INTERESTS.includes(x))
+    .slice(0, 3);
+
+  if (!interests.length) {
     throw new Error('selectedInterests is required (array)');
   }
 
-  // limit to 3 and normalize
-  const interests = selectedInterests.slice(0, 3).map(normalizeInterest);
-
-  // get all technical questions for this section
   const allTech = await Question.find({
     sectionId,
     category: 'technical',
+  }).lean();
+
+  const core = allTech.filter((q) => {
+    const code = String(q.questionCode || '');
+    const isSpecialty = q?.meta?.technical?.isSpecialty === true || code.startsWith('TS-');
+
+    // keep your current MVP base question range if present
+    const isMvpBaseRange = /^T(3[3-9]|4[0-9]|5[01])$/.test(code);
+
+    // fallback: if future seeds change, still allow any non-specialty technical question
+    return !isSpecialty && (isMvpBaseRange || !code.startsWith('TS-'));
   });
 
-  // Core = ONLY non-specialty questions that start with T (not TX...) AND are within your base set
-// Easiest reliable rule: questionCode starts with "T" AND does NOT start with "TS-"
-const core = allTech.filter((q) => {
-  const code = String(q.questionCode || '');
-  const isSpecialty = q.meta?.technical?.isSpecialty === true || code.startsWith('TS-');
-  const isBase = /^T(3[3-9]|4[0-9]|5[01])$/.test(code); // T33..T51 (19 questions)
-  return !isSpecialty && isBase;
-});
-
-const specialty = allTech.filter((q) => {
-  const code = String(q.questionCode || '');
-  return q.meta?.technical?.isSpecialty === true || code.startsWith('TS-');
-});
-
-  const pickedSpecialty = [];
+  const specialty = allTech.filter((q) => {
+    const code = String(q.questionCode || '');
+    return q?.meta?.technical?.isSpecialty === true || code.startsWith('TS-');
+  });
 
   const pickRandom = (arr) => (arr.length ? arr[Math.floor(Math.random() * arr.length)] : null);
+  const pickedSpecialty = [];
 
   for (const interest of interests) {
     const pool = specialty.filter(
-      (q) => normalizeInterest(q?.meta?.technical?.interest) === interest
+      (q) => cleanInterest(q?.meta?.technical?.interest) === interest
     );
 
-    // Use meta.technical.area as "kind"
-    const concept = pool.filter((q) => normalizeInterest(q?.meta?.technical?.area) === 'concept');
-    const tool = pool.filter((q) => normalizeInterest(q?.meta?.technical?.area) === 'tool');
-    const applied = pool.filter((q) => normalizeInterest(q?.meta?.technical?.area) === 'applied');
+    const conceptPool = pool.filter(
+      (q) => normalizeInterest(q?.meta?.technical?.area) === 'concept'
+    );
+    const toolPool = pool.filter(
+      (q) => normalizeInterest(q?.meta?.technical?.area) === 'tool'
+    );
+    const appliedPool = pool.filter(
+      (q) => normalizeInterest(q?.meta?.technical?.area) === 'applied'
+    );
 
-    const c = pickRandom(concept);
-    const t = pickRandom(tool);
-    const a = pickRandom(applied);
+    const concept = pickRandom(conceptPool);
+    const tool = pickRandom(toolPool);
+    const applied = pickRandom(appliedPool);
 
-    if (c) pickedSpecialty.push(c);
-    if (t) pickedSpecialty.push(t);
-    if (a) pickedSpecialty.push(a);
+    if (concept) pickedSpecialty.push(concept);
+    if (tool) pickedSpecialty.push(tool);
+    if (applied) pickedSpecialty.push(applied);
   }
 
-  // Avoid duplicates (in case DB has overlaps)
-  const uniq = new Map();
+  const unique = new Map();
   [...core, ...pickedSpecialty].forEach((q) => {
-    uniq.set(String(q._id), q);
+    unique.set(toObjectIdString(q._id), q);
   });
 
-  const final = shuffle([...uniq.values()]);
+  const finalQuestions = shuffle([...unique.values()]);
 
   return {
-    count: final.length,
+    count: finalQuestions.length,
     coreCount: core.length,
     specialtyCount: pickedSpecialty.length,
     selectedInterests: interests,
-    questions: final,
+    questions: finalQuestions,
   };
 };
 
 // -------------------- submit assessment --------------------
 const submitAssessment = async (userId, answers, forceOverwrite = false) => {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  const safeAnswers = ensureArray(answers);
+  if (!safeAnswers.length) {
+    throw new Error('Answers are required');
+  }
+
   const existing = await UserAssessmentResult.findOne({ userId });
 
   if (existing && !forceOverwrite) {
@@ -162,29 +259,57 @@ const submitAssessment = async (userId, answers, forceOverwrite = false) => {
     await UserAssessmentResult.deleteOne({ userId });
   }
 
-  const careers = await Career.find();
+  const careers = await Career.find().lean();
   if (!careers.length) {
     throw new Error('No careers found in system');
   }
 
-  const questionIds = (answers || []).map((a) => a.questionId);
-  const questions = await Question.find({ _id: { $in: questionIds } });
-  const questionMap = new Map(questions.map((q) => [String(q._id), q]));
+  const questionIds = safeAnswers.map((a) => a.questionId);
+  const questions = await Question.find({ _id: { $in: questionIds } }).lean();
+  const questionMap = new Map(questions.map((q) => [toObjectIdString(q._id), q]));
 
-  const answersWithQuestions = (answers || []).map((a) => ({
-    questionId: a.questionId,
-    selectedOptionIndex: a.selectedOptionIndex,
-    question: questionMap.get(String(a.questionId)),
-  }));
+  const answersWithQuestions = safeAnswers.map((a) => {
+    const question = questionMap.get(toObjectIdString(a.questionId));
 
-  const { rankedCareers, personalityResult, technicalResult, softSkillsResult } =
-    scoreAssessment({ answersWithQuestions, careers });
+    if (!question) {
+      throw new Error(`Invalid questionId: ${a.questionId}`);
+    }
 
-  // keep old compatibility array too
-  const scores = rankedCareers.map((x) => ({
-    careerId: x.careerId,
-    percentage: Math.round(x.finalScore),
-    totalScore: x.finalScore,
+    const optionIndex = Number(a.selectedOptionIndex);
+    if (Number.isNaN(optionIndex) || optionIndex < 0 || optionIndex >= question.options.length) {
+      throw new Error(
+        `Invalid selectedOptionIndex for question ${question.questionCode || question._id}`
+      );
+    }
+
+    return {
+      questionId: a.questionId,
+      selectedOptionIndex: optionIndex,
+      question,
+      selectedOption: question.options[optionIndex],
+    };
+  });
+
+  const selectedInterests = ensureArray(user.selectedInterests).map(cleanInterest);
+
+  const scoringResult = scoreAssessment({
+    answersWithQuestions,
+    careers,
+    selectedInterests,
+  });
+
+  const {
+    rankedCareers = [],
+    personalityResult = null,
+    technicalResult = null,
+    softSkillsResult = null,
+    weights = null,
+  } = scoringResult || {};
+
+  const scores = rankedCareers.map((item) => ({
+    careerId: item.careerId,
+    percentage: Math.max(0, Math.min(100, Math.round(Number(item.finalScore || 0)))),
+    totalScore: Number(item.finalScore || 0),
   }));
 
   const saved = await UserAssessmentResult.create({
@@ -194,30 +319,63 @@ const submitAssessment = async (userId, answers, forceOverwrite = false) => {
     personalityResult,
     technicalResult,
     softSkillsResult,
+    weights,
   });
 
-  // (optional) mark user flag
-  await User.findByIdAndUpdate(userId, { assessmentCompleted: true });
+  user.assessmentCompleted = true;
+  await user.save();
 
-  return saved;
+  return {
+    ...saved.toObject(),
+    suggestions: buildSuggestions(rankedCareers),
+  };
 };
 
 // -------------------- choose career --------------------
-// -------------------- choose career --------------------
 const chooseCareer = async (userId, careerId) => {
-  const result = await UserAssessmentResult.findOne({ userId });
+  const [result, career, user] = await Promise.all([
+    UserAssessmentResult.findOne({ userId }),
+    Career.findById(careerId),
+    User.findById(userId),
+  ]);
 
   if (!result) {
     throw new Error('Assessment not completed');
   }
 
+  if (!career) {
+    throw new Error('Career not found');
+  }
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  const suggestedCareerIds = new Set([
+    ...ensureArray(result.rankedCareers).map((x) => toObjectIdString(x.careerId)),
+    ...ensureArray(result.scores).map((x) => toObjectIdString(x.careerId)),
+  ]);
+
+  if (suggestedCareerIds.size && !suggestedCareerIds.has(toObjectIdString(careerId))) {
+    throw new Error('Selected career is not part of this assessment result');
+  }
+
   result.chosenCareer = careerId;
   await result.save();
 
-  // ✅ important: create/reset roadmap progress for this user
+  // keep User in sync too
+  user.chosenCareer = careerId;
+  await user.save();
+
   await initializeProgress(userId);
 
-  return { message: 'Career selected and roadmap initialized' };
+  return {
+    message: 'Career selected and roadmap initialized',
+    chosenCareer: {
+      id: career._id,
+      name: career.name,
+    },
+  };
 };
 
 // -------------------- get assessment result --------------------
@@ -231,74 +389,35 @@ const getMyAssessmentResult = async (userId) => {
     };
   }
 
-  const toPercent = (v) => {
-    const n = Number(v);
-    if (Number.isNaN(n)) return 0;
-    return Math.max(0, Math.min(100, Math.round(n)));
-  };
-
-  const formatRanked = (arr) => {
-    if (!Array.isArray(arr)) return [];
-    return arr
-      .map((c) => {
-        const finalScore = toPercent(c.finalScore ?? c.score ?? c.percentage);
-        return {
-          careerId: c.careerId || c.id || c._id,
-          name: c.name,
-          percentage: finalScore,
-          distance: 100 - finalScore,
-          breakdown: {
-            technical: toPercent(c.technical),
-            personality: toPercent(c.personality),
-            soft: toPercent(c.soft),
-          },
-        };
-      })
-      .sort((a, b) => b.percentage - a.percentage);
-  };
-
   return {
     hasResult: true,
     chosenCareer: result.chosenCareer
       ? { id: result.chosenCareer._id, name: result.chosenCareer.name }
       : null,
-
-    rankedCareers: result.rankedCareers || null,
-    scores: result.scores || null,
-
-    personality: result.personalityResult || result.personality || null,
-    technical: result.technicalResult || result.technical || null,
-    softSkills: result.softSkillsResult || result.softSkills || null,
-
+    rankedCareers: result.rankedCareers || [],
+    scores: result.scores || [],
+    personality: result.personalityResult || null,
+    technical: result.technicalResult || null,
+    softSkills: result.softSkillsResult || null,
     createdAt: result.createdAt,
     updatedAt: result.updatedAt,
-    suggestions: formatRanked(result.rankedCareers || result.scores),
+    suggestions: buildSuggestions(result.rankedCareers || result.scores),
   };
 };
 
 // -------------------- interests --------------------
-const ALLOWED_INTERESTS = [
-  'web',
-  'data_ai',
-  'security',
-  'design',
-  'product',
-  'devops',
-  'qa',
-  'mobile_game',
-];
-
 const saveInterests = async (userId, body) => {
-  const interests = Array.isArray(body.interests) ? body.interests : [];
-
-  const cleaned = interests
-    .map((x) => String(x).trim().toLowerCase())
+  const rawInterests = ensureArray(body?.interests);
+  const cleaned = rawInterests
+    .map(cleanInterest)
     .filter((x) => ALLOWED_INTERESTS.includes(x));
 
   const unique = [...new Set(cleaned)].slice(0, 3);
 
   const user = await User.findById(userId);
-  if (!user) throw new Error('User not found');
+  if (!user) {
+    throw new Error('User not found');
+  }
 
   user.selectedInterests = unique;
   await user.save();

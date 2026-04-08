@@ -2,6 +2,7 @@ const asyncHandler = require('../../middlewares/async.middleware');
 const paymentService = require('./payment.service');
 const User = require('../auth/user.model');
 const Transaction = require('./transaction.model');
+
 const addPaymentMethod = asyncHandler(async (req, res) => {
   const data = await paymentService.addPaymentMethod(req.user._id, req.body);
   res.status(201).json({ success: true, data });
@@ -12,7 +13,6 @@ const listPaymentMethods = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data });
 });
 
-// MVP wallet top-up
 const depositToWallet = asyncHandler(async (req, res) => {
   const data = await paymentService.depositToWallet(
     req.user._id,
@@ -56,6 +56,7 @@ const createFawryCheckout = asyncHandler(async (req, res) => {
     data,
   });
 });
+
 const handleFawryWebhook = asyncHandler(async (req, res) => {
   const payload = req.body || {};
 
@@ -80,10 +81,7 @@ const handleFawryWebhook = asyncHandler(async (req, res) => {
   }
 
   const transaction = await Transaction.findOne({
-    $or: [
-      { providerReference: merchantRefNum },
-      { reference: merchantRefNum },
-    ],
+    $or: [{ providerReference: merchantRefNum }, { reference: merchantRefNum }],
     provider: 'fawry',
   });
 
@@ -94,7 +92,7 @@ const handleFawryWebhook = asyncHandler(async (req, res) => {
     });
   }
 
-    const normalizedStatus = String(paymentStatus || 'UNKNOWN').toUpperCase();
+  const normalizedStatus = String(paymentStatus || 'UNKNOWN').toUpperCase();
   transaction.providerStatus = normalizedStatus;
 
   if (payload.referenceNumber) {
@@ -107,13 +105,33 @@ const handleFawryWebhook = asyncHandler(async (req, res) => {
   if (['PAID', 'SUCCESS', 'COMPLETED'].includes(normalizedStatus)) {
     await transaction.save();
     await paymentService.applySuccessfulFawryTransaction(transaction);
-   } else if (['FAILED', 'CANCELLED', 'EXPIRED'].includes(normalizedStatus)) {
+
+    return res.status(200).json({
+      success: true,
+      message: 'Webhook processed successfully',
+      status: normalizedStatus,
+    });
+  }
+
+  if (['FAILED', 'CANCELLED', 'EXPIRED'].includes(normalizedStatus)) {
     await transaction.save();
     await paymentService.applyFailedFawryTransaction(transaction);
-  } else {
-    transaction.status = 'pending';
-    await transaction.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Webhook processed as failed payment',
+      status: normalizedStatus,
+    });
   }
+
+  transaction.status = 'pending';
+  await transaction.save();
+
+  return res.status(200).json({
+    success: true,
+    message: 'Webhook received, transaction remains pending',
+    status: normalizedStatus,
+  });
 });
 
 const getPaymentStatus = asyncHandler(async (req, res) => {
@@ -127,6 +145,7 @@ const getPaymentStatus = asyncHandler(async (req, res) => {
     data,
   });
 });
+
 const verifyFawryTransactionStatus = asyncHandler(async (req, res) => {
   const data = await paymentService.verifyFawryTransactionStatus({
     transactionId: req.params.transactionId,
@@ -175,6 +194,7 @@ const markTransactionRefunded = asyncHandler(async (req, res) => {
     data,
   });
 });
+
 const refundMentorSessionPayment = asyncHandler(async (req, res) => {
   const data = await paymentService.refundMentorSessionPayment({
     sessionId: req.params.sessionId,
@@ -200,8 +220,8 @@ const refundEventRegistrationPayment = asyncHandler(async (req, res) => {
     data,
   });
 });
-module.exports = {
 
+module.exports = {
   addPaymentMethod,
   listPaymentMethods,
   depositToWallet,

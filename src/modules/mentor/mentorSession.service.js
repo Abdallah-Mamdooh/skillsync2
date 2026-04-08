@@ -116,6 +116,7 @@ function buildTimerInfo(session) {
     noShowDeadline: session.noShowDeadline,
     remainingSessionSeconds,
     remainingJoinGraceSeconds,
+    timerStarted: Boolean(session.startedAt && session.endAt),
   };
 }
 
@@ -598,9 +599,15 @@ async function startSession(mentorUserId, sessionId) {
   const now = getNow();
 
   session.acceptedAt = now;
-  session.startedAt = now;
-  session.startAt = now;
-  session.endAt = addMinutes(now, session.durationMinutes);
+
+  // IMPORTANT:
+  // Do NOT start timer here.
+  // Timer starts on the first real chat message.
+  session.startedAt = null;
+  session.startAt = null;
+  session.endAt = null;
+
+  // mentor opens the session and user gets 5 minutes to join
   session.noShowDeadline = addMinutes(now, USER_JOIN_GRACE_MINUTES);
   session.status = 'started';
 
@@ -614,8 +621,8 @@ async function startSession(mentorUserId, sessionId) {
     data: {
       sessionId: session._id,
       noShowDeadline: session.noShowDeadline,
-      endAt: session.endAt,
       durationMinutes: session.durationMinutes,
+      timerStartsOnFirstMessage: true,
     },
   });
 
@@ -625,6 +632,7 @@ async function startSession(mentorUserId, sessionId) {
     startedAt: session.startedAt,
     noShowDeadline: session.noShowDeadline,
     endAt: session.endAt,
+    timerStartsOnFirstMessage: true,
     timer: buildTimerInfo(session),
   };
 }
@@ -640,8 +648,27 @@ async function joinSession(userId, sessionId) {
     throw new Error('This session is not open for joining');
   }
 
+  if (
+    session.noShowDeadline &&
+    !session.userJoinedAt &&
+    new Date() > new Date(session.noShowDeadline)
+  ) {
+    throw new Error('The join window has expired');
+  }
+
+  let timerStartedNow = false;
+
   if (!session.userJoinedAt) {
     session.userJoinedAt = getNow();
+  }
+
+  // For CALL sessions, joining starts the real session timer
+  if (session.method === 'call' && !session.startedAt) {
+    const now = getNow();
+    session.startedAt = now;
+    session.startAt = now;
+    session.endAt = addMinutes(now, session.durationMinutes);
+    timerStartedNow = true;
   }
 
   session.status = 'active';
@@ -655,6 +682,8 @@ async function joinSession(userId, sessionId) {
     data: {
       sessionId: session._id,
       userJoinedAt: session.userJoinedAt,
+      timerStartedNow,
+      method: session.method,
     },
   });
 
@@ -662,6 +691,7 @@ async function joinSession(userId, sessionId) {
     sessionId: session._id,
     status: session.status,
     userJoinedAt: session.userJoinedAt,
+    timerStartedNow,
     timer: buildTimerInfo(session),
   };
 }
@@ -843,6 +873,7 @@ async function runLifecycleSweep() {
   let noShowClosed = 0;
   let completedClosed = 0;
 
+  // sessions opened by mentor but user never joined/sent first message in time
   const noShowSessions = await MentorSession.find({
     status: 'started',
     userJoinedAt: null,
@@ -854,13 +885,16 @@ async function runLifecycleSweep() {
     noShowClosed += 1;
   }
 
+  // only ACTIVE sessions should auto-complete by endAt
   const endedSessions = await MentorSession.find({
-    status: { $in: ['started', 'active'] },
-    endAt: { $lte: now },
+    status: 'active',
+    endAt: { $ne: null, $lte: now },
   });
 
   for (const session of endedSessions) {
-    await finalizeSession(session, 'normal_end', { endedAt: session.endAt || now });
+    await finalizeSession(session, 'normal_end', {
+      endedAt: session.endAt || now,
+    });
     completedClosed += 1;
   }
 

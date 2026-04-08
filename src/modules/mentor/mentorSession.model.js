@@ -38,18 +38,18 @@ const mentorSessionSchema = new mongoose.Schema(
 
     scheduledDate: {
       type: String,
-      required: true, // YYYY-MM-DD
+      required: true,
       index: true,
     },
 
     scheduledStartTime: {
       type: String,
-      required: true, // HH:mm
+      required: true,
     },
 
     scheduledEndTime: {
       type: String,
-      required: true, // HH:mm
+      required: true,
     },
 
     timezone: {
@@ -93,7 +93,14 @@ const mentorSessionSchema = new mongoose.Schema(
 
     finalizationReason: {
       type: String,
-      enum: ['normal_end', 'manual_complete', 'user_no_show', 'cancelled', 'expired', ''],
+      enum: [
+        'normal_end',
+        'manual_complete',
+        'user_no_show',
+        'cancelled',
+        'expired',
+        '',
+      ],
       default: '',
     },
 
@@ -203,19 +210,23 @@ const mentorSessionSchema = new mongoose.Schema(
       default: null,
     },
 
+    // actual session start time (set on first chat message or call join)
     startedAt: {
       type: Date,
       default: null,
+      index: true,
     },
 
     endedAt: {
       type: Date,
       default: null,
+      index: true,
     },
 
     expiresAt: {
       type: Date,
       default: null,
+      index: true,
     },
 
     actualDurationMinutes: {
@@ -237,6 +248,16 @@ mentorSessionSchema.index({
   mentorProfileId: 1,
   scheduledDate: 1,
   scheduledStartTime: 1,
+});
+
+mentorSessionSchema.index({
+  status: 1,
+  noShowDeadline: 1,
+});
+
+mentorSessionSchema.index({
+  status: 1,
+  endAt: 1,
 });
 
 module.exports = mongoose.model('MentorSession', mentorSessionSchema);

@@ -100,6 +100,35 @@ async function depositToWallet(userId, amount, notes = 'Wallet top-up') {
 
   return wallet;
 }
+async function captureHeldFunds({
+  userId,
+  sessionId = null,
+  eventRegistrationId = null,
+  amount,
+  currency = 'EGP',
+}) {
+  const wallet = await getOrCreateWallet(userId, currency);
+  const amt = round2(amount);
+
+  if (amt <= 0) throw new Error('Invalid capture amount');
+  if (wallet.heldBalance < amt) throw new Error('Held balance is insufficient');
+
+  wallet.heldBalance = round2(wallet.heldBalance - amt);
+  await wallet.save();
+
+  await Transaction.create({
+    userId,
+    sessionId,
+    eventRegistrationId,
+    type: 'capture',
+    amount: amt,
+    currency,
+    status: 'completed',
+    notes: 'Held amount captured',
+  });
+
+  return wallet;
+}
 
 async function holdFunds({ userId, sessionId, amount, paymentMethodId = null, currency = 'EGP' }) {
   const wallet = await getOrCreateWallet(userId, currency);
@@ -129,7 +158,14 @@ async function holdFunds({ userId, sessionId, amount, paymentMethodId = null, cu
   return wallet;
 }
 
-async function releaseHeldFunds({ userId, sessionId, amount, currency = 'EGP' }) {
+async function releaseHeldFunds({
+  userId,
+  sessionId = null,
+  eventRegistrationId = null,
+  amount,
+  currency = 'EGP',
+  reason = 'release',
+}) {
   const wallet = await getOrCreateWallet(userId, currency);
   const amt = round2(amount);
 
@@ -143,40 +179,24 @@ async function releaseHeldFunds({ userId, sessionId, amount, currency = 'EGP' })
   await Transaction.create({
     userId,
     sessionId,
+    eventRegistrationId,
     type: 'release',
     amount: amt,
     currency,
     status: 'completed',
-    notes: 'Held amount released back to wallet',
+    notes: reason || 'Held amount released back to wallet',
   });
 
   return wallet;
 }
 
-async function captureHeldFunds({ userId, sessionId, amount, currency = 'EGP' }) {
-  const wallet = await getOrCreateWallet(userId, currency);
-  const amt = round2(amount);
-
-  if (amt <= 0) throw new Error('Invalid capture amount');
-  if (wallet.heldBalance < amt) throw new Error('Held balance is insufficient');
-
-  wallet.heldBalance = round2(wallet.heldBalance - amt);
-  await wallet.save();
-
-  await Transaction.create({
-    userId,
-    sessionId,
-    type: 'capture',
-    amount: amt,
-    currency,
-    status: 'completed',
-    notes: 'Held amount captured',
-  });
-
-  return wallet;
-}
-
-async function creditMentorWallet({ mentorUserId, sessionId, amount, currency = 'EGP' }) {
+async function creditMentorWallet({
+  mentorUserId,
+  sessionId,
+  amount,
+  currency = 'EGP',
+  reason = 'Mentor credited after completed session',
+}) {
   const wallet = await getOrCreateWallet(mentorUserId, currency);
   const amt = round2(amount);
 
@@ -192,10 +212,10 @@ async function creditMentorWallet({ mentorUserId, sessionId, amount, currency = 
     amount: amt,
     currency,
     status: 'completed',
-    notes: 'Mentor credited after completed session',
+    notes: reason,
   });
 
-    await notificationService.createNotification({
+  await notificationService.createNotification({
     userId: mentorUserId,
     type: 'wallet_credit',
     title: 'Wallet credited',
@@ -211,7 +231,13 @@ async function creditMentorWallet({ mentorUserId, sessionId, amount, currency = 
   return wallet;
 }
 
-async function addPlatformFeeTransaction({ userId, sessionId, amount, currency = 'EGP' }) {
+async function addPlatformFeeTransaction({
+  userId,
+  sessionId,
+  amount,
+  currency = 'EGP',
+  notes = 'Platform fee deducted from session',
+}) {
   const amt = round2(amount);
 
   await Transaction.create({
@@ -221,7 +247,7 @@ async function addPlatformFeeTransaction({ userId, sessionId, amount, currency =
     amount: amt,
     currency,
     status: 'completed',
-    notes: 'Platform fee deducted from session',
+    notes,
   });
 }
 
@@ -673,8 +699,8 @@ async function applyFailedFawryTransaction(transaction) {
           transactionId: transaction._id,
         },
       });
-    }
-     await notificationService.createNotification({
+
+      await notificationService.createNotification({
         userId: session.userId,
         type: 'payment_retry_available',
         title: 'You can retry payment',
@@ -684,8 +710,10 @@ async function applyFailedFawryTransaction(transaction) {
           transactionId: transaction._id,
         },
       });
+    }
 
     transaction.status = 'failed';
+    transaction.providerStatus = transaction.providerStatus || 'FAILED';
     await transaction.save();
     return transaction;
   }
@@ -693,7 +721,7 @@ async function applyFailedFawryTransaction(transaction) {
        
 
   // Group event payment failure
-  if (entityType === 'group_event') {
+   if (entityType === 'group_event') {
     const registration = await EventRegistration.findById(transaction.entityId).populate('eventId');
 
     if (registration) {
@@ -702,7 +730,6 @@ async function applyFailedFawryTransaction(transaction) {
 
       const event = registration.eventId;
       if (event && Number(event.registeredCount || 0) > 0) {
-        // Safe correction in case count was ever incremented too early
         event.registeredCount = Math.max(0, Number(event.registeredCount || 0) - 1);
         await event.save();
       }
@@ -720,8 +747,8 @@ async function applyFailedFawryTransaction(transaction) {
           currency: transaction.currency,
         },
       });
-    }
-          await notificationService.createNotification({
+
+      await notificationService.createNotification({
         userId: registration.userId,
         type: 'payment_retry_available',
         title: 'You can retry payment',
@@ -731,8 +758,10 @@ async function applyFailedFawryTransaction(transaction) {
           transactionId: transaction._id,
         },
       });
+    }
 
     transaction.status = 'failed';
+    transaction.providerStatus = transaction.providerStatus || 'FAILED';
     await transaction.save();
     return transaction;
   }
@@ -1076,18 +1105,17 @@ async function refundMentorSessionPayment({
       },
     });
 
-    await notificationService.createNotification({
+     await notificationService.createNotification({
       userId: session.mentorUserId,
       type: 'mentor_payout_reversed',
       title: 'Mentor payout reversed',
-      message: `A payout for session ${session._id} was reversed بسبب refund.`,
+      message: `A payout for session ${session._id} was reversed due to a refund.`,
       data: {
         sessionId: session._id,
         mentorNetAmount: session.mentorNetAmount,
         currency: session.currency,
       },
     });
-
     return {
       session,
       transaction,

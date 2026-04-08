@@ -29,7 +29,9 @@
     "debug:tech": "node scripts/debugTechnicalQuestions.js",
 
     "seed:soft-questions": "node scripts/seedSoftSkillsQuestions.js",
-    "seed:assessment": "node seeds/seedAssessment.js"
+    "seed:assessment": "node seeds/seedAssessment.js",
+    "cleanup:careers": "node scripts/cleanupCareers.js",
+    "sync:career-roadmaps": "node scripts/syncCareerRoadmapIds.js"
 
   },
 

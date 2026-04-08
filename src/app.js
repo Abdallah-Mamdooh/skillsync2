@@ -27,6 +27,7 @@ const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
 const complaintRoutes = require('./modules/complaint/complaint.routes');
 const supportRoutes = require('./modules/support/support.routes');
 const settingsRoutes = require('./modules/settings/settings.routes');
+
 const app = express();
 
 // global middleware
@@ -64,6 +65,9 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/reminders', reminderRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/complaints', complaintRoutes);
+app.use('/api/support', supportRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // shared routes
 app.use('/api', routes);
@@ -71,8 +75,5 @@ app.use('/api', routes);
 // error handling LAST
 app.use(notFound);
 app.use(errorHandler);
-app.use('/api/complaints', complaintRoutes);
-app.use('/api/support', supportRoutes);
-app.use('/api/settings', settingsRoutes);
 
 module.exports = app;

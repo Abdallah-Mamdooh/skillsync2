@@ -13,6 +13,13 @@ const getMyRoadmap = asyncHandler(async (req, res) => {
 const toggleStep = asyncHandler(async (req, res) => {
   const { stepId } = req.body;
 
+  if (!stepId) {
+    return res.status(400).json({
+      success: false,
+      message: 'stepId is required',
+    });
+  }
+
   const response = await roadmapService.toggleStep(req.user._id, stepId);
 
   res.status(200).json({
@@ -43,7 +50,9 @@ const generateResources = asyncHandler(async (req, res) => {
 });
 
 const getRecentCompletions = asyncHandler(async (req, res) => {
-  const limit = Number(req.query.limit) || 10;
+  const rawLimit = Number(req.query.limit) || 10;
+  const limit = Math.max(1, Math.min(rawLimit, 50));
+
   const data = await roadmapService.getRecentCompletions(req.user._id, limit);
 
   res.status(200).json({

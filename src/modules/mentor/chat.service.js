@@ -25,6 +25,10 @@ function inferMessageType({ content, attachment }) {
   return 'file';
 }
 
+function addMinutes(date, minutes) {
+  return new Date(new Date(date).getTime() + minutes * 60 * 1000);
+}
+
 const getSessionForParticipant = async (sessionId, currentUserId) => {
   const session = await MentorSession.findById(sessionId);
 
@@ -88,16 +92,31 @@ const createMessage = async ({
 
   let sessionBecameActiveNow = false;
   let userJoinedNow = false;
+  let timerStartedNow = false;
 
-  // If mentor sends the first message after session start, keep status "started"
-  // If user sends first message/join action, mark the user as joined and session active
+  // If user sends first message, that counts as join
   if (isUser && !session.userJoinedAt) {
     session.userJoinedAt = new Date();
-    session.status = 'active';
     userJoinedNow = true;
-    sessionBecameActiveNow = true;
-    await session.save();
   }
+
+  // IMPORTANT:
+  // Timer starts on the FIRST ACTUAL MESSAGE by either side
+  if (!session.startedAt) {
+    const now = new Date();
+    session.startedAt = now;
+    session.startAt = now;
+    session.endAt = addMinutes(now, session.durationMinutes);
+    timerStartedNow = true;
+  }
+
+  // Once any real message is sent, session becomes active
+  if (session.status !== 'active') {
+    session.status = 'active';
+    sessionBecameActiveNow = true;
+  }
+
+  await session.save();
 
   const messageType = inferMessageType({
     content: cleanContent,
@@ -127,6 +146,7 @@ const createMessage = async ({
       sessionId: session._id,
       messageId: message._id,
       messageType,
+      timerStartedNow,
     },
   });
 
@@ -146,6 +166,7 @@ const createMessage = async ({
   return {
     sessionBecameActiveNow,
     userJoinedNow,
+    timerStartedNow,
     session,
     message,
   };

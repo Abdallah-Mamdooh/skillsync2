@@ -1,9 +1,7 @@
 import 'package:google_sign_in/google_sign_in.dart';
-import 'api_service.dart';
+import 'auth_service.dart';
 
 class GoogleAuthService { 
-  static String get baseUrl => '${ApiService.baseUrl}/auth'; 
-
   static final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
   );
@@ -21,10 +19,10 @@ class GoogleAuthService {
         return {'success': false, 'message': 'User cancelled'};
       }
 
-      return {'success': true, 'email': user.email};
+      final email = user.email;
+      return AuthService.googleLogin(email: email);
     } catch (e) {
-      print("Google Sign In Error: $e");
-      return {'success': false, 'message': 'Google Sign-In Error. Note: You must configure SHA-1 keys in Firebase mapped to your app package name for this to work on Android.'};
+      return {'success': false, 'message': e.toString()};
     }
   }
 

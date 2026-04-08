@@ -27,9 +27,7 @@ class NotificationModel {
       title: json['title'] ?? '',
       message: json['message'] ?? '',
       isRead: json['isRead'] ?? false,
-      data: json['data'] != null
-          ? Map<String, dynamic>.from(json['data'])
-          : {},
+      data: json['data'] != null ? Map<String, dynamic>.from(json['data']) : {},
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : DateTime.now(),
@@ -71,7 +69,17 @@ class NotificationProvider extends ChangeNotifier {
     _isLoading = false;
 
     if (response['success'] == true) {
-      final List<dynamic> items = response['data'] ?? [];
+      final data = response['data'];
+      List<dynamic> items = [];
+      if (data is List) {
+        items = data;
+      } else if (data is Map) {
+        final nested =
+            data['notifications'] ?? data['items'] ?? data['data'];
+        if (nested is List) {
+          items = nested;
+        }
+      }
       _notifications =
           items.map((json) => NotificationModel.fromJson(json)).toList();
       _unreadCount = _notifications.where((n) => !n.isRead).length;
@@ -83,12 +91,7 @@ class NotificationProvider extends ChangeNotifier {
   }
 
   Future<void> fetchUnreadCount(String token) async {
-    final response = await NotificationService.getUnreadCount(token);
-
-    if (response['success'] == true) {
-      _unreadCount = response['data']?['unreadCount'] ?? 0;
-      notifyListeners();
-    }
+    await fetchNotifications(token);
   }
 
   Future<void> markAsRead(String token, String notificationId) async {

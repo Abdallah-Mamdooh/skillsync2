@@ -436,34 +436,57 @@ class _LoginScreenState extends State<LoginScreen> {
                               final authProvider = Provider.of<AuthProvider>(
                                   context,
                                   listen: false);
-                              final email = result['email'] as String?;
+                              final data = result['data'];
 
-                              if (email != null) {
-                                final success = await authProvider.googleLogin(
-                                    email: email);
-                                if (success && context.mounted) {
-                                  final user = authProvider.user;
-                                  if (user != null &&
-                                      user['role'] == 'mentor') {
-                                    Navigator.of(context).pushReplacement(
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                        const MentorshipScreen(),
-                                      ),
+                              // If backend already returned token + user, store
+                              // them directly instead of calling the API again.
+                              if (data is Map &&
+                                  data['token'] != null &&
+                                  data['user'] is Map) {
+                                await authProvider.setFromGoogle(
+                                  token: data['token'],
+                                  user: Map<String, dynamic>.from(data['user']),
+                                );
+                              } else {
+                                // Fallback: if only email is provided, call API.
+                                final email = result['email'] as String?;
+                                if (email != null) {
+                                  final success = await authProvider.googleLogin(
+                                      email: email);
+                                  if (!success && context.mounted) {
+                                    _showLoginFailedDialog(
+                                      context,
+                                      message:
+                                      'Google login failed.\nPlease try again.',
                                     );
-                                  } else {
-                                    Navigator.of(context).pushReplacement(
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                        const StudentHomeScreen(),
-                                      ),
-                                    );
+                                    return;
                                   }
-                                } else if (context.mounted) {
+                                } else {
                                   _showLoginFailedDialog(
                                     context,
                                     message:
-                                    'Google login failed.\nPlease try again.',
+                                    'Google login returned no user info.\nPlease try again.',
+                                  );
+                                  return;
+                                }
+                              }
+
+                              if (context.mounted) {
+                                final user = authProvider.user;
+                                if (user != null &&
+                                    user['role'] == 'mentor') {
+                                  Navigator.of(context).pushReplacement(
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                      const MentorshipScreen(),
+                                    ),
+                                  );
+                                } else {
+                                  Navigator.of(context).pushReplacement(
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                      const StudentHomeScreen(),
+                                    ),
                                   );
                                 }
                               }
@@ -561,4 +584,3 @@ class _GoogleLogo extends StatelessWidget {
     );
   }
 }
-

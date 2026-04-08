@@ -537,12 +537,13 @@ class _AssessmentQuestion1State extends State<AssessmentQuestion1> {
         },
       );
 
+      // Send the answers array directly as the body.
+      // The backend service receives req.body as the `answers` parameter,
+      // so wrapping in { 'answers': [...] } causes ensureArray() to return []
+      // and throw 'Answers are required' even when all questions are answered.
       final response = await ApiService.postWithAuth(
         '/assessment/submit',
-        {
-          'answers': answersPayload,
-          if (forceOverwrite) 'forceOverwrite': true,
-        },
+        answersPayload,
         token,
       );
 
@@ -594,10 +595,10 @@ class _AssessmentQuestion1State extends State<AssessmentQuestion1> {
           SnackBar(content: Text((response['message'] ?? 'Submission failed').toString())),
         );
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Unexpected error during submission.')),
+          SnackBar(content: Text('Submission error: $e')),
         );
       }
     } finally {

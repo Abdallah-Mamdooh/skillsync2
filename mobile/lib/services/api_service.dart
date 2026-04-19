@@ -1,23 +1,34 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class ApiService {
   // Override with:
   // flutter run --dart-define=API_BASE_URL=http://YOUR_IP:5000/api
-  // Default is Android emulator host loopback.
-  static const String baseUrl = String.fromEnvironment(
+  static const String _envBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://192.168.1.31:5000/api',
+    defaultValue: '',
   );
+
+  // Runtime default when API_BASE_URL is not provided.
+  // Physical device on local network: use the host machine's LAN IP.
+  // To override, run with: flutter run --dart-define=API_BASE_URL=http://YOUR_IP:5000/api
+  static const String _lanIp = '192.168.1.47';
+
+  static String get baseUrl {
+    if (_envBaseUrl.isNotEmpty) return _envBaseUrl;
+    if (kIsWeb) return 'http://localhost:5000/api';
+    return 'http://$_lanIp:5000/api';
+  }
   
   static Future<Map<String, dynamic>> post(
     String endpoint,
     Object body,
   ) async {
-    try {
+    try { 
       final response = await http.post(
         Uri.parse('$baseUrl$endpoint'),
-        headers: {
+        headers: { 
           'Content-Type': 'application/json',
         },
         body: jsonEncode(body),
@@ -81,6 +92,18 @@ class ApiService {
         headers: {
           'Authorization': 'Bearer $token',
         },
+      );
+
+      return _handleResponse(response);
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> getPublic(String endpoint) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl$endpoint'),
       );
 
       return _handleResponse(response);

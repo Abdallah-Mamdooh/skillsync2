@@ -328,12 +328,12 @@ class _OnboardingPageWithBg extends StatelessWidget {
           left: 0,
           right: 0,
           child: SizedBox(
-            height: size.height * 0.55,
+            height: size.height * 0.52,
             child: ClipPath(
               clipper: _BottomHalfCircleClipper(),
               child: Image.asset(
                 'assets/images/page2.png',
-                fit: BoxFit.cover,
+                fit: BoxFit.fill,
               ),
             ),
           ),

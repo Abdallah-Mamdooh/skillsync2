@@ -10,7 +10,6 @@ import 'mentorship_screen.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'Notifications screen.dart';
 import 'ChatsScreen.dart';
-import 'roadmap_screen.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -256,21 +255,21 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                             top: 42,
                             child: _isWalletLoading
                                 ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Color(0xFF1D5572),
-                                    ),
-                                  )
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Color(0xFF1D5572),
+                              ),
+                            )
                                 : Text(
-                                    '${_walletBalance.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')} $_walletCurrency',
-                                    style: GoogleFonts.inter(
-                                      color: const Color(0xFF2E2E2E),
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                              '${_walletBalance.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')} $_walletCurrency',
+                              style: GoogleFonts.inter(
+                                color: const Color(0xFF2E2E2E),
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
                           Positioned(
                             right: 11,
@@ -371,7 +370,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                               Text(
                                 '$progressPercent%',
                                 style: GoogleFonts.inter(
-                                  color: const Color(0xFF001636), 
+                                  color: const Color(0xFF001636),
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                   height: 1.1,
@@ -584,7 +583,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                             child: GestureDetector(
                               onTap: () {
                                 Navigator.of(context).push(MaterialPageRoute(
-                                    builder: (_) => const RoadmapScreen()));
+                                    builder: (_) => const LearningRoadmapScreen()));
                               },
                               child: Container(
                                 height: 118,

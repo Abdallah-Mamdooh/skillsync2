@@ -1,27 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'CV Optimizer',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        fontFamily: 'SF Pro Display',
-        scaffoldBackgroundColor: const Color(0xFFF0F4F8),
-      ),
-      home: const CVOptimizerScreen(),
-    );
-  }
-}
-
 // First Screen - CV Upload Screen
 class CVOptimizerScreen extends StatefulWidget {
   const CVOptimizerScreen({super.key});

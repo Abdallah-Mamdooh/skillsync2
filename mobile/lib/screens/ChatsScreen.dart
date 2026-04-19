@@ -1,29 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Chats',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        fontFamily: 'SF Pro Display',
-        scaffoldBackgroundColor: const Color(0xFFF2F4F7),
-      ),
-      home: const ChatsScreen(),
-    );
-  }
-}
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import '../services/chat_service.dart';
 
 // ── Data models ───────────────────────────────────────────────────────────────
 
 class ChatUser {
+  final String sessionId;
   final String name;
   final String lastMessage;
   final String time;
@@ -31,30 +15,90 @@ class ChatUser {
   final int unread;
   final String avatarUrl;
   final bool isOnline;
+  final String status; // accepted, active, completed, etc.
 
   const ChatUser({
+    required this.sessionId,
     required this.name,
-    required this.lastMessage,
-    required this.time,
-    required this.date,
-    required this.unread,
-    required this.avatarUrl,
+    this.lastMessage = '',
+    this.time = '',
+    this.date = '',
+    this.unread = 0,
+    this.avatarUrl = '',
     this.isOnline = false,
+    this.status = '',
   });
+
+  factory ChatUser.fromSession(Map<String, dynamic> session) {
+    final mentor = session['mentor'] ?? {};
+    final fullName = mentor['fullName'] ?? 'Unknown Mentor';
+    final status = session['status'] ?? '';
+
+    // Parse date from requestedAt or acceptedAt
+    String time = '';
+    String date = '';
+    final rawDate = session['acceptedAt'] ?? session['requestedAt'] ?? '';
+    if (rawDate.toString().isNotEmpty) {
+      try {
+        final dt = DateTime.parse(rawDate.toString()).toLocal();
+        time = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+        date = '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}';
+      } catch (_) {}
+    }
+
+    return ChatUser(
+      sessionId: session['id']?.toString() ?? '',
+      name: fullName,
+      lastMessage: '',
+      time: time,
+      date: date,
+      unread: 0,
+      avatarUrl: '',
+      isOnline: status == 'active',
+      status: status,
+    );
+  }
 }
 
 class ChatMessage {
+  final String id;
   final String text;
+  final String senderId;
+  final String senderRole;
   final bool isMe;
   final String time;
   final bool isRead;
 
   const ChatMessage({
+    this.id = '',
     required this.text,
+    this.senderId = '',
+    this.senderRole = '',
     required this.isMe,
     required this.time,
     this.isRead = false,
   });
+
+  factory ChatMessage.fromJson(Map<String, dynamic> json, String currentUserId) {
+    String time = '';
+    final rawDate = json['createdAt'] ?? '';
+    if (rawDate.toString().isNotEmpty) {
+      try {
+        final dt = DateTime.parse(rawDate.toString()).toLocal();
+        time = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      } catch (_) {}
+    }
+
+    return ChatMessage(
+      id: json['_id']?.toString() ?? '',
+      text: json['content']?.toString() ?? '',
+      senderId: json['senderId']?.toString() ?? '',
+      senderRole: json['senderRole']?.toString() ?? '',
+      isMe: json['senderId']?.toString() == currentUserId,
+      time: time,
+      isRead: true,
+    );
+  }
 }
 
 // ── Chats Screen ──────────────────────────────────────────────────────────────
@@ -68,49 +112,75 @@ class ChatsScreen extends StatefulWidget {
 
 class _ChatsScreenState extends State<ChatsScreen> {
   int _selectedIndex = 2;
+  bool _isLoading = true;
+  String? _error;
 
-  final ChatUser bookedSession = const ChatUser(
-    name: 'Sarah Johnson',
-    lastMessage: 'Hello! my name is sarah Johnson',
-    time: '10:45',
-    date: '08/05',
-    unread: 1,
-    avatarUrl: 'https://randomuser.me/api/portraits/women/44.jpg',
-    isOnline: true,
-  );
+  List<ChatUser> _activeSessions = [];
+  List<ChatUser> _historySessions = [];
 
-  final List<ChatUser> chatHistory = const [
-    ChatUser(
-      name: 'Michael Chen',
-      lastMessage: 'Appreciate it! See you soon!',
-      time: '1:30',
-      date: '06/05',
-      unread: 1,
-      avatarUrl: 'https://randomuser.me/api/portraits/men/32.jpg',
-    ),
-    ChatUser(
-      name: 'Emily Rodriguez',
-      lastMessage: 'Appreciate it! See you soon!',
-      time: '8:25',
-      date: '02/05',
-      unread: 1,
-      avatarUrl: 'https://randomuser.me/api/portraits/women/68.jpg',
-    ),
-    ChatUser(
-      name: 'David Kim',
-      lastMessage: 'Appreciate it! See you soon!',
-      time: '6:30',
-      date: '22/04',
-      unread: 1,
-      avatarUrl: 'https://randomuser.me/api/portraits/men/75.jpg',
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _fetchSessions();
+  }
+
+  Future<void> _fetchSessions() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final token = auth.token;
+
+    if (token == null) {
+      setState(() {
+        _error = 'You must be logged in to view chats.';
+        _isLoading = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final response = await ChatService.getMyChatSessions(token);
+
+      if (response['success'] == true) {
+        final List sessions = response['data'] ?? [];
+
+        // Filter to chat-method sessions only
+        final chatSessions = sessions
+            .where((s) => s['method'] == 'chat')
+            .map((s) => ChatUser.fromSession(s))
+            .toList();
+
+        setState(() {
+          _activeSessions = chatSessions
+              .where((s) => s.status == 'accepted' || s.status == 'active')
+              .toList();
+          _historySessions = chatSessions
+              .where((s) => s.status == 'completed')
+              .toList();
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _error = response['message'] ?? 'Failed to load sessions.';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _error = 'Network error: $e';
+        _isLoading = false;
+      });
+    }
+  }
 
   void _openChat(ChatUser user) {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => ChatWithMentorScreen(user: user)),
-    );
+    ).then((_) => _fetchSessions()); // Refresh on return
   }
 
   @override
@@ -146,51 +216,137 @@ class _ChatsScreenState extends State<ChatsScreen> {
               ),
             ),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    GestureDetector(
-                      onTap: () => _openChat(bookedSession),
-                      child: _BookedSessionCard(user: bookedSession),
-                    ),
-                    const SizedBox(height: 12),
-                    const Divider(
-                      height: 17,
-                      thickness: 2,
-                      color: Color(0xFFD9D9D9),
-                    ),
-                    const SizedBox(height: 12),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 4, bottom: 12),
-                      child: Text(
-                        'Chat History',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A1A2E),
-                        ),
-                      ),
-                    ),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: chatHistory.length,
-                        itemBuilder: (context, index) => GestureDetector(
-                          onTap: () => _openChat(chatHistory[index]),
-                          child: _ChatHistoryTile(user: chatHistory[index]),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _error != null
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.error_outline,
+                                    size: 48, color: Color(0xFF7A7A9D)),
+                                const SizedBox(height: 16),
+                                Text(
+                                  _error!,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Color(0xFF7A7A9D),
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                ElevatedButton(
+                                  onPressed: _fetchSessions,
+                                  child: const Text('Retry'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : _activeSessions.isEmpty && _historySessions.isEmpty
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(32),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.chat_bubble_outline,
+                                        size: 64,
+                                        color: Colors.grey.shade300),
+                                    const SizedBox(height: 16),
+                                    const Text(
+                                      'No chat sessions yet',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF1A1A2E),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    const Text(
+                                      'Book a chat session with a mentor to start chatting!',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Color(0xFF7A7A9D),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : RefreshIndicator(
+                              onRefresh: _fetchSessions,
+                              child: SingleChildScrollView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Active / booked sessions
+                                    if (_activeSessions.isNotEmpty) ...[
+                                      ..._activeSessions.map((user) =>
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                                bottom: 10),
+                                            child: GestureDetector(
+                                              onTap: () => _openChat(user),
+                                              child: _BookedSessionCard(
+                                                  user: user),
+                                            ),
+                                          )),
+                                      const SizedBox(height: 2),
+                                      const Divider(
+                                        height: 17,
+                                        thickness: 2,
+                                        color: Color(0xFFD9D9D9),
+                                      ),
+                                      const SizedBox(height: 12),
+                                    ],
+
+                                    // Chat history
+                                    if (_historySessions.isNotEmpty) ...[
+                                      const Padding(
+                                        padding: EdgeInsets.only(
+                                            left: 4, bottom: 12),
+                                        child: Text(
+                                          'Chat History',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF1A1A2E),
+                                          ),
+                                        ),
+                                      ),
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                        ),
+                                        child: ListView.builder(
+                                          shrinkWrap: true,
+                                          physics:
+                                              const NeverScrollableScrollPhysics(),
+                                          itemCount: _historySessions.length,
+                                          itemBuilder: (context, index) =>
+                                              GestureDetector(
+                                            onTap: () => _openChat(
+                                                _historySessions[index]),
+                                            child: _ChatHistoryTile(
+                                                user:
+                                                    _historySessions[index]),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ),
             ),
           ],
         ),
@@ -239,7 +395,7 @@ class _BookedSessionCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(
               children: [
-                _Avatar(url: user.avatarUrl, radius: 22),
+                _Avatar(url: user.avatarUrl, name: user.name, radius: 22),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -255,7 +411,9 @@ class _BookedSessionCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        user.lastMessage,
+                        user.lastMessage.isNotEmpty
+                            ? user.lastMessage
+                            : 'Tap to start chatting',
                         style: const TextStyle(
                           fontSize: 12,
                           color: Color(0xFF8A827F),
@@ -270,13 +428,14 @@ class _BookedSessionCard extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      '${user.time}  ${user.date}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF7A7A9D),
+                    if (user.time.isNotEmpty || user.date.isNotEmpty)
+                      Text(
+                        '${user.time}  ${user.date}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF7A7A9D),
+                        ),
                       ),
-                    ),
                     const SizedBox(height: 4),
                     if (user.unread > 0) _Badge(count: user.unread),
                   ],
@@ -302,7 +461,7 @@ class _ChatHistoryTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          _Avatar(url: user.avatarUrl, radius: 22),
+          _Avatar(url: user.avatarUrl, name: user.name, radius: 22),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -318,7 +477,9 @@ class _ChatHistoryTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  user.lastMessage,
+                  user.lastMessage.isNotEmpty
+                      ? user.lastMessage
+                      : 'Session completed',
                   style: const TextStyle(
                     fontSize: 12,
                     color: Color(0xFF8A827F),
@@ -333,13 +494,14 @@ class _ChatHistoryTile extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                '${user.time}  ${user.date}',
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: Color(0xFF7A7A9D),
+              if (user.time.isNotEmpty || user.date.isNotEmpty)
+                Text(
+                  '${user.time}  ${user.date}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF7A7A9D),
+                  ),
                 ),
-              ),
               const SizedBox(height: 4),
               if (user.unread > 0) _Badge(count: user.unread),
             ],
@@ -364,84 +526,159 @@ class _ChatWithMentorScreenState extends State<ChatWithMentorScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  final List<ChatMessage> _messages = const [
-    ChatMessage(
-      text:
-          "Hi! I saw your profile and I'm interested in getting career guidance.",
-      isMe: true,
-      time: '10:30 AM',
-      isRead: true,
-    ),
-    ChatMessage(
-      text:
-          "Hello! I'd be happy to help you. What specific area would you like to focus on?",
-      isMe: false,
-      time: '10:32 AM',
-    ),
-    ChatMessage(
-      text:
-          "I'm currently learning React and want to transition into a frontend developer role. Do you have any advice on building a strong portfolio?",
-      isMe: true,
-      time: '10:33 AM',
-      isRead: true,
-    ),
-    ChatMessage(
-      text:
-          "Great question! Building a portfolio is crucial. I recommend starting with 3-5 quality projects that showcase different skills.",
-      isMe: false,
-      time: '10:34 AM',
-    ),
-    ChatMessage(
-      text:
-          "Focus on projects that solve real problems. Include at least one full-stack application, and make sure your code is clean and well-documented on GitHub.",
-      isMe: false,
-      time: '10:35 AM',
-    ),
-    ChatMessage(
-      text:
-          "That's really helpful! Should I focus more on personal projects or contribute to open source?",
-      isMe: true,
-      time: '10:38 AM',
-      isRead: true,
-    ),
-    ChatMessage(
-      text: "Both are valuable! Personal projects show",
-      isMe: false,
-      time: '10:39 AM',
-    ),
-  ];
+  List<ChatMessage> _messages = [];
+  bool _isLoading = true;
+  bool _isSending = false;
+  String? _error;
+  Timer? _pollTimer;
 
-  late List<ChatMessage> _mutableMessages;
+  String _currentUserId = '';
+  String _token = '';
 
   @override
   void initState() {
     super.initState();
-    _mutableMessages = List.from(_messages);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    _token = auth.token ?? '';
+    _currentUserId = auth.user?['_id']?.toString() ?? '';
+    _loadMessages();
+
+    // Poll for new messages every 5 seconds
+    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      _loadMessages(silent: true);
+    });
   }
 
-  void _sendMessage() {
-    final text = _controller.text.trim();
-    if (text.isEmpty) return;
-    setState(() {
-      _mutableMessages.add(ChatMessage(
-        text: text,
-        isMe: true,
-        time: TimeOfDay.now().format(context),
-        isRead: false,
-      ));
-    });
-    _controller.clear();
-    Future.delayed(const Duration(milliseconds: 100), () {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
+  Future<void> _loadMessages({bool silent = false}) async {
+    if (_token.isEmpty) {
+      setState(() {
+        _error = 'Authentication required.';
+        _isLoading = false;
+      });
+      return;
+    }
+
+    if (!silent) {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
+
+    try {
+      final response = await ChatService.getChatMessages(
+        _token,
+        widget.user.sessionId,
       );
+
+      if (response['success'] == true) {
+        final List data = response['data'] ?? [];
+        final newMessages = data
+            .map((m) => ChatMessage.fromJson(m, _currentUserId))
+            .toList();
+
+        setState(() {
+          _messages = newMessages;
+          _isLoading = false;
+        });
+
+        // Scroll to bottom after messages load
+        if (!silent || newMessages.length != _messages.length) {
+          _scrollToBottom();
+        }
+      } else {
+        if (!silent) {
+          setState(() {
+            _error = response['message'] ?? 'Failed to load messages.';
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (!silent) {
+        setState(() {
+          _error = 'Network error: $e';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _scrollToBottom() {
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
     });
+  }
+
+  Future<void> _sendMessage() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty || _isSending) return;
+
+    setState(() => _isSending = true);
+    _controller.clear();
+
+    // Optimistic UI: add message immediately
+    final optimisticMsg = ChatMessage(
+      text: text,
+      isMe: true,
+      time: TimeOfDay.now().format(context),
+      isRead: false,
+    );
+    setState(() {
+      _messages.add(optimisticMsg);
+    });
+    _scrollToBottom();
+
+    try {
+      final response = await ChatService.sendMessage(
+        _token,
+        widget.user.sessionId,
+        text,
+      );
+
+      if (response['success'] != true) {
+        // Remove optimistic message on failure
+        setState(() {
+          _messages.remove(optimisticMsg);
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response['message'] ?? 'Failed to send message'),
+              backgroundColor: Colors.red.shade400,
+            ),
+          );
+        }
+      } else {
+        // Refresh to get the real message from backend
+        await _loadMessages(silent: true);
+      }
+    } catch (e) {
+      setState(() {
+        _messages.remove(optimisticMsg);
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to send: $e'),
+            backgroundColor: Colors.red.shade400,
+          ),
+        );
+      }
+    } finally {
+      setState(() => _isSending = false);
+    }
   }
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -470,27 +707,87 @@ class _ChatWithMentorScreenState extends State<ChatWithMentorScreen> {
               Expanded(
                 child: Container(
                   color: Colors.white,
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    itemCount: _mutableMessages.length + 1, // +1 for date label
-                    itemBuilder: (context, index) {
-                      if (index == 0) {
-                        return const _DateLabel(label: 'Today');
-                      }
-                      final msg = _mutableMessages[index - 1];
-                      return _MessageBubble(message: msg);
-                    },
-                  ),
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _error != null
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(32),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.error_outline,
+                                        size: 48,
+                                        color: Color(0xFF7A7A9D)),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      _error!,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: Color(0xFF7A7A9D),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    ElevatedButton(
+                                      onPressed: _loadMessages,
+                                      child: const Text('Retry'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : _messages.isEmpty
+                              ? const Center(
+                                  child: Text(
+                                    'No messages yet.\nSay hello! 👋',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Color(0xFF7A7A9D),
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                )
+                              : ListView.builder(
+                                  controller: _scrollController,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 12),
+                                  itemCount: _messages.length + 1, // +1 date
+                                  itemBuilder: (context, index) {
+                                    if (index == 0) {
+                                      return const _DateLabel(label: 'Today');
+                                    }
+                                    final msg = _messages[index - 1];
+                                    return _MessageBubble(
+                                      message: msg,
+                                      mentorName: widget.user.name,
+                                    );
+                                  },
+                                ),
                 ),
               ),
 
-              // ── Input Bar ─────────────────────────────────────────
-              _MessageInputBar(
-                controller: _controller,
-                onSend: _sendMessage,
-              ),
+              // ── Input Bar (only for active/accepted sessions) ──
+              if (widget.user.status == 'accepted' ||
+                  widget.user.status == 'active')
+                _MessageInputBar(
+                  controller: _controller,
+                  onSend: _sendMessage,
+                  isSending: _isSending,
+                )
+              else
+                Container(
+                  color: const Color(0xFFF2F4F7),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  child: const Text(
+                    'This session has ended. You can no longer send messages.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Color(0xFF7A7A9D),
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
 
               // ── Bottom Nav ────────────────────────────────────────
               _BottomNav(
@@ -555,7 +852,10 @@ class _ChatHeader extends StatelessWidget {
                       const SizedBox(width: 10),
                       Stack(
                         children: [
-                          _Avatar(url: user.avatarUrl, radius: 24),
+                          _Avatar(
+                              url: user.avatarUrl,
+                              name: user.name,
+                              radius: 24),
                           if (user.isOnline)
                             Positioned(
                               bottom: 0,
@@ -567,7 +867,8 @@ class _ChatHeader extends StatelessWidget {
                                   color: const Color(0xFF4CAF50),
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                      color: const Color(0xFF1D5572), width: 2),
+                                      color: const Color(0xFF1D5572),
+                                      width: 2),
                                 ),
                               ),
                             ),
@@ -663,7 +964,7 @@ class _HeaderBorderPainter extends CustomPainter {
     const double radius = 70.0;
     final borderPaint = Paint()
       ..color = const Color(0xFFF5A623)
-      ..strokeWidth = 4.0
+      ..strokeWidth = 9.0
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
@@ -717,7 +1018,7 @@ class _WhiteCornerPainter extends CustomPainter {
         arcPath,
         Paint()
           ..color = const Color(0xFFF5A623)
-          ..strokeWidth = 4.0
+          ..strokeWidth = 10.0
           ..style = PaintingStyle.stroke
           ..strokeCap = StrokeCap.round);
   }
@@ -740,7 +1041,7 @@ class _DateLabel extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         decoration: BoxDecoration(
           color: const Color(0xFFDDE1E7),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20) ,
         ),
         child: Text(
           label,
@@ -759,7 +1060,8 @@ class _DateLabel extends StatelessWidget {
 
 class _MessageBubble extends StatelessWidget {
   final ChatMessage message;
-  const _MessageBubble({required this.message});
+  final String mentorName;
+  const _MessageBubble({required this.message, this.mentorName = ''});
 
   @override
   Widget build(BuildContext context) {
@@ -773,10 +1075,7 @@ class _MessageBubble extends StatelessWidget {
         children: [
           // Mentor avatar (left side)
           if (!isMe) ...[
-            const _Avatar(
-              url: 'https://randomuser.me/api/portraits/women/44.jpg',
-              radius: 16,
-            ),
+            _Avatar(url: '', name: mentorName, radius: 16),
             const SizedBox(width: 8),
           ],
 
@@ -787,8 +1086,8 @@ class _MessageBubble extends StatelessWidget {
                   isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
                     color: isMe
                         ? const Color(0xFF1B3A4B)
@@ -800,37 +1099,45 @@ class _MessageBubble extends StatelessWidget {
                       bottomRight: Radius.circular(isMe ? 4 : 18),
                     ),
                   ),
-                  child: Text(
-                    message.text,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: isMe ? Colors.white : const Color(0xFF1A1A2E),
-                      height: 1.4,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      message.time,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: Color(0xFF9E9E9E),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        message.text,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color:
+                              isMe ? Colors.white : const Color(0xFF1A1A2E),
+                          height: 1.4,
+                        ),
                       ),
-                    ),
-                    if (isMe) ...[
-                      const SizedBox(width: 4),
-                      Icon(
-                        message.isRead ? Icons.done_all : Icons.done,
-                        size: 14,
-                        color: message.isRead
-                            ? const Color(0xFF1B3A4B)
-                            : const Color(0xFF9E9E9E),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            message.time,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: isMe
+                                  ? Colors.white.withValues(alpha: 0.75)
+                                  : const Color(0xFF9E9E9E),
+                            ),
+                          ),
+                          if (isMe) ...[
+                            const SizedBox(width: 4),
+                            Icon(
+                              message.isRead
+                                  ? Icons.done_all
+                                  : Icons.done,
+                              size: 14,
+                              color: Colors.white.withValues(alpha: 0.75),
+                            ),
+                          ],
+                        ],
                       ),
                     ],
-                  ],
+                  ),
                 ),
               ],
             ),
@@ -846,10 +1153,12 @@ class _MessageBubble extends StatelessWidget {
 class _MessageInputBar extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback onSend;
+  final bool isSending;
 
   const _MessageInputBar({
     required this.controller,
     required this.onSend,
+    this.isSending = false,
   });
 
   @override
@@ -905,19 +1214,29 @@ class _MessageInputBar extends StatelessWidget {
           const SizedBox(width: 8),
           // Send button
           GestureDetector(
-            onTap: onSend,
+            onTap: isSending ? null : onSend,
             child: Container(
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: const Color(0xFFF5A623),
+                color: isSending
+                    ? const Color(0xFFD4A84A)
+                    : const Color(0xFFF5A623),
                 borderRadius: BorderRadius.circular(21),
               ),
-              child: const Icon(
-                Icons.send_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
+              child: isSending
+                  ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(
+                      Icons.send_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
             ),
           ),
         ],
@@ -930,15 +1249,40 @@ class _MessageInputBar extends StatelessWidget {
 
 class _Avatar extends StatelessWidget {
   final String url;
+  final String name;
   final double radius;
-  const _Avatar({required this.url, required this.radius});
+  const _Avatar({required this.url, this.name = '', required this.radius});
 
   @override
   Widget build(BuildContext context) {
+    // If we have a URL, show the image; otherwise show initials
+    if (url.isNotEmpty) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundImage: NetworkImage(url),
+        backgroundColor: const Color(0xFFE0E4ED),
+      );
+    }
+
+    // Generate initials from name
+    final initials = name
+        .split(' ')
+        .where((w) => w.isNotEmpty)
+        .take(2)
+        .map((w) => w[0].toUpperCase())
+        .join();
+
     return CircleAvatar(
       radius: radius,
-      backgroundImage: NetworkImage(url),
-      backgroundColor: const Color(0xFFE0E4ED),
+      backgroundColor: const Color(0xFF1D5572),
+      child: Text(
+        initials.isNotEmpty ? initials : '?',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: radius * 0.7,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
     );
   }
 }
@@ -1014,7 +1358,8 @@ class _BottomNav extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     color: selected ? Colors.white : Colors.white38,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                    fontWeight:
+                        selected ? FontWeight.w600 : FontWeight.w400,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1030,7 +1375,7 @@ class _BottomNav extends StatelessWidget {
               ],
             ),
           );
-        }),
+        }), 
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../services/auth_service.dart';
 import '../services/google_auth_service.dart';
+import '../services/profile_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   String? _token;
@@ -27,6 +28,7 @@ class AuthProvider extends ChangeNotifier {
     if (userData != null) {
       _user = json.decode(userData);
     }
+    await _hydrateCurrentUser();
     notifyListeners();
   }
 
@@ -34,6 +36,36 @@ class AuthProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('auth_token', token);
     await prefs.setString('user_data', json.encode(user));
+  }
+
+  Future<void> _hydrateCurrentUser() async {
+    final token = _token;
+    if (token == null || token.isEmpty) return;
+
+    try {
+      final meResponse = await AuthService.getCurrentUser(token: token);
+      if (meResponse['success'] == true && meResponse['data'] is Map) {
+        final current = Map<String, dynamic>.from(_user ?? {});
+        current.addAll(Map<String, dynamic>.from(meResponse['data']));
+        _user = current;
+      }
+
+      final profileResponse = await ProfileService.getProfile(token: token);
+      if (profileResponse['success'] == true && profileResponse['data'] is Map) {
+        final current = Map<String, dynamic>.from(_user ?? {});
+        final profileData = Map<String, dynamic>.from(profileResponse['data']);
+        if (profileData['user'] is Map) {
+          current.addAll(Map<String, dynamic>.from(profileData['user']));
+        } else {
+          current.addAll(profileData);
+        }
+        _user = current;
+      }
+
+      if (_user != null) {
+        await _saveAuthData(token, _user!);
+      }
+    } catch (_) {}
   }
 
   Future<void> _clearAuthData() async {
@@ -67,6 +99,7 @@ class AuthProvider extends ChangeNotifier {
     _token = token;
     _user = user;
     _error = null;
+    await _hydrateCurrentUser();
     await _saveAuthData(token, user);
     notifyListeners();
   }
@@ -114,6 +147,7 @@ class AuthProvider extends ChangeNotifier {
     if (loginResponse['success'] == true) {
       _token = loginResponse['data']['token'];
       _user = loginResponse['data']['user'];
+      await _hydrateCurrentUser();
       await _saveAuthData(_token!, _user!);
       notifyListeners();
       return true;
@@ -145,6 +179,7 @@ class AuthProvider extends ChangeNotifier {
     if (response['success'] == true) {
       _token = response['data']['token'];
       _user = response['data']['user'];
+      await _hydrateCurrentUser();
       await _saveAuthData(_token!, _user!);
       notifyListeners();
       return true;
@@ -167,6 +202,7 @@ class AuthProvider extends ChangeNotifier {
     if (response['success'] == true) {
       _token = response['data']['token'];
       _user = response['data']['user'];
+      await _hydrateCurrentUser();
       await _saveAuthData(_token!, _user!);
       notifyListeners();
       return true;

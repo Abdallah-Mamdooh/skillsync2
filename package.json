@@ -29,8 +29,11 @@
     "debug:tech": "node scripts/debugTechnicalQuestions.js",
 
     "seed:soft-questions": "node scripts/seedSoftSkillsQuestions.js",
+
     "seed:assessment": "node seeds/seedAssessment.js",
+
     "cleanup:careers": "node scripts/cleanupCareers.js",
+
     "sync:career-roadmaps": "node scripts/syncCareerRoadmapIds.js"
 
   },
@@ -45,6 +48,8 @@
 
   "dependencies": {
 
+    "axios": "^1.15.0",
+
     "bcryptjs": "^3.0.3",
 
     "cors": "^2.8.5",
@@ -54,6 +59,8 @@
     "express": "^5.2.1",
 
     "express-session": "^1.19.0",
+
+    "form-data": "^4.0.5",
 
     "glob": "^13.0.6",
 

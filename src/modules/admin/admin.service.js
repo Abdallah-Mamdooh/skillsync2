@@ -7,6 +7,7 @@ const UserAssessmentResult = require('../assessment/userAssessmentResult.model')
 const Career = require('../career/career.model');
 const notificationService = require('../notification/notification.service');
 const Roadmap = require('../roadmap/roadmap.model');
+const auditService = require('../audit/audit.service');
 
 
 function getDateNDaysAgo(days) {
@@ -245,15 +246,28 @@ async function getUserDetails(userId) {
   };
 }
 
-async function updateUserStatus(userId, payload = {}) {
-  const { isActive } = payload;
+async function updateUserStatus(userId, payload = {}, adminUser = null) {
+  const {
+    isActive,
+    blockReason = '',
+    blockNote = '',
+    blockedAt = null,
+    blockedBy = '',
+  } = payload;
 
   const user = await User.findById(userId);
   if (!user) {
     throw new Error('User not found');
   }
 
+  const previousIsActive = user.isActive;
+
   user.isActive = normalizeBoolean(isActive, 'isActive');
+  user.blockReason = String(blockReason || '').trim();
+  user.blockNote = String(blockNote || '').trim();
+  user.blockedAt = blockedAt ? new Date(blockedAt) : null;
+  user.blockedBy = String(blockedBy || '').trim();
+
   await user.save();
 
   await notificationService.createNotification({
@@ -265,8 +279,31 @@ async function updateUserStatus(userId, payload = {}) {
       : 'Your account has been deactivated by admin.',
     data: {
       isActive: user.isActive,
+      blockReason: user.blockReason,
+      blockNote: user.blockNote,
+      blockedAt: user.blockedAt,
+      blockedBy: user.blockedBy,
     },
   });
+
+  if (previousIsActive !== user.isActive) {
+    await auditService.createAuditLog({
+      action: user.isActive ? 'user_unblocked' : 'user_blocked',
+      entityType: 'user',
+      entityId: user._id,
+      message: user.isActive
+        ? `User account unblocked: ${user.fullName || user.email}`
+        : `User account blocked: ${user.fullName || user.email}`,
+      performedByUserId: adminUser?._id || null,
+      performedByEmail:
+        adminUser?.email || String(blockedBy || '').trim() || 'admin',
+      metadata: {
+        isActive: user.isActive,
+        blockReason: user.blockReason,
+        blockNote: user.blockNote,
+      },
+    });
+  }
 
   return user;
 }
@@ -403,7 +440,7 @@ async function updateMentorStatus(mentorProfileId, payload = {}) {
   return profile;
 }
 
-async function verifyMentorProfile(mentorProfileId) {
+async function verifyMentorProfile(mentorProfileId, adminUser = null) {
   const profile = await MentorProfile.findById(mentorProfileId).populate(
     'userId',
     'fullName email'
@@ -428,10 +465,24 @@ async function verifyMentorProfile(mentorProfileId) {
     });
   }
 
+  await auditService.createAuditLog({
+    action: 'mentor_verified',
+    entityType: 'mentor_profile',
+    entityId: profile._id,
+    message: `Mentor account approved: ${
+      profile.userId?.fullName || profile.userId?.email || 'Mentor'
+    }`,
+    performedByUserId: adminUser?._id || null,
+    performedByEmail: adminUser?.email || 'admin',
+    metadata: {
+      mentorUserId: profile.userId?._id || null,
+    },
+  });
+
   return profile;
 }
 
-async function unverifyMentorProfile(mentorProfileId) {
+async function unverifyMentorProfile(mentorProfileId, adminUser = null) {
   const profile = await MentorProfile.findById(mentorProfileId).populate(
     'userId',
     'fullName email'
@@ -455,6 +506,20 @@ async function unverifyMentorProfile(mentorProfileId) {
       },
     });
   }
+
+  await auditService.createAuditLog({
+    action: 'mentor_unverified',
+    entityType: 'mentor_profile',
+    entityId: profile._id,
+    message: `Mentor account unverified: ${
+      profile.userId?.fullName || profile.userId?.email || 'Mentor'
+    }`,
+    performedByUserId: adminUser?._id || null,
+    performedByEmail: adminUser?.email || 'admin',
+    metadata: {
+      mentorUserId: profile.userId?._id || null,
+    },
+  });
 
   return profile;
 }
@@ -989,6 +1054,22 @@ async function updateRoadmapStepResources(careerId, stepId, payload = {}) {
     resources: foundStep.resources,
   };
 }
+
+async function deleteUser(userId) {
+  const user = await User.findById(userId);
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  await user.deleteOne();
+
+  return {
+    deleted: true,
+    message: 'User deleted successfully',
+    userId,
+  };
+}
 module.exports = {
   getDashboardSummary,
   getUsers,
@@ -1017,4 +1098,5 @@ module.exports = {
   deleteCareer,
   getCareerRoadmap,
   updateRoadmapStepResources,
+  deleteUser,
 };

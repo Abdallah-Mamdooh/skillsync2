@@ -108,6 +108,30 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+
+
+        blockReason: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+
+    blockNote: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+
+    blockedAt: {
+      type: Date,
+      default: null,
+    },
+
+    blockedBy: {
+      type: String,
+      trim: true,
+      default: '',
+    },
   },
   { timestamps: true }
 );

@@ -17,7 +17,11 @@ const getUserDetails = asyncHandler(async (req, res) => {
 });
 
 const updateUserStatus = asyncHandler(async (req, res) => {
-  const data = await adminService.updateUserStatus(req.params.userId, req.body);
+  const data = await adminService.updateUserStatus(
+    req.params.userId,
+    req.body,
+    req.user
+  );
   res.status(200).json({ success: true, data });
 });
 
@@ -50,13 +54,17 @@ const updateMentorStatus = asyncHandler(async (req, res) => {
 });
 
 const verifyMentorProfile = asyncHandler(async (req, res) => {
-  const data = await adminService.verifyMentorProfile(req.params.mentorProfileId);
+  const data = await adminService.verifyMentorProfile(
+    req.params.mentorProfileId,
+    req.user
+  );
   res.status(200).json({ success: true, data });
 });
 
 const unverifyMentorProfile = asyncHandler(async (req, res) => {
   const data = await adminService.unverifyMentorProfile(
-    req.params.mentorProfileId
+    req.params.mentorProfileId,
+    req.user
   );
   res.status(200).json({ success: true, data });
 });

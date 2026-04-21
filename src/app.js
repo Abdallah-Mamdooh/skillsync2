@@ -28,6 +28,7 @@ const complaintRoutes = require('./modules/complaint/complaint.routes');
 const supportRoutes = require('./modules/support/support.routes');
 const settingsRoutes = require('./modules/settings/settings.routes');
 const cvAnalysisRoutes = require('./modules/cvAnalysis/cvAnalysis.routes');
+const dashboardCompatRoutes = require('./modules/dashboardCompat/dashboardCompat.routes');
 const app = express();
 
 // global middleware
@@ -69,7 +70,7 @@ app.use('/api/complaints', complaintRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/cv-analysis', cvAnalysisRoutes);
-
+app.use('/api', dashboardCompatRoutes);
 
 // shared routes
 app.use('/api', routes);

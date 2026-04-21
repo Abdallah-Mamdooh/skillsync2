@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import '../widgets/bottom_navigation.dart';
+import '../models/resume_analysis.dart';
+import '../services/resume_analyzer_service.dart';
 
 // First Screen - CV Upload Screen
 class CVOptimizerScreen extends StatefulWidget {
@@ -13,6 +16,7 @@ class _CVOptimizerScreenState extends State<CVOptimizerScreen> {
   final TextEditingController _cvTextController = TextEditingController();
   String? _uploadedFileName;
   PlatformFile? _pickedFile;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -62,23 +66,56 @@ class _CVOptimizerScreenState extends State<CVOptimizerScreen> {
     }
   }
 
-  void _analyzeCV() {
+  Future<void> _analyzeCV() async {
     final text = _cvTextController.text;
 
-    if (_pickedFile != null || text.isNotEmpty) {
-      // Navigate to results screen
+    if (_pickedFile == null && text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please upload a file or paste text first'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // If only text is provided (no file), show error since API needs file
+    if (_pickedFile == null && text.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Please upload a PDF or DOCX file. Text-only analysis is not supported.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Call the API
+      final analysis = await ResumeAnalyzerService.analyzeResume(
+        filePath: _pickedFile!.path!,
+      );
+
+      if (!mounted) return;
+
+      // Navigate to results screen with real data
       Navigator.push(
         context,
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => CVResultsScreen(
-            fileName: _pickedFile?.name,
-            cvText: text.isNotEmpty ? text : null,
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              CVResultsScreen(
+            analysis: analysis,
+            fileName: _pickedFile!.name,
           ),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             const begin = Offset(1.0, 0.0);
             const end = Offset.zero;
             const curve = Curves.easeInOut;
-            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+            var tween =
+                Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
             return SlideTransition(
               position: animation.drive(tween),
               child: child,
@@ -87,13 +124,20 @@ class _CVOptimizerScreenState extends State<CVOptimizerScreen> {
           transitionDuration: const Duration(milliseconds: 400),
         ),
       );
-    } else {
+    } catch (e) {
+      if (!mounted) return;
+      debugPrint('Analysis error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please upload a file or paste text first'),
+        SnackBar(
+          content: Text('Analysis failed: ${e.toString()}'),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
         ),
       );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -107,11 +151,13 @@ class _CVOptimizerScreenState extends State<CVOptimizerScreen> {
           children: [
             // Header
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20),
               child: Row(
                 children: [
-                   IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Color(0xFF1A3A5C)),
+                  IconButton(
+                    icon:
+                        const Icon(Icons.arrow_back, color: Color(0xFF1A3A5C)),
                     onPressed: () => Navigator.pop(context),
                   ),
                   Column(
@@ -178,7 +224,9 @@ class _CVOptimizerScreenState extends State<CVOptimizerScreen> {
                                     width: 70,
                                     height: 78,
                                     fit: BoxFit.contain,
-                                    errorBuilder: (context, error, stackTrace) => const Icon(
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            const Icon(
                                       Icons.upload_rounded,
                                       color: Color(0xFF7C5CBF),
                                       size: 32,
@@ -223,7 +271,7 @@ class _CVOptimizerScreenState extends State<CVOptimizerScreen> {
 
                         // Dashed Upload Box
                         GestureDetector(
-                          onTap: _pickFile,
+                          onTap: _isLoading ? null : _pickFile,
                           child: DashedBorderBox(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -234,7 +282,8 @@ class _CVOptimizerScreenState extends State<CVOptimizerScreen> {
                                   color: _uploadedFileName != null
                                       ? const Color(0xFF1A3A5C)
                                       : const Color(0xFF9DB0C8),
-                                  errorBuilder: (context, error, stackTrace) => Icon(
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      Icon(
                                     Icons.upload_file,
                                     size: 40,
                                     color: _uploadedFileName != null
@@ -290,6 +339,7 @@ class _CVOptimizerScreenState extends State<CVOptimizerScreen> {
                         // Text Area
                         TextField(
                           controller: _cvTextController,
+                          enabled: !_isLoading,
                           maxLines: 6,
                           decoration: InputDecoration(
                             hintText: 'Paste your resume content here...',
@@ -307,6 +357,13 @@ class _CVOptimizerScreenState extends State<CVOptimizerScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
+                        const Text(
+                          'Note: File upload is required for analysis',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF9DB0C8),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -323,7 +380,7 @@ class _CVOptimizerScreenState extends State<CVOptimizerScreen> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: _analyzeCV,
+                  onPressed: _isLoading ? null : _analyzeCV,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1D5572),
                     foregroundColor: Colors.white,
@@ -332,30 +389,41 @@ class _CVOptimizerScreenState extends State<CVOptimizerScreen> {
                     ),
                     elevation: 0,
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Image.asset(
-                        'assets/images/analyze cv logo.png',
-                        height: 24,
-                        width: 24,
-                        errorBuilder: (context, error, stackTrace) => const Icon(
-                          Icons.analytics,
-                          color: Colors.white,
-                          size: 24,
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Image.asset(
+                              'assets/images/analyze cv logo.png',
+                              height: 24,
+                              width: 24,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Icon(
+                                Icons.analytics,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Analyze CV',
+                              style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Analyze CV',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
             ),
@@ -363,20 +431,109 @@ class _CVOptimizerScreenState extends State<CVOptimizerScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(0),
+      bottomNavigationBar:
+          const BottomNavigation(selectedIndex: BottomNavIndex.home),
     );
+  }
+}
+
+/// A widget that paints a dashed border around its child.
+class DashedBorderBox extends StatelessWidget {
+  final Widget child;
+  final double borderRadius;
+  final Color color;
+  final double strokeWidth;
+  final double dashWidth;
+  final double dashSpace;
+
+  const DashedBorderBox({
+    super.key,
+    required this.child,
+    this.borderRadius = 12,
+    this.color = const Color(0xFFB0C4D8),
+    this.strokeWidth = 1.5,
+    this.dashWidth = 6,
+    this.dashSpace = 4,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _DashedBorderPainter(
+        borderRadius: borderRadius,
+        color: color,
+        strokeWidth: strokeWidth,
+        dashWidth: dashWidth,
+        dashSpace: dashSpace,
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF7FAFC),
+          borderRadius: BorderRadius.circular(borderRadius),
+        ),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _DashedBorderPainter extends CustomPainter {
+  final double borderRadius;
+  final Color color;
+  final double strokeWidth;
+  final double dashWidth;
+  final double dashSpace;
+
+  _DashedBorderPainter({
+    required this.borderRadius,
+    required this.color,
+    required this.strokeWidth,
+    required this.dashWidth,
+    required this.dashSpace,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rrect = RRect.fromRectAndRadius(
+        Offset.zero & size, Radius.circular(borderRadius));
+    final path = Path()..addRRect(rrect);
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth;
+
+    for (final metric in path.computeMetrics()) {
+      double distance = 0.0;
+      while (distance < metric.length) {
+        final start = distance;
+        final end = (distance + dashWidth).clamp(0.0, metric.length);
+        final extract = metric.extractPath(start, end);
+        canvas.drawPath(extract, paint);
+        distance = end + dashSpace;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedBorderPainter old) {
+    return old.color != color ||
+        old.borderRadius != borderRadius ||
+        old.dashWidth != dashWidth ||
+        old.dashSpace != dashSpace ||
+        old.strokeWidth != strokeWidth;
   }
 }
 
 // Second Screen - CV Results Screen
 class CVResultsScreen extends StatelessWidget {
+  final ResumeAnalysis analysis;
   final String? fileName;
-  final String? cvText;
 
   const CVResultsScreen({
     super.key,
+    required this.analysis,
     this.fileName,
-    this.cvText,
   });
 
   @override
@@ -388,7 +545,8 @@ class CVResultsScreen extends StatelessWidget {
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -396,14 +554,15 @@ class CVResultsScreen extends StatelessWidget {
                     Row(
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.arrow_back, color: Color(0xFF1A2E2A)),
+                          icon: const Icon(Icons.arrow_back,
+                              color: Color(0xFF1A2E2A)),
                           onPressed: () => Navigator.pop(context),
                         ),
                         const SizedBox(width: 8),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            Text(
+                          children: [
+                            const Text(
                               'CV Optimizer Score',
                               style: TextStyle(
                                 fontSize: 26,
@@ -411,10 +570,10 @@ class CVResultsScreen extends StatelessWidget {
                                 color: Color(0xFF1A2E2A),
                               ),
                             ),
-                            SizedBox(height: 2),
+                            const SizedBox(height: 2),
                             Text(
-                              'resume analysis and optimization',
-                              style: TextStyle(
+                              fileName ?? 'Resume Analysis',
+                              style: const TextStyle(
                                 fontSize: 13,
                                 color: Color(0xFF7A9490),
                               ),
@@ -437,9 +596,27 @@ class CVResultsScreen extends StatelessWidget {
                     _buildImprovementsCard(),
                     const SizedBox(height: 14),
 
-                    // Keywords Analysis Card
-                    _buildKeywordsCard(),
-                    const SizedBox(height: 20),
+
+
+                    // ATS & Writing Issues Card (if any)
+                    if (analysis.atsIssues.isNotEmpty ||
+                        analysis.writingIssues.isNotEmpty)
+                      _buildIssuesCard(),
+                    if (analysis.atsIssues.isNotEmpty ||
+                        analysis.writingIssues.isNotEmpty)
+                      const SizedBox(height: 14),
+
+                    // Keywords Analysis Card (if JD match available)
+                    if (analysis.hasJDMatch && analysis.missingKeywords != null)
+                      _buildKeywordsCard(),
+                    if (analysis.hasJDMatch && analysis.missingKeywords != null)
+                      const SizedBox(height: 20),
+
+                    // Improvements List
+                    if (analysis.improvements.isNotEmpty)
+                      _buildImprovementsListCard(),
+                    if (analysis.improvements.isNotEmpty)
+                      const SizedBox(height: 20),
 
                     // Action Buttons
                     _buildActionButtons(context),
@@ -451,11 +628,18 @@ class CVResultsScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(1),
+      bottomNavigationBar:
+          const BottomNavigation(selectedIndex: BottomNavIndex.assess),
     );
   }
 
   Widget _buildScoreCard() {
+    final scoreColor = analysis.score >= 70
+        ? const Color(0xFF2A7A6A)
+        : analysis.score >= 40
+            ? const Color(0xFFE8A020)
+            : const Color(0xFFE05C20);
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -476,26 +660,39 @@ class CVResultsScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'CV Score',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1A2E2A),
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'CV Score',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A2E2A),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    analysis.detectedField,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF7A9490),
+                    ),
+                  ),
+                ],
               ),
               RichText(
-                text: const TextSpan(
+                text: TextSpan(
                   children: [
                     TextSpan(
-                      text: '72',
+                      text: analysis.scoreLabel,
                       style: TextStyle(
                         fontSize: 36,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFFE8A020),
+                        color: scoreColor,
                       ),
                     ),
-                    TextSpan(
+                    const TextSpan(
                       text: ' / 100',
                       style: TextStyle(
                         fontSize: 14,
@@ -508,34 +705,35 @@ class CVResultsScreen extends StatelessWidget {
               ),
             ],
           ),
-          const Text(
-            'Based on industry standards',
-            style: TextStyle(
-              fontSize: 12,
-              color: Color(0xFF7A9490),
-            ),
-          ),
           const SizedBox(height: 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
-              value: 0.72,
+              value: analysis.score / 100,
               minHeight: 8,
               backgroundColor: const Color(0xFFE8EEE0),
-              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFE8A020)),
+              valueColor: AlwaysStoppedAnimation<Color>(scoreColor),
             ),
           ),
           const SizedBox(height: 12),
           Row(
-            children: const [
-              Icon(Icons.trending_up, color: Color(0xFF2A7A6A), size: 16),
-              SizedBox(width: 6),
-              Text(
-                'Good start! Follow suggestions to improve',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF2A7A6A),
-                  fontWeight: FontWeight.w500,
+            children: [
+              Icon(
+                analysis.score >= 70 ? Icons.trending_up : Icons.info_outline,
+                color: analysis.score >= 70
+                    ? const Color(0xFF2A7A6A)
+                    : const Color(0xFF7A9490),
+                size: 16,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  analysis.summary,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF2D3A38),
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ],
@@ -546,11 +744,9 @@ class CVResultsScreen extends StatelessWidget {
   }
 
   Widget _buildStrengthsCard() {
-    final strengths = [
-      'Clear work experience section',
-      'Relevant technical skills listed',
-      'Education details well-structured',
-    ];
+    final strengths = analysis.strongPoints.isNotEmpty
+        ? analysis.strongPoints
+        : ['No specific strengths identified'];
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -570,7 +766,8 @@ class CVResultsScreen extends StatelessWidget {
         children: [
           Row(
             children: const [
-              Icon(Icons.check_circle_outline, color: Color(0xFF2A7A6A), size: 20),
+              Icon(Icons.check_circle_outline,
+                  color: Color(0xFF2A7A6A), size: 20),
               SizedBox(width: 8),
               Text(
                 'Strengths',
@@ -594,13 +791,16 @@ class CVResultsScreen extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          const Icon(Icons.check_circle_outline, color: Color(0xFF2A7A6A), size: 18),
+          const Icon(Icons.check_circle_outline,
+              color: Color(0xFF2A7A6A), size: 18),
           const SizedBox(width: 10),
-          Text(
-            text,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Color(0xFF2D3A38),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF2D3A38),
+              ),
             ),
           ),
         ],
@@ -609,12 +809,26 @@ class CVResultsScreen extends StatelessWidget {
   }
 
   Widget _buildImprovementsCard() {
-    final improvements = [
-      "Add quantifiable achievements\n(e.g., 'Increased sales by 30%')",
-      'Include action verbs in descriptions',
-      'Optimize for ATS (Applicant Tracking\nSystems)',
-      'Add a professional summary section',
+    final improvements = <String>[
+      ...analysis.quickWins,
+      ...analysis.improvements,
+      ...analysis.missingSections,
     ];
+    final dedupedImprovements = <String>[];
+    final seen = <String>{};
+
+    for (final item in improvements) {
+      final normalized = item.trim().toLowerCase();
+      if (normalized.isEmpty || seen.contains(normalized)) {
+        continue;
+      }
+      seen.add(normalized);
+      dedupedImprovements.add(item);
+    }
+
+    final displayedImprovements = dedupedImprovements.isNotEmpty
+        ? dedupedImprovements
+        : ['Review your resume for general improvements'];
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -637,7 +851,7 @@ class CVResultsScreen extends StatelessWidget {
               Icon(Icons.error_outline, color: Color(0xFFE05C20), size: 20),
               SizedBox(width: 8),
               Text(
-                'Suggested Improvements',
+                'Quick Wins',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -647,7 +861,9 @@ class CVResultsScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          ...improvements.map((s) => _buildImprovementItem(s)).toList(),
+          ...displayedImprovements
+              .map((s) => _buildImprovementItem(s))
+              .toList(),
         ],
       ),
     );
@@ -661,7 +877,8 @@ class CVResultsScreen extends StatelessWidget {
         children: [
           const Padding(
             padding: EdgeInsets.only(top: 2),
-            child: Icon(Icons.error_outline, color: Color(0xFFE05C20), size: 18),
+            child:
+                Icon(Icons.error_outline, color: Color(0xFFE05C20), size: 18),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -679,9 +896,134 @@ class CVResultsScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildIssuesCard() {
+    final allIssues = [...analysis.atsIssues, ...analysis.writingIssues];
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.warning_amber_rounded,
+                  color: Color(0xFFE8A020), size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Formatting Issues',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A2E2A),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...allIssues
+              .map((issue) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.circle,
+                            color: Color(0xFFE8A020), size: 12),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            issue,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF2D3A38),
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ))
+              .toList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMissingSectionsCard() {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.view_list_outlined,
+                  color: Color(0xFF1D5572), size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Missing Sections',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A2E2A),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...analysis.missingSections.map(
+            (section) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.circle, color: Color(0xFF1D5572), size: 12),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      section,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF2D3A38),
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildKeywordsCard() {
-    final presentKeywords = ['JavaScript', 'Team Leadership', 'React', 'Problem Solving'];
-    final missingKeywords = ['TypeScript', 'Agile', 'Unit Testing', 'CI/CD'];
+    final presentKeywords = analysis.missingKeywords != null
+        ? (analysis.missingKeywords!.take(5).toList())
+        : [];
+    final missingKeywords = analysis.missingKeywords ?? [];
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -712,24 +1054,6 @@ class CVResultsScreen extends StatelessWidget {
                 ),
               ),
             ],
-          ),
-
-          const SizedBox(height: 14),
-          const Text(
-            'Present Keywords:',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1A2E2A),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: presentKeywords
-                .map((k) => _buildKeywordChip(k, isPresent: true))
-                .toList(),
           ),
           const SizedBox(height: 14),
           const Text(
@@ -775,17 +1099,79 @@ class CVResultsScreen extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (isPresent) ...[
-            const Icon(Icons.check_circle_outline, color: Color(0xFF2A7A6A), size: 14),
+            const Icon(Icons.check_circle_outline,
+                color: Color(0xFF2A7A6A), size: 14),
             const SizedBox(width: 4),
           ],
           Text(
             label,
             style: TextStyle(
               fontSize: 13,
-              color: isPresent ? const Color(0xFF2A7A6A) : const Color(0xFFC2410C),
+              color:
+                  isPresent ? const Color(0xFF2A7A6A) : const Color(0xFFC2410C),
               fontWeight: FontWeight.w500,
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImprovementsListCard() {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.lightbulb_outline, color: Color(0xFF1D5572), size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Detailed Improvements',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A2E2A),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...analysis.improvements
+              .map((improvement) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.arrow_right,
+                            color: Color(0xFF1D5572), size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            improvement,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF2D3A38),
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ))
+              .toList(),
         ],
       ),
     );
@@ -797,7 +1183,6 @@ class CVResultsScreen extends StatelessWidget {
         Expanded(
           child: ElevatedButton.icon(
             onPressed: () {
-              // Export functionality
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Export feature coming soon!'),
@@ -810,7 +1195,7 @@ class CVResultsScreen extends StatelessWidget {
               height: 20,
               width: 20,
               errorBuilder: (context, error, stackTrace) => const Icon(
-                Icons.analytics,
+                Icons.download,
                 color: Colors.white,
                 size: 20,
               ),
@@ -837,16 +1222,18 @@ class CVResultsScreen extends StatelessWidget {
         Expanded(
           child: ElevatedButton.icon(
             onPressed: () {
-              // Navigate back to upload screen
               Navigator.pushAndRemoveUntil(
                 context,
                 PageRouteBuilder(
-                  pageBuilder: (context, animation, secondaryAnimation) => const CVOptimizerScreen(),
-                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                  pageBuilder: (context, animation, secondaryAnimation) =>
+                      const CVOptimizerScreen(),
+                  transitionsBuilder:
+                      (context, animation, secondaryAnimation, child) {
                     const begin = Offset(-1.0, 0.0);
                     const end = Offset.zero;
                     const curve = Curves.easeInOut;
-                    var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                    var tween = Tween(begin: begin, end: end)
+                        .chain(CurveTween(curve: curve));
                     return SlideTransition(
                       position: animation.drive(tween),
                       child: child,
@@ -854,7 +1241,7 @@ class CVResultsScreen extends StatelessWidget {
                   },
                   transitionDuration: const Duration(milliseconds: 400),
                 ),
-                    (route) => false,
+                (route) => false,
               );
             },
             icon: Image.asset(
@@ -862,7 +1249,7 @@ class CVResultsScreen extends StatelessWidget {
               height: 20,
               width: 20,
               errorBuilder: (context, error, stackTrace) => const Icon(
-                Icons.analytics,
+                Icons.refresh,
                 color: Colors.white,
                 size: 20,
               ),
@@ -888,140 +1275,4 @@ class CVResultsScreen extends StatelessWidget {
       ],
     );
   }
-}
-
-// Bottom Navigation Bar Widget
-Widget _buildBottomNav(int currentIndex) {
-  return Container(
-    decoration: const BoxDecoration(
-      color: Color(0xFF1D5572),
-      borderRadius: BorderRadius.only(
-        topLeft: Radius.circular(0),
-        topRight: Radius.circular(0),
-      ),
-    ),
-    child: BottomNavigationBar(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      type: BottomNavigationBarType.fixed,
-      selectedItemColor: Colors.white,
-      unselectedItemColor: Colors.white54,
-      selectedFontSize: 11,
-      unselectedFontSize: 11,
-      currentIndex: currentIndex,
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home_outlined),
-          activeIcon: Icon(Icons.home),
-          label: 'Home',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.assignment_outlined),
-          activeIcon: Icon(Icons.assignment),
-          label: 'assess',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.chat_bubble_outline),
-          activeIcon: Icon(Icons.chat_bubble),
-          label: 'Chat',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.person_outline),
-          activeIcon: Icon(Icons.person),
-          label: 'Profile',
-        ),
-      ],
-    ),
-  );
-}
-
-/// A widget that paints a dashed border around its child.
-class DashedBorderBox extends StatelessWidget {
-  final Widget child;
-  final double borderRadius;
-  final Color color;
-  final double strokeWidth;
-  final double dashWidth;
-  final double dashSpace;
-
-  const DashedBorderBox({
-    super.key,
-    required this.child,
-    this.borderRadius = 12,
-    this.color = const Color(0xFFB0C4D8),
-    this.strokeWidth = 1.5,
-    this.dashWidth = 6,
-    this.dashSpace = 4,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _DashedBorderPainter(
-        borderRadius: borderRadius,
-        color: color,
-        strokeWidth: strokeWidth,
-        dashWidth: dashWidth,
-        dashSpace: dashSpace,
-      ),
-      child: Container(
-        width: double.infinity,
-        height: 110,
-        alignment: Alignment.center,
-        child: child,
-      ),
-    );
-  }
-}
-
-class _DashedBorderPainter extends CustomPainter {
-  final double borderRadius;
-  final Color color;
-  final double strokeWidth;
-  final double dashWidth;
-  final double dashSpace;
-
-  _DashedBorderPainter({
-    required this.borderRadius,
-    required this.color,
-    required this.strokeWidth,
-    required this.dashWidth,
-    required this.dashSpace,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke;
-
-    final RRect rrect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(0, 0, size.width, size.height),
-      Radius.circular(borderRadius),
-    );
-
-    final path = Path()..addRRect(rrect);
-    final dashPath = _createDashedPath(path, dashWidth, dashSpace);
-    canvas.drawPath(dashPath, paint);
-  }
-
-  Path _createDashedPath(Path source, double dashWidth, double dashSpace) {
-    final dashedPath = Path();
-    for (final metric in source.computeMetrics()) {
-      double distance = 0;
-      while (distance < metric.length) {
-        final extractPath = metric.extractPath(
-          distance,
-          distance + dashWidth,
-        );
-        dashedPath.addPath(extractPath, Offset.zero);
-        distance += dashWidth + dashSpace;
-      }
-    }
-    return dashedPath;
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

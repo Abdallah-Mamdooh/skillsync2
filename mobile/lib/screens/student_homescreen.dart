@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
+import '../widgets/bottom_navigation.dart';
 import 'assessment_flow.dart';
 import 'cv_Optimizer.dart';
 import 'profile_screen.dart';
@@ -891,25 +892,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: Container(
-        height: 80,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(25),
-          boxShadow: const [
-            BoxShadow(color: Color(0x1A000000), blurRadius: 8, offset: Offset(0, -2))
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildNavItem(context, Icons.home, 'Home', true),
-            _buildNavItem(context, Icons.assessment, 'assess', false),
-            _buildNavItem(context, Icons.chat, 'Chat', false),
-            _buildNavItem(context, Icons.person, 'Profile', false),
-          ],
-        ),
-      ),
+      bottomNavigationBar: const BottomNavigation(selectedIndex: BottomNavIndex.home),
     );
   }
 
@@ -986,40 +969,4 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
   }
 
-  Widget _buildNavItem(
-      BuildContext context, IconData icon, String label, bool isSelected) {
-    return GestureDetector(
-      onTap: () {
-        if (label == 'assess') {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const AssessmentStartScreen()),
-          );
-        } else if (label == 'Profile') {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const ProfileScreen()),
-          );
-        } else if (label == 'Chat') {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const ChatsScreen()),
-          );
-        }
-      },
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: const Color(0xFF001636), size: 24),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
-              color: const Color(0xFF001636),
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-              height: 1.4,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

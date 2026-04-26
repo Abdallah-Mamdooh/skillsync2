@@ -220,7 +220,10 @@ const refundEventRegistrationPayment = asyncHandler(async (req, res) => {
     data,
   });
 });
-
+const getMentorEarningsSummary = asyncHandler(async (req, res) => {
+  const data = await paymentService.getMentorEarningsSummary(req.user._id);
+  res.status(200).json({ success: true, data });
+});
 module.exports = {
   addPaymentMethod,
   listPaymentMethods,
@@ -234,4 +237,5 @@ module.exports = {
   markTransactionRefunded,
   refundMentorSessionPayment,
   refundEventRegistrationPayment,
+  getMentorEarningsSummary,
 };

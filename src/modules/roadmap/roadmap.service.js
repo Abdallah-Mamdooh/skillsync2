@@ -38,34 +38,280 @@ function sortRoadmap(roadmap) {
   });
 }
 
-function buildSearchResources(skillTag, stepTitle) {
+function makeResource(title, url, type = 'course', provider = 'General') {
+  return { title, url, type, provider };
+}
+
+function encodeQ(q) {
+  return encodeURIComponent(String(q || '').trim());
+}
+
+const CURATED_RESOURCES = {
+  html: [
+    makeResource(
+      'HTML Full Course - freeCodeCamp',
+      'https://www.youtube.com/watch?v=pQN-pnXPaVg',
+      'video',
+      'YouTube'
+    ),
+    makeResource(
+      'HTML, CSS, and Javascript for Web Developers',
+      'https://www.coursera.org/learn/html-css-javascript-for-web-developers',
+      'course',
+      'Coursera'
+    ),
+    makeResource(
+      'HTML5 From Scratch',
+      'https://www.udemy.com/courses/search/?q=html5%20from%20scratch',
+      'course',
+      'Udemy'
+    ),
+    makeResource(
+      'HTML Documentation',
+      'https://developer.mozilla.org/en-US/docs/Web/HTML',
+      'documentation',
+      'MDN'
+    ),
+  ],
+
+  css: [
+    makeResource(
+      'CSS Full Course - freeCodeCamp',
+      'https://www.youtube.com/watch?v=OXGznpKZ_sA',
+      'video',
+      'YouTube'
+    ),
+    makeResource(
+      'Intro to CSS3',
+      'https://www.coursera.org/learn/introcss',
+      'course',
+      'Coursera'
+    ),
+    makeResource(
+      'CSS - The Complete Guide',
+      'https://www.udemy.com/courses/search/?q=css%20the%20complete%20guide',
+      'course',
+      'Udemy'
+    ),
+    makeResource(
+      'CSS Documentation',
+      'https://developer.mozilla.org/en-US/docs/Web/CSS',
+      'documentation',
+      'MDN'
+    ),
+  ],
+
+  javascript: [
+    makeResource(
+      'JavaScript Full Course - freeCodeCamp',
+      'https://www.youtube.com/watch?v=PkZNo7MFNFg',
+      'video',
+      'YouTube'
+    ),
+    makeResource(
+      'Programming Foundations with JavaScript, HTML and CSS',
+      'https://www.coursera.org/learn/duke-programming-web',
+      'course',
+      'Coursera'
+    ),
+    makeResource(
+      'The Complete JavaScript Course',
+      'https://www.udemy.com/courses/search/?q=the%20complete%20javascript%20course',
+      'course',
+      'Udemy'
+    ),
+    makeResource(
+      'JavaScript Documentation',
+      'https://developer.mozilla.org/en-US/docs/Web/JavaScript',
+      'documentation',
+      'MDN'
+    ),
+  ],
+
+  react: [
+    makeResource(
+      'React Course - freeCodeCamp',
+      'https://www.youtube.com/watch?v=bMknfKXIFA8',
+      'video',
+      'YouTube'
+    ),
+    makeResource(
+      'Front-End Web Development with React',
+      'https://www.coursera.org/learn/front-end-react',
+      'course',
+      'Coursera'
+    ),
+    makeResource(
+      'React - The Complete Guide',
+      'https://www.udemy.com/courses/search/?q=react%20the%20complete%20guide',
+      'course',
+      'Udemy'
+    ),
+    makeResource(
+      'React Documentation',
+      'https://react.dev/',
+      'documentation',
+      'React'
+    ),
+  ],
+
+  nodejs: [
+    makeResource(
+      'Node.js and Express.js - freeCodeCamp',
+      'https://www.youtube.com/watch?v=Oe421EPjeBE',
+      'video',
+      'YouTube'
+    ),
+    makeResource(
+      'Server-side Development with NodeJS, Express and MongoDB',
+      'https://www.coursera.org/learn/server-side-nodejs',
+      'course',
+      'Coursera'
+    ),
+    makeResource(
+      'The Complete Node.js Developer Course',
+      'https://www.udemy.com/courses/search/?q=complete%20nodejs%20developer%20course',
+      'course',
+      'Udemy'
+    ),
+    makeResource(
+      'Node.js Documentation',
+      'https://nodejs.org/en/docs',
+      'documentation',
+      'Node.js'
+    ),
+  ],
+
+  mongodb: [
+    makeResource(
+      'MongoDB Tutorial for Beginners',
+      'https://www.youtube.com/watch?v=ExcRbA7fy_A',
+      'video',
+      'YouTube'
+    ),
+    makeResource(
+      'Introduction to MongoDB',
+      'https://www.coursera.org/search?query=introduction%20to%20mongodb',
+      'course',
+      'Coursera'
+    ),
+    makeResource(
+      'MongoDB - The Complete Developer Guide',
+      'https://www.udemy.com/courses/search/?q=mongodb%20complete%20developer%20guide',
+      'course',
+      'Udemy'
+    ),
+    makeResource(
+      'MongoDB Documentation',
+      'https://www.mongodb.com/docs/',
+      'documentation',
+      'MongoDB'
+    ),
+  ],
+
+  flutter: [
+    makeResource(
+      'Flutter Course for Beginners - freeCodeCamp',
+      'https://www.youtube.com/watch?v=VPvVD8t02U8',
+      'video',
+      'YouTube'
+    ),
+    makeResource(
+      'Build Native Mobile Apps with Flutter',
+      'https://www.coursera.org/search?query=flutter',
+      'course',
+      'Coursera'
+    ),
+    makeResource(
+      'Flutter & Dart - The Complete Guide',
+      'https://www.udemy.com/courses/search/?q=flutter%20dart%20complete%20guide',
+      'course',
+      'Udemy'
+    ),
+    makeResource(
+      'Flutter Documentation',
+      'https://docs.flutter.dev/',
+      'documentation',
+      'Flutter'
+    ),
+  ],
+
+  python: [
+    makeResource(
+      'Python for Beginners - freeCodeCamp',
+      'https://www.youtube.com/watch?v=rfscVS0vtbw',
+      'video',
+      'YouTube'
+    ),
+    makeResource(
+      'Python for Everybody',
+      'https://www.coursera.org/specializations/python',
+      'course',
+      'Coursera'
+    ),
+    makeResource(
+      'Complete Python Bootcamp',
+      'https://www.udemy.com/courses/search/?q=complete%20python%20bootcamp',
+      'course',
+      'Udemy'
+    ),
+    makeResource(
+      'Python Documentation',
+      'https://docs.python.org/3/',
+      'documentation',
+      'Python'
+    ),
+  ],
+};
+
+function buildSearchResources(skillTag, stepTitle, careerName = '') {
   const keyword = normalizeText(skillTag || stepTitle);
-  const query = encodeURIComponent(keyword);
+  const enriched = normalizeText(`${keyword} ${careerName}`.trim());
+  const query = encodeQ(enriched || keyword);
 
   return [
-    {
-      title: `YouTube: ${keyword}`,
-      type: 'video',
-      url: `https://www.youtube.com/results?search_query=${query}`,
-    },
-    {
-      title: `Coursera: ${keyword}`,
-      type: 'course',
-      url: `https://www.coursera.org/search?query=${query}`,
-    },
-    {
-      title: `Udemy: ${keyword}`,
-      type: 'course',
-      url: `https://www.udemy.com/courses/search/?q=${query}`,
-    },
-    {
-      title: `Documentation: ${keyword}`,
-      type: 'documentation',
-      url: `https://www.google.com/search?q=${query}+documentation`,
-    },
+    makeResource(
+      `YouTube: ${keyword}`,
+      `https://www.youtube.com/results?search_query=${query}`,
+      'video',
+      'YouTube'
+    ),
+    makeResource(
+      `Coursera: ${keyword}`,
+      `https://www.coursera.org/search?query=${query}`,
+      'course',
+      'Coursera'
+    ),
+    makeResource(
+      `Udemy: ${keyword}`,
+      `https://www.udemy.com/courses/search/?q=${query}`,
+      'course',
+      'Udemy'
+    ),
+    makeResource(
+      `Documentation: ${keyword}`,
+      `https://www.google.com/search?q=${query}+documentation`,
+      'documentation',
+      'Google'
+    ),
   ];
 }
 
+function getBetterResourcesForStep(stepTitle, skillTag, careerName = '') {
+  const normalizedSkill = String(skillTag || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/[-_]/g, '');
+
+  const curated = CURATED_RESOURCES[normalizedSkill];
+
+  if (curated && curated.length > 0) {
+    return curated;
+  }
+
+  return buildSearchResources(skillTag, stepTitle, careerName);
+}
 function findStepInRoadmap(roadmap, stepId) {
   for (const phase of roadmap.phases || []) {
     for (const step of phase.steps || []) {
@@ -523,7 +769,8 @@ const generateResourcesForCurrentRoadmap = async (userId) => {
         Array.isArray(step.resources) && step.resources.length > 0;
 
       if (!hasResources) {
-        step.resources = buildSearchResources(step.skillTag, step.title);
+        getBetterResourcesForStep(step.title || '', step.skillTag || '', career.name || '');
+
         updatedSteps += 1;
       }
 

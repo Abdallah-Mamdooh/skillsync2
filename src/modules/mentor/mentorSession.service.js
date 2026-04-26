@@ -73,19 +73,19 @@ function calculateActualDurationMinutes(startedAt, endedAt) {
 }
 
 function calculatePricing(mentorProfile, method, durationMinutes) {
-  const baseRate = Number(mentorProfile.baseRate || 0);
+  const hourlyRate = Number(mentorProfile.baseRate || 0);
   const multiplier =
     method === 'call'
       ? Number(mentorProfile.callMultiplier || 1.5)
       : Number(mentorProfile.chatMultiplier || 1);
 
-  const subtotal = round2(baseRate * durationMinutes * multiplier);
+  const subtotal = round2((hourlyRate / 60) * durationMinutes * multiplier);
   const platformFee = round2(subtotal * PLATFORM_FEE_PERCENT);
   const totalAmount = subtotal;
   const mentorNetAmount = round2(totalAmount - platformFee);
 
   return {
-    baseRate,
+    baseRate: hourlyRate,
     multiplier,
     subtotal,
     platformFee,
@@ -97,7 +97,9 @@ function calculatePricing(mentorProfile, method, durationMinutes) {
 
 function buildTimerInfo(session) {
   const now = getNow();
-  const endAt = session.endAt ? new Date(session.endAt) : null;
+  const timerStarted = Boolean(session.startedAt && session.endAt);
+
+  const endAt = timerStarted ? new Date(session.endAt) : null;
   const noShowDeadline = session.noShowDeadline
     ? new Date(session.noShowDeadline)
     : null;
@@ -112,11 +114,11 @@ function buildTimerInfo(session) {
 
   return {
     startedAt: session.startedAt,
-    endAt: session.endAt,
+    endAt: timerStarted ? session.endAt : null,
     noShowDeadline: session.noShowDeadline,
     remainingSessionSeconds,
     remainingJoinGraceSeconds,
-    timerStarted: Boolean(session.startedAt && session.endAt),
+    timerStarted,
   };
 }
 
@@ -486,6 +488,7 @@ async function getMentorIncomingSessions(mentorUserId) {
   const sessions = await MentorSession.find({
     mentorProfileId: mentorProfile._id,
     status: { $in: ['scheduled', 'started', 'active'] },
+    paymentStatus: { $in: ['held', 'captured'] }
   })
     .populate('userId', 'fullName email phoneNumber role skills cvUrl')
     .sort({ scheduledDate: 1, scheduledStartTime: 1 });
@@ -584,7 +587,7 @@ async function startSession(mentorUserId, sessionId) {
     throw new Error('Session not found');
   }
 
-  if (String(session.mentorUserId) !== String(mentorUserId)) {
+  if (String(session.mentorUserId?._id || session.mentorUserId) !== String(mentorUserId)) {
     throw new Error('Only the mentor can start this session');
   }
 

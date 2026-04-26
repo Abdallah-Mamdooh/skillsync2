@@ -28,4 +28,11 @@ router.post(
   roleMiddleware('admin'),
   controller.refundEventRegistrationPayment
 );
+
+router.get(
+  '/mentor/earnings',
+  authMiddleware,
+  roleMiddleware('mentor'),
+  controller.getMentorEarningsSummary
+);
 module.exports = router;

@@ -1243,6 +1243,55 @@ async function refundEventRegistrationPayment({
 
   throw new Error('This event payment is not in a refundable state');
 }
+
+async function getMentorEarningsSummary(userId) {
+  const wallet = await getOrCreateWallet(userId);
+
+  const transactions = await Transaction.find({ userId })
+    .sort({ createdAt: -1 });
+
+  const mentorCredits = transactions.filter(
+    (tx) => tx.type === 'mentor_credit' && tx.status === 'completed'
+  );
+
+  const refundDebits = transactions.filter(
+    (tx) => tx.type === 'refund' && tx.status === 'completed'
+  );
+
+  const totalEarnings = mentorCredits.reduce(
+    (sum, tx) => sum + Number(tx.amount || 0),
+    0
+  );
+
+  const totalRefundReversals = refundDebits.reduce(
+    (sum, tx) => sum + Number(tx.amount || 0),
+    0
+  );
+
+  const recentEarnings = mentorCredits.slice(0, 20).map((tx) => ({
+    id: tx._id,
+    sessionId: tx.sessionId || null,
+    amount: Number(tx.amount || 0),
+    currency: tx.currency || 'EGP',
+    status: tx.status,
+    type: tx.type,
+    notes: tx.notes || '',
+    createdAt: tx.createdAt,
+  }));
+
+  return {
+    wallet,
+    totals: {
+      totalEarnings,
+      totalRefundReversals,
+      netEarnings: totalEarnings - totalRefundReversals,
+      availableBalance: Number(wallet.availableBalance || 0),
+      heldBalance: Number(wallet.heldBalance || 0),
+      currency: wallet.currency || 'EGP',
+    },
+    recentEarnings,
+  };
+}
 module.exports = {
   getOrCreateWallet,
   getDefaultPaymentMethod,
@@ -1265,4 +1314,5 @@ module.exports = {
   markTransactionRefunded,
   refundMentorSessionPayment,
   refundEventRegistrationPayment,
+  getMentorEarningsSummary,
 };

@@ -29,6 +29,7 @@ const supportRoutes = require('./modules/support/support.routes');
 const settingsRoutes = require('./modules/settings/settings.routes');
 const cvAnalysisRoutes = require('./modules/cvAnalysis/cvAnalysis.routes');
 const dashboardCompatRoutes = require('./modules/dashboardCompat/dashboardCompat.routes');
+const payoutRoutes = require('./modules/payment/payout.routes');
 const app = express();
 
 // global middleware
@@ -78,5 +79,7 @@ app.use('/api', routes);
 // error handling LAST
 app.use(notFound);
 app.use(errorHandler);
+
+app.use('/api/payouts', payoutRoutes);
 
 module.exports = app;

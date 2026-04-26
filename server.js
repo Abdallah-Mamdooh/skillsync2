@@ -81,7 +81,7 @@ io.on('connection', (socket) => {
         message: result.message,
       });
 
-      if (result.sessionStartedNow) {
+      if (result.timerStartedNow) {
         io.to(room).emit('session_started', {
           sessionId,
           startedAt: result.session.startedAt,

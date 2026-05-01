@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../theme/app_colors.dart';
+import '../../utils/role_utils.dart';
 import './email_signup_screen.dart';
-import '../student_homescreen.dart';
-import '../mentorship_screen.dart';
+import '../Student/student_homescreen.dart';
+import '../Mentor/Mentor homescreen.dart';
 import '/services/google_auth_service.dart';
 import './forgot_password_screen.dart';
 
@@ -25,7 +25,6 @@ class _LoginScreenState extends State<LoginScreen> {
   static const Color _bgColor = Color(0xFF1D5572);
   static const Color _cardColor = Color(0xFFFFFFFF);
   static const Color _accentGold = Color(0xFFF5A100);
-  static const Color _darkTeal = Color(0xFF1D5572);
   static const Color _hintColor = Color(0xFFAAAAAA);
   static const Color _borderColor = Color(0xFF6B7280);
 
@@ -351,12 +350,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
                                 if (success && context.mounted) {
                                   final user = authProvider.user;
-                                  if (user != null &&
-                                      user['role'] == 'mentor') {
+                                  if (user != null && isMentorRole(user['role'])) {
                                     Navigator.of(context).pushReplacement(
                                       MaterialPageRoute(
                                         builder: (context) =>
-                                        const MentorshipScreen(),
+                                        const MentorHomeScreen(),
                                       ),
                                     );
                                   } else {
@@ -473,12 +471,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
                               if (context.mounted) {
                                 final user = authProvider.user;
-                                if (user != null &&
-                                    user['role'] == 'mentor') {
+                                if (user != null && isMentorRole(user['role'])) {
                                   Navigator.of(context).pushReplacement(
                                     MaterialPageRoute(
                                       builder: (context) =>
-                                      const MentorshipScreen(),
+                                      const MentorHomeScreen(),
                                     ),
                                   );
                                 } else {

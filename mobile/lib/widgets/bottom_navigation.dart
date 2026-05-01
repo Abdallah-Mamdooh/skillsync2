@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import '../screens/student_homescreen.dart';
-import '../screens/assessment_flow.dart';
-import '../screens/ChatsScreen.dart';
-import '../screens/profile_screen.dart';
+import '../screens/Student/student_homescreen.dart';
+import '../screens/Student/assessment_flow.dart';
+import '../screens/Student/chathistory.dart';
+import '../screens/Student/profile_screen.dart';
 
 enum BottomNavIndex { home, assess, chat, profile }
 

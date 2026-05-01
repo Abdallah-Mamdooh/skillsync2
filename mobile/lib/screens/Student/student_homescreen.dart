@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
-import '../services/api_service.dart';
-import '../widgets/bottom_navigation.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/api_service.dart';
+import '../../widgets/bottom_navigation.dart';
 import 'assessment_flow.dart';
+import 'Chosen roadmap.dart';
 import 'cv_Optimizer.dart';
 import 'profile_screen.dart';
 import 'mentorship_screen.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'Notifications screen.dart';
-import 'ChatsScreen.dart';
+import 'chathistory.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -64,7 +65,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     int percent = 0;
     if (hasRoadmap) {
       final data = response['data'];
-      final raw = data is Map<String, dynamic> ? data['completionPercent'] : null;
+      final raw =
+          data is Map<String, dynamic> ? data['completionPercent'] : null;
       if (raw is num) {
         percent = raw.round();
       } else {
@@ -152,9 +154,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                 width: double.infinity,
                 decoration: const BoxDecoration(
                   color: Color(0xFF1D5572),
-                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+                  borderRadius:
+                      BorderRadius.vertical(bottom: Radius.circular(32)),
                 ),
-                padding: const EdgeInsets.only(left: 20, right: 20, top: 53, bottom: 24),
+                padding: const EdgeInsets.only(
+                    left: 20, right: 20, top: 53, bottom: 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -166,8 +170,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                           width: 61,
                           height: 62,
                           fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) =>
-                          const Icon(Icons.star, color: Color(0xFFF5A100), size: 60),
+                          errorBuilder: (_, __, ___) => const Icon(Icons.star,
+                              color: Color(0xFFF5A100), size: 60),
                         ),
                         const SizedBox(width: 9),
                         Column(
@@ -193,10 +197,14 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                 children: [
                                   const TextSpan(text: 'Welcome back'),
                                   const TextSpan(
-                                      text: ', ', style: TextStyle(color: Color(0xFFF5A100))),
+                                      text: ', ',
+                                      style:
+                                          TextStyle(color: Color(0xFFF5A100))),
                                   TextSpan(text: firstName),
                                   const TextSpan(
-                                      text: '!', style: TextStyle(color: Color(0xFFF5A100))),
+                                      text: '!',
+                                      style:
+                                          TextStyle(color: Color(0xFFF5A100))),
                                 ],
                               ),
                             ),
@@ -207,14 +215,17 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                           onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                              MaterialPageRoute(
+                                  builder: (context) =>
+                                      const NotificationsScreen()),
                             );
                           },
                           icon: SvgPicture.asset(
                             'assets/icons/notification.svg',
                             width: 28,
                             height: 28,
-                            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                            colorFilter: const ColorFilter.mode(
+                                Colors.white, BlendMode.srcIn),
                           ),
                         ),
                       ],
@@ -256,21 +267,21 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                             top: 42,
                             child: _isWalletLoading
                                 ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Color(0xFF1D5572),
-                              ),
-                            )
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Color(0xFF1D5572),
+                                    ),
+                                  )
                                 : Text(
-                              '${_walletBalance.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')} $_walletCurrency',
-                              style: GoogleFonts.inter(
-                                color: const Color(0xFF2E2E2E),
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                                    '${_walletBalance.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')} $_walletCurrency',
+                                    style: GoogleFonts.inter(
+                                      color: const Color(0xFF2E2E2E),
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                           ),
                           Positioned(
                             right: 11,
@@ -321,115 +332,125 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                 const SizedBox(height: 16),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 13),
-                  child: Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1D5572),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x7F000000),
-                          spreadRadius: 0,
-                          offset: Offset(0, 4),
-                          blurRadius: 12,
-                        )
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // ── Header row: white background ──
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.trending_up,
-                                    color: Color(0xFF001636),
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'Learning Progress',
-                                    style: GoogleFonts.inter(
-                                      color: const Color(0xFFF5A100),
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      height: 1.1,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Text(
-                                '$progressPercent%',
-                                style: GoogleFonts.inter(
-                                  color: const Color(0xFF001636),
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  height: 1.1,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // ── Progress bar + sub-text: teal background ──
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Progress bar
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(100),
-                                child: Stack(
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => const ChosenRoadmapScreen()));
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1D5572),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x7F000000),
+                            spreadRadius: 0,
+                            offset: Offset(0, 4),
+                            blurRadius: 12,
+                          )
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // ── Header row: white background ──
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              borderRadius:
+                                  BorderRadius.vertical(top: Radius.circular(16)),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
                                   children: [
-                                    // Track
-                                    Container(
-                                      width: double.infinity,
-                                      height: 8,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0x7FF5A100),
-                                        borderRadius: BorderRadius.circular(100),
-                                      ),
+                                    const Icon(
+                                      Icons.trending_up,
+                                      color: Color(0xFF001636),
+                                      size: 20,
                                     ),
-                                    // Fill
-                                    FractionallySizedBox(
-                                      widthFactor: progressPercent / 100,
-                                      child: Container(
-                                        height: 8,
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(100),
-                                        ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Learning Progress',
+                                      style: GoogleFonts.inter(
+                                        color: const Color(0xFFF5A100),
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        height: 1.1,
                                       ),
                                     ),
                                   ],
                                 ),
-                              ),
-                              const SizedBox(height: 12),
-                              // Sub-text
-                              Text(
-                                "Keep going! You're making great progress on your roadmap.",
-                                textAlign: TextAlign.center,
-                                style: GoogleFonts.inter(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.4,
+                                Text(
+                                  '$progressPercent%',
+                                  style: GoogleFonts.inter(
+                                    color: const Color(0xFF001636),
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    height: 1.1,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                          // ── Progress bar + sub-text: teal background ──
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Progress bar
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(100),
+                                  child: Stack(
+                                    children: [
+                                      // Track
+                                      Container(
+                                        width: double.infinity,
+                                        height: 8,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0x7FF5A100),
+                                          borderRadius:
+                                              BorderRadius.circular(100),
+                                        ),
+                                      ),
+                                      // Fill
+                                      FractionallySizedBox(
+                                        widthFactor: progressPercent / 100,
+                                        child: Container(
+                                          height: 8,
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius:
+                                                BorderRadius.circular(100),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                // Sub-text
+                                Text(
+                                  "Keep going! You're making great progress on your roadmap.",
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.inter(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -471,7 +492,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                         onTap: () {
                           Navigator.of(context)
                               .push(MaterialPageRoute(
-                              builder: (_) => const AssessmentStartScreen()))
+                                  builder: (_) =>
+                                      const AssessmentStartScreen()))
                               .then((_) => _loadRoadmapStatus());
                         },
                       ),
@@ -520,7 +542,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                               onTap: () {
                                 Navigator.of(context)
                                     .push(MaterialPageRoute(
-                                    builder: (_) => const AssessmentStartScreen()))
+                                        builder: (_) =>
+                                            const AssessmentStartScreen()))
                                     .then((_) => _loadRoadmapStatus());
                               },
                               child: Container(
@@ -528,7 +551,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                 clipBehavior: Clip.hardEdge,
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFD9D9D9),
-                                  border: Border.all(color: const Color(0xFF1D5572)),
+                                  border: Border.all(
+                                      color: const Color(0xFF1D5572)),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Stack(
@@ -541,15 +565,16 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                         height: 40,
                                         decoration: BoxDecoration(
                                             color: Colors.white,
-                                            borderRadius: BorderRadius.circular(12)),
+                                            borderRadius:
+                                                BorderRadius.circular(12)),
                                         child: Center(
                                           child: Image.asset(
                                             'assets/images/skill_assessment_logo.png',
                                             width: 24,
                                             height: 24,
-                                            errorBuilder: (_, __, ___) => const Icon(
-                                                Icons.assessment,
-                                                color: Color(0xFF1D5572)),
+                                            errorBuilder: (_, __, ___) =>
+                                                const Icon(Icons.assessment,
+                                                    color: Color(0xFF1D5572)),
                                           ),
                                         ),
                                       ),
@@ -584,14 +609,16 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                             child: GestureDetector(
                               onTap: () {
                                 Navigator.of(context).push(MaterialPageRoute(
-                                    builder: (_) => const LearningRoadmapScreen()));
+                                    builder: (_) =>
+                                        const ChosenRoadmapScreen()));
                               },
                               child: Container(
                                 height: 118,
                                 clipBehavior: Clip.hardEdge,
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFD9D9D9),
-                                  border: Border.all(color: const Color(0xFFF5A100)),
+                                  border: Border.all(
+                                      color: const Color(0xFFF5A100)),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Stack(
@@ -604,15 +631,16 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                         height: 40,
                                         decoration: BoxDecoration(
                                             color: Colors.white,
-                                            borderRadius: BorderRadius.circular(12)),
+                                            borderRadius:
+                                                BorderRadius.circular(12)),
                                         child: Center(
                                           child: Image.asset(
                                             'assets/images/roadmaps_logo.png',
                                             width: 23,
                                             height: 23,
-                                            errorBuilder: (_, __, ___) => const Icon(
-                                                Icons.map,
-                                                color: Color(0xFFF5A100)),
+                                            errorBuilder: (_, __, ___) =>
+                                                const Icon(Icons.map,
+                                                    color: Color(0xFFF5A100)),
                                           ),
                                         ),
                                       ),
@@ -658,7 +686,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                 clipBehavior: Clip.hardEdge,
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFD9D9D9),
-                                  border: Border.all(color: const Color(0xFFF5A100)),
+                                  border: Border.all(
+                                      color: const Color(0xFFF5A100)),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Stack(
@@ -671,15 +700,16 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                         height: 40,
                                         decoration: BoxDecoration(
                                             color: Colors.white,
-                                            borderRadius: BorderRadius.circular(12)),
+                                            borderRadius:
+                                                BorderRadius.circular(12)),
                                         child: Center(
                                           child: Image.asset(
                                             'assets/images/cv_optimizer_logo.png',
                                             width: 20,
                                             height: 25,
-                                            errorBuilder: (_, __, ___) => const Icon(
-                                                Icons.description,
-                                                color: Color(0xFFF5A100)),
+                                            errorBuilder: (_, __, ___) =>
+                                                const Icon(Icons.description,
+                                                    color: Color(0xFFF5A100)),
                                           ),
                                         ),
                                       ),
@@ -721,7 +751,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                 clipBehavior: Clip.hardEdge,
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFD9D9D9),
-                                  border: Border.all(color: const Color(0xFF1D5572)),
+                                  border: Border.all(
+                                      color: const Color(0xFF1D5572)),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Stack(
@@ -734,15 +765,16 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                         height: 40,
                                         decoration: BoxDecoration(
                                             color: Colors.white,
-                                            borderRadius: BorderRadius.circular(12)),
+                                            borderRadius:
+                                                BorderRadius.circular(12)),
                                         child: Center(
                                           child: Image.asset(
                                             'assets/images/find_mentor_logo.png',
                                             width: 27,
                                             height: 18,
-                                            errorBuilder: (_, __, ___) => const Icon(
-                                                Icons.person_search,
-                                                color: Color(0xFF1D5572)),
+                                            errorBuilder: (_, __, ___) =>
+                                                const Icon(Icons.person_search,
+                                                    color: Color(0xFF1D5572)),
                                           ),
                                         ),
                                       ),
@@ -830,7 +862,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                             borderRadius: BorderRadius.circular(26),
                           ),
                           child: const Center(
-                            child: Icon(Icons.person_add, color: Colors.white, size: 27),
+                            child: Icon(Icons.person_add,
+                                color: Colors.white, size: 27),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -849,7 +882,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Add more details to get better career recommendations and mentor matches.',
+                                'Add more details to get better career recommendations and Mentor matches.',
                                 style: GoogleFonts.cairo(
                                   color: Colors.black,
                                   fontSize: 12,
@@ -892,21 +925,22 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: const BottomNavigation(selectedIndex: BottomNavIndex.home),
+      bottomNavigationBar:
+          const BottomNavigation(selectedIndex: BottomNavIndex.home),
     );
   }
 
   /// Full-width card used in the no-roadmap list layout
   Widget _buildListActionCard(
-      BuildContext context, {
-        required String imagePath,
-        required IconData fallbackIcon,
-        required Color iconColor,
-        required String title,
-        required String subtitle,
-        required Color borderColor,
-        required VoidCallback onTap,
-      }) {
+    BuildContext context, {
+    required String imagePath,
+    required IconData fallbackIcon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required Color borderColor,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -968,5 +1002,4 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       ),
     );
   }
-
 }

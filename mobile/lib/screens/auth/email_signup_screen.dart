@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import '../student_homescreen.dart';
-import '../mentorship_screen.dart';
+import '../Student/student_homescreen.dart';
+import '../Mentor/Mentor homescreen.dart';
 
 enum UserRole { student, mentor }
 
@@ -98,108 +98,10 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
     );
   }
 
-  // ── Mentor Thank You Dialog ──────────────────────────────────────────────
-  void _showMentorThankYouDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext dialogContext) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          backgroundColor: Colors.white,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Animated spinning loader with grey circle background
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFDDDDDD),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Center(
-                    child: SizedBox(
-                      width: 44,
-                      height: 44,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 5,
-                        backgroundColor: Color(0xFFBBBBBB),
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          Color(0xFF444444),
-                        ),
-                        strokeCap: StrokeCap.round,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 22),
-
-                // Title
-                const Text(
-                  'Thank You for Applying',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFFF5A100),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // Body text
-                const Text(
-                  'We are reviewing your CV and experience. You will be notified once your mentor account is approved.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF555555),
-                    height: 1.6,
-                  ),
-                ),
-                const SizedBox(height: 28),
-
-                // OK button
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(dialogContext);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1D5572),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Text(
-                      'OK',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   @override
   void initState() {
     super.initState();
-    _selectedRole = widget.role.toLowerCase() == 'mentor'
+    _selectedRole = widget.role.toLowerCase() == 'Mentor'
         ? UserRole.mentor
         : UserRole.student;
   }
@@ -311,7 +213,7 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                               ),
                             ),
                             onTap: () => setState(
-                                    () => _selectedRole = UserRole.student),
+                                () => _selectedRole = UserRole.student),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -328,8 +230,8 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                                   ? _accentColor
                                   : const Color(0xFF888888),
                             ),
-                            onTap: () => setState(
-                                    () => _selectedRole = UserRole.mentor),
+                            onTap: () =>
+                                setState(() => _selectedRole = UserRole.mentor),
                           ),
                         ),
                       ],
@@ -368,7 +270,7 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                           color: _hintColor,
                         ),
                         onPressed: () => setState(
-                                () => _obscurePassword = !_obscurePassword),
+                            () => _obscurePassword = !_obscurePassword),
                       ),
                     ),
                     const Padding(
@@ -421,7 +323,7 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                         children: [
                           TextSpan(
                               text:
-                              'By creating an account, you agree to our '),
+                                  'By creating an account, you agree to our '),
                           TextSpan(
                             text: 'TERMS OF SERVICE',
                             style: TextStyle(color: _accentColor),
@@ -446,69 +348,72 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                             onPressed: authProvider.isLoading
                                 ? null
                                 : () async {
-                              final fullName =
-                              _fullNameController.text.trim();
-                              final email = _emailController.text.trim();
-                              final password =
-                              _passwordController.text.trim();
-                              final phone = _phoneController.text.trim();
-                              final cvUrl = _cvUrlController.text.trim();
-                              final linkedinUrl =
-                              _linkedinUrlController.text.trim();
-                              final roleStr =
-                              _selectedRole == UserRole.mentor
-                                  ? 'mentor'
-                                  : 'user';
+                                    final fullName =
+                                        _fullNameController.text.trim();
+                                    final email = _emailController.text.trim();
+                                    final password =
+                                        _passwordController.text.trim();
+                                    final phone = _phoneController.text.trim();
+                                    final cvUrl = _cvUrlController.text.trim();
+                                    final linkedinUrl =
+                                        _linkedinUrlController.text.trim();
+                                    final roleStr =
+                                        _selectedRole == UserRole.mentor
+                                            ? 'mentor'
+                                            : 'user';
 
-                              if (fullName.isEmpty ||
-                                  email.isEmpty ||
-                                  password.isEmpty ||
-                                  phone.isEmpty) {
-                                _showSignupFailedDialog(context,
-                                    message:
-                                    'Please fill in all required fields');
-                                return;
-                              }
-                              if (roleStr == 'mentor' &&
-                                  (cvUrl.isEmpty ||
-                                      linkedinUrl.isEmpty)) {
-                                _showSignupFailedDialog(context,
-                                    message:
-                                    'Mentors must provide CV and LinkedIn URLs');
-                                return;
-                              }
+                                    if (fullName.isEmpty ||
+                                        email.isEmpty ||
+                                        password.isEmpty ||
+                                        phone.isEmpty) {
+                                      _showSignupFailedDialog(context,
+                                          message:
+                                              'Please fill in all required fields');
+                                      return;
+                                    }
+                                    if (roleStr == 'mentor' &&
+                                        (cvUrl.isEmpty ||
+                                            linkedinUrl.isEmpty)) {
+                                      _showSignupFailedDialog(context,
+                                          message:
+                                              'Mentors must provide CV and LinkedIn URLs');
+                                      return;
+                                    }
 
-                              final success = await authProvider.signup(
-                                fullName: fullName,
-                                email: email,
-                                phoneNumber: phone,
-                                password: password,
-                                role: roleStr,
-                                cvUrl:
-                                roleStr == 'mentor' ? cvUrl : null,
-                                linkedinUrl: roleStr == 'mentor'
-                                    ? linkedinUrl
-                                    : null,
-                              );
+                                    final success = await authProvider.signup(
+                                      fullName: fullName,
+                                      email: email,
+                                      phoneNumber: phone,
+                                      password: password,
+                                      role: roleStr,
+                                      cvUrl: roleStr == 'mentor' ? cvUrl : null,
+                                      linkedinUrl: roleStr == 'mentor'
+                                          ? linkedinUrl
+                                          : null,
+                                    );
 
-                              if (success && context.mounted) {
-                                if (roleStr == 'mentor') {
-                                  // ← Show Thank You dialog for mentors
-                                  _showMentorThankYouDialog(context);
-                                } else {
-                                  Navigator.of(context).pushReplacement(
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                      const StudentHomeScreen(),
-                                    ),
-                                  );
-                                }
-                              } else if (context.mounted) {
-                                _showSignupFailedDialog(context,
-                                    message: authProvider.error ??
-                                        'Signup failed. Please try again.');
-                              }
-                            },
+                                    if (success && context.mounted) {
+                                      if (roleStr == 'mentor') {
+                                        Navigator.of(context).pushReplacement(
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                const MentorHomeScreen(),
+                                          ),
+                                        );
+                                      } else {
+                                        Navigator.of(context).pushReplacement(
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                const StudentHomeScreen(),
+                                          ),
+                                        );
+                                      }
+                                    } else if (context.mounted) {
+                                      _showSignupFailedDialog(context,
+                                          message: authProvider.error ??
+                                              'Signup failed. Please try again.');
+                                    }
+                                  },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: _accentColor,
                               foregroundColor: Colors.white,
@@ -519,22 +424,22 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                             ),
                             child: authProvider.isLoading
                                 ? const SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
+                                    height: 24,
+                                    width: 24,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
                                 : const Text(
-                              'Sign Up',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.5,
-                                color: Colors.white,
-                              ),
-                            ),
+                                    'Sign Up',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.5,
+                                      color: Colors.white,
+                                    ),
+                                  ),
                           ),
                         );
                       },
@@ -608,7 +513,7 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
         fillColor: _inputBg,
         suffixIcon: suffixIcon,
         contentPadding:
-        const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: _borderColor),

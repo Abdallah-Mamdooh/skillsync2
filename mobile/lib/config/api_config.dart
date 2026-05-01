@@ -14,7 +14,7 @@
 /// Note: Port 5000 is used by Node.js app, so Flask runs on 5001.
 class ApiConfig {
   /// Base URL for the Flask backend
-  static const String baseUrl = 'http://192.168.1.188:5000';
+  static const String baseUrl = 'http://192.168.1.4:5000';
 
   /// API endpoints
   /// Mobile should call the Node API which mounts CV analysis under `/api/cv-analysis`.

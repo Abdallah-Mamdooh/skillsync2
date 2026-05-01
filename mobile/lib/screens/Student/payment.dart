@@ -1,31 +1,133 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../widgets/bottom_navigation.dart';
-import 'student_homescreen.dart';
-import 'profile_screen.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/api_service.dart';
+import '../../widgets/bottom_navigation.dart';
 import 'payment_confirmation_screen.dart';
 
-class PaymentScreen extends StatelessWidget {
+class PaymentScreen extends StatefulWidget {
+  final String mentorId;
   final String mentorName;
   final String sessionTime;
   final String sessionDuration;
   final String sessionType;
   final double sessionPrice;
-  final double walletBalance;
+  final String paymentMethod;
+  final String scheduledDate;
+  final String scheduledStartTime;
+  final String timezone;
 
   const PaymentScreen({
     super.key,
+    required this.mentorId,
     required this.mentorName,
     required this.sessionTime,
     required this.sessionDuration,
     required this.sessionType,
     required this.sessionPrice,
-    required this.walletBalance,
+    required this.paymentMethod,
+    required this.scheduledDate,
+    required this.scheduledStartTime,
+    required this.timezone,
   });
 
   @override
+  State<PaymentScreen> createState() => _PaymentScreenState();
+}
+
+class _PaymentScreenState extends State<PaymentScreen> {
+  double _walletBalance = 0;
+  String _walletCurrency = 'EGP';
+  bool _loadingWallet = true;
+  bool _submitting = false;
+
+  int get _durationMinutes => int.tryParse(widget.sessionDuration.split(' ').first) ?? 30;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWallet();
+  }
+
+  Future<void> _loadWallet() async {
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+    final response = await ApiService.get('/payments/wallet', token);
+    final wallet = response['data']?['wallet'];
+    if (wallet is Map) {
+      _walletBalance = ((wallet['availableBalance'] ?? 0) as num).toDouble();
+      _walletCurrency = (wallet['currency'] ?? 'EGP').toString();
+    }
+    if (mounted) setState(() => _loadingWallet = false);
+  }
+
+  Future<void> _confirmBooking() async {
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+    setState(() => _submitting = true);
+    final payload = {
+      'mentorProfileId': widget.mentorId,
+      'method': widget.sessionType,
+      'durationMinutes': _durationMinutes,
+      'scheduledDate': widget.scheduledDate,
+      'scheduledStartTime': widget.scheduledStartTime,
+      'timezone': widget.timezone,
+    };
+
+    Map<String, dynamic> bookingResponse;
+    String? sessionId;
+    String? transactionId;
+
+    if (widget.paymentMethod == 'fawry') {
+      bookingResponse = await ApiService.createSessionFawryCheckout(
+        token: token,
+        payload: payload,
+      );
+      sessionId = bookingResponse['data']?['sessionId']?.toString();
+      transactionId = bookingResponse['data']?['checkout']?['transactionId']?.toString();
+
+      if (bookingResponse['success'] == true && transactionId != null) {
+        for (var i = 0; i < 6; i++) {
+          await Future.delayed(const Duration(seconds: 2));
+          final status = await ApiService.getPaymentStatus(
+            token: token,
+            transactionId: transactionId,
+          );
+          if (status['success'] == true &&
+              status['data']?['isPaymentConfirmed'] == true) {
+            break;
+          }
+        }
+      }
+    } else {
+      bookingResponse = await ApiService.createSessionBooking(
+        token: token,
+        payload: payload,
+      );
+      sessionId = bookingResponse['data']?['sessionId']?.toString();
+    }
+
+    if (!mounted) return;
+    setState(() => _submitting = false);
+    final ok = bookingResponse['success'] == true && sessionId != null;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PaymentConfirmationScreen(
+          isSuccess: ok,
+          sessionId: sessionId,
+          message: ok
+              ? 'Session booked successfully.'
+              : (bookingResponse['message']?.toString() ?? 'Booking failed.'),
+        ),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final double remains = walletBalance - sessionPrice;
+    final double remains = _walletBalance - widget.sessionPrice;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
@@ -73,7 +175,9 @@ class PaymentScreen extends StatelessWidget {
                                 Text('Balance', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF2E2E2E))),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '${walletBalance.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')} EGP',
+                                  _loadingWallet
+                                      ? 'Loading...'
+                                      : '${_walletBalance.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')} $_walletCurrency',
                                   style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF2E2E2E)),
                                 ),
                               ],
@@ -110,25 +214,27 @@ class PaymentScreen extends StatelessWidget {
                         children: [
                           Text('Booking Summary', style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF1F2937))),
                           const SizedBox(height: 16),
-                          _summaryRow('Mentor:', mentorName),
+                          _summaryRow('Mentor:', widget.mentorName),
                           const SizedBox(height: 8),
-                          _summaryRow('Time:', sessionTime),
+                          _summaryRow('Time:', widget.sessionTime),
                           const SizedBox(height: 8),
-                          _summaryRow('Duration:', sessionDuration),
+                          _summaryRow('Duration:', widget.sessionDuration),
                           const SizedBox(height: 8),
-                          _summaryRow('Session type:', sessionType),
+                          _summaryRow('Session type:', widget.sessionType.toUpperCase()),
+                          const SizedBox(height: 8),
+                          _summaryRow('Payment:', widget.paymentMethod.toUpperCase()),
                           const SizedBox(height: 16),
                           const Divider(color: Color(0xFFD9D9D9), height: 1),
                           const SizedBox(height: 16),
-                          _summaryRow('TOTAL BALANCE:', '${walletBalance.toStringAsFixed(0)} EGP', valueColor: const Color(0xFFF5A100)),
+                          _summaryRow('TOTAL BALANCE:', '${_walletBalance.toStringAsFixed(0)} $_walletCurrency', valueColor: const Color(0xFFF5A100)),
                           const SizedBox(height: 8),
-                          _summaryRow('', '-${sessionPrice.toStringAsFixed(0)} EGP', valueColor: const Color(0xFFF5A100)),
+                          _summaryRow('', '-${widget.sessionPrice.toStringAsFixed(0)} $_walletCurrency', valueColor: const Color(0xFFF5A100)),
                           const SizedBox(height: 8),
-                          _summaryRow('REMAINS:', '${remains.toStringAsFixed(0)} EGP', valueColor: const Color(0xFFF5A100)),
+                          _summaryRow('REMAINS:', '${remains.toStringAsFixed(0)} $_walletCurrency', valueColor: const Color(0xFFF5A100)),
                           const SizedBox(height: 16),
                           const Divider(color: Color(0xFFD9D9D9), height: 1),
                           const SizedBox(height: 16),
-                          _summaryRow('TOTAL:', '${sessionPrice.toStringAsFixed(0)} EGP', labelBold: true),
+                          _summaryRow('TOTAL:', '${widget.sessionPrice.toStringAsFixed(0)} $_walletCurrency', labelBold: true),
                         ],
                       ),
                     ),
@@ -141,31 +247,20 @@ class PaymentScreen extends StatelessWidget {
                           height: 40,
                           child: ElevatedButton(
                             onPressed: () async {
-                              // Show loading indicator
-                              showDialog(
-                                context: context,
-                                barrierDismissible: false,
-                                builder: (_) => const Center(
-                                  child: CircularProgressIndicator(color: Color(0xFF1D5572)),
-                                ),
-                              );
-
-                              // Simulate booking API call (replace with your real logic)
-                              await Future.delayed(const Duration(seconds: 2));
-                              final bool bookingSuccess = walletBalance >= sessionPrice; // your condition
-
-                              if (context.mounted) Navigator.pop(context); // close loader
-
-                              if (context.mounted) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => PaymentConfirmationScreen(isSuccess: bookingSuccess),
-                                  ),
-                                );
-                              }
-                            },                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1D5572), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
-                            child: Text('Confirm', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white)),
+                              if (_submitting) return;
+                              _confirmBooking();
+                            },
+                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1D5572), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
+                            child: _submitting
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text('Confirm', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white)),
                           ),
                         ),
                       ),

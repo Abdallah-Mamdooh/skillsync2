@@ -6,6 +6,7 @@ const SessionFeedback = require('../mentor/sessionFeedback.model');
 const Transaction = require('../payment/transaction.model');
 const settingsService = require('../settings/settings.service');
 const auditService = require('../audit/audit.service');
+const GroupEvent = require('../events/groupEvent.model');
 
 function mapUserToDashboardShape(user) {
   return {
@@ -515,6 +516,208 @@ const getSettingsSecurityLogsCompat = asyncHandler(async (req, res) => {
   );
 });
 
+function buildEventAvailability(event) {
+  const capacity = Number(event.capacity || 0);
+  const registeredCount = Number(event.registeredCount || 0);
+  const availableSeats = Math.max(capacity - registeredCount, 0);
+
+  let registrationState = 'closed';
+
+  if (event.status === 'published' && event.scheduledAt && new Date(event.scheduledAt) > new Date()) {
+    registrationState = availableSeats <= 0 ? 'full' : 'open';
+  }
+
+  return {
+    capacity,
+    registeredCount,
+    availableSeats,
+    isFull: availableSeats <= 0,
+    registrationState,
+  };
+}
+
+function mapEventToDashboardShape(event) {
+  const obj = event.toObject ? event.toObject() : event;
+  const organizer = obj.organizerUserId || {};
+
+  return {
+    ...obj,
+    organizerName: organizer.fullName || organizer.name || organizer.email || 'Unknown',
+    organizerEmail: organizer.email || '',
+    availability: buildEventAvailability(obj),
+  };
+}
+
+function ensureFutureDate(dateValue) {
+  const date = new Date(dateValue);
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error('Invalid event date');
+  }
+
+  if (date <= new Date()) {
+    throw new Error('Event must be scheduled in the future');
+  }
+
+  return date;
+}
+const getPendingEventRequestsCompat = asyncHandler(async (req, res) => {
+  const events = await GroupEvent.find({ status: 'pending_review' })
+    .sort({ submittedAt: 1, createdAt: 1 })
+    .populate('organizerUserId', 'fullName email phoneNumber role')
+    .populate('speakers.mentorUserId', 'fullName email')
+    .populate('speakers.mentorProfileId');
+
+  res.status(200).json(events.map(mapEventToDashboardShape));
+});
+
+const getEventsCompat = asyncHandler(async (req, res) => {
+  const query = {};
+
+  if (req.query.status) {
+    query.status = req.query.status;
+  }
+
+  const events = await GroupEvent.find(query)
+    .sort({ createdAt: -1 })
+    .populate('organizerUserId', 'fullName email phoneNumber role')
+    .populate('speakers.mentorUserId', 'fullName email')
+    .populate('speakers.mentorProfileId');
+
+  res.status(200).json(events.map(mapEventToDashboardShape));
+});
+
+const approveEventRequestCompat = asyncHandler(async (req, res) => {
+  const { eventId } = req.params;
+  const body = req.body || {};
+
+  const event = await GroupEvent.findById(eventId);
+
+  if (!event) {
+    throw new Error('Event not found');
+  }
+
+  if (event.status !== 'pending_review') {
+    throw new Error('Only pending event requests can be approved');
+  }
+
+  const finalScheduledAt = body.scheduledAt || event.requestedScheduledAt;
+
+  if (!finalScheduledAt) {
+    throw new Error('scheduledAt is required before approval');
+  }
+
+  event.scheduledAt = ensureFutureDate(finalScheduledAt);
+  event.durationMinutes = Number(
+    body.durationMinutes || event.requestedDurationMinutes || event.durationMinutes || 60
+  );
+  event.capacity = Number(body.capacity || event.requestedCapacity || event.capacity || 100);
+
+  event.fee =
+    body.fee !== undefined
+      ? Number(body.fee)
+      : event.requestedFee !== null && event.requestedFee !== undefined
+      ? Number(event.requestedFee)
+      : Number(event.fee || 0);
+
+  event.currency = body.currency || event.currency || 'EGP';
+
+  if (body.meetingProvider !== undefined) {
+    event.meetingProvider = body.meetingProvider;
+  }
+
+  if (body.meetingLink !== undefined) {
+    event.meetingLink = body.meetingLink;
+  }
+
+  event.adminNotes = body.adminNotes || '';
+  event.status = 'approved';
+  event.adminReviewedBy = req.user?._id || null;
+  event.adminReviewedAt = new Date();
+  event.approvedAt = new Date();
+  event.rejectionReason = '';
+
+  await event.save();
+
+  const populated = await GroupEvent.findById(event._id)
+    .populate('organizerUserId', 'fullName email phoneNumber role')
+    .populate('speakers.mentorUserId', 'fullName email')
+    .populate('speakers.mentorProfileId');
+
+  res.status(200).json(mapEventToDashboardShape(populated));
+});
+
+const rejectEventRequestCompat = asyncHandler(async (req, res) => {
+  const { eventId } = req.params;
+  const body = req.body || {};
+
+  const event = await GroupEvent.findById(eventId);
+
+  if (!event) {
+    throw new Error('Event not found');
+  }
+
+  if (!['pending_review', 'approved'].includes(event.status)) {
+    throw new Error('Only pending or approved event requests can be rejected');
+  }
+
+  event.status = 'rejected';
+  event.adminReviewedBy = req.user?._id || null;
+  event.adminReviewedAt = new Date();
+  event.adminNotes = body.adminNotes || '';
+  event.rejectionReason =
+    body.rejectionReason || 'Event request was rejected by admin';
+  event.approvedAt = null;
+
+  await event.save();
+
+  const populated = await GroupEvent.findById(event._id)
+    .populate('organizerUserId', 'fullName email phoneNumber role')
+    .populate('speakers.mentorUserId', 'fullName email')
+    .populate('speakers.mentorProfileId');
+
+  res.status(200).json(mapEventToDashboardShape(populated));
+});
+
+const publishEventCompat = asyncHandler(async (req, res) => {
+  const { eventId } = req.params;
+
+  const event = await GroupEvent.findById(eventId);
+
+  if (!event) {
+    throw new Error('Event not found');
+  }
+
+  if (event.status !== 'approved') {
+    throw new Error('Only approved events can be published');
+  }
+
+  if (!event.scheduledAt) {
+    throw new Error('Event scheduledAt is required before publishing');
+  }
+
+  ensureFutureDate(event.scheduledAt);
+
+  if (Number(event.capacity || 0) <= 0) {
+    throw new Error('Event capacity must be greater than 0');
+  }
+
+  if (Number(event.registeredCount || 0) >= Number(event.capacity || 0)) {
+    throw new Error('Cannot publish a full event');
+  }
+
+  event.status = 'published';
+  event.publishedAt = new Date();
+
+  await event.save();
+
+  const populated = await GroupEvent.findById(event._id)
+    .populate('organizerUserId', 'fullName email phoneNumber role')
+    .populate('speakers.mentorUserId', 'fullName email')
+    .populate('speakers.mentorProfileId');
+
+  res.status(200).json(mapEventToDashboardShape(populated));
+});
 
 
 module.exports = {
@@ -538,5 +741,10 @@ module.exports = {
   getSettingsCompat,
   updateSettingsCompat,
   getSettingsSecurityLogsCompat,
-  
+
+  getPendingEventRequestsCompat,
+  getEventsCompat,
+  approveEventRequestCompat,
+  rejectEventRequestCompat,
+  publishEventCompat,
 };

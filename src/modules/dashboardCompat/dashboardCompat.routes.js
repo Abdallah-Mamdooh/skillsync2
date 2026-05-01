@@ -166,4 +166,39 @@ router.get(
   controller.getSettingsSecurityLogsCompat
 );
 
+
+router.get(
+  '/events/requests/pending',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.getPendingEventRequestsCompat
+);
+
+router.get(
+  '/events',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.getEventsCompat
+);
+
+router.post(
+  '/events/:eventId/approve',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.approveEventRequestCompat
+);
+
+router.post(
+  '/events/:eventId/reject',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.rejectEventRequestCompat
+);
+
+router.post(
+  '/events/:eventId/publish',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.publishEventCompat
+);
 module.exports = router;

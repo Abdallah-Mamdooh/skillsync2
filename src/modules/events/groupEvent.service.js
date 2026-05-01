@@ -17,6 +17,14 @@ function ensureFutureDate(dateValue) {
   return date;
 }
 
+function ensureFutureDateOrNull(dateValue) {
+  if (!dateValue) {
+    return null;
+  }
+
+  return ensureFutureDate(dateValue);
+}
+
 function canRegisterForEvent(event) {
   if (!event) throw new Error('Event not found');
   if (event.status !== 'published') {
@@ -28,6 +36,26 @@ function canRegisterForEvent(event) {
   if (Number(event.registeredCount || 0) >= Number(event.capacity || 0)) {
     throw new Error('Event is full');
   }
+}
+function buildEventAvailability(event) {
+  const capacity = Number(event.capacity || 0);
+  const registeredCount = Number(event.registeredCount || 0);
+  const availableSeats = Math.max(capacity - registeredCount, 0);
+  const isFull = availableSeats <= 0;
+
+  let registrationState = 'closed';
+
+  if (event.status === 'published' && new Date(event.scheduledAt) > new Date()) {
+    registrationState = isFull ? 'full' : 'open';
+  }
+
+  return {
+    capacity,
+    registeredCount,
+    availableSeats,
+    isFull,
+    registrationState,
+  };
 }
 
 async function incrementEventSeatCount(eventId) {
@@ -90,24 +118,69 @@ async function normalizeSpeakers(speakers = []) {
   return normalizedSpeakers;
 }
 
+function normalizeLearningOutcomes(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => String(item || '').trim())
+    .filter(Boolean);
+}
+
 const createEvent = async (organizerUserId, payload) => {
   const speakers = Array.isArray(payload.speakers) ? payload.speakers : [];
   const normalizedSpeakers = await normalizeSpeakers(speakers);
 
+  const requestedScheduledAt = ensureFutureDateOrNull(
+    payload.requestedScheduledAt || payload.scheduledAt
+  );
+
+  const requestedDurationMinutes =
+    payload.requestedDurationMinutes || payload.durationMinutes || null;
+
+  const requestedCapacity =
+    payload.requestedCapacity || payload.capacity || null;
+
+  const requestedFee =
+    payload.requestedFee !== undefined
+      ? payload.requestedFee
+      : payload.fee !== undefined
+        ? payload.fee
+        : null;
+
   const event = await GroupEvent.create({
     organizerUserId,
+
     title: payload.title,
     description: payload.description || '',
     topic: payload.topic || '',
+    eventType: payload.eventType || 'webinar',
+    targetAudience: payload.targetAudience || '',
+    agenda: payload.agenda || '',
+    learningOutcomes: normalizeLearningOutcomes(payload.learningOutcomes),
+    requirements: payload.requirements || '',
+
     speakers: normalizedSpeakers,
+
+    // Final admin-confirmed values.
+    // These can be filled later by admin during approval.
     fee: payload.fee || 0,
     currency: payload.currency || 'EGP',
     capacity: payload.capacity || 100,
     meetingProvider: payload.meetingProvider || 'google_meet',
-    meetingLink: payload.meetingLink,
-    scheduledAt: ensureFutureDate(payload.scheduledAt),
+    meetingLink: payload.meetingLink || '',
+    scheduledAt: ensureFutureDateOrNull(payload.scheduledAt),
     durationMinutes: payload.durationMinutes || 60,
-    status: payload.status || 'draft',
+
+    // Mentor-requested values.
+    requestedScheduledAt,
+    requestedDurationMinutes,
+    requestedCapacity,
+    requestedFee,
+    mentorNotes: payload.mentorNotes || '',
+
+    status: 'draft',
     coverImageUrl: payload.coverImageUrl || '',
   });
 
@@ -124,21 +197,19 @@ const updateEvent = async (organizerUserId, eventId, payload) => {
     throw new Error('You are not allowed to update this event');
   }
 
-  if (['completed', 'cancelled'].includes(event.status)) {
-    throw new Error('Completed or cancelled events cannot be updated');
+  if (!['draft', 'rejected'].includes(event.status)) {
+    throw new Error('Only draft or rejected event requests can be edited by the mentor');
   }
 
   const updatableFields = [
     'title',
     'description',
     'topic',
-    'fee',
-    'currency',
-    'capacity',
-    'meetingProvider',
-    'meetingLink',
-    'durationMinutes',
-    'status',
+    'eventType',
+    'targetAudience',
+    'agenda',
+    'requirements',
+    'mentorNotes',
     'coverImageUrl',
   ];
 
@@ -148,40 +219,279 @@ const updateEvent = async (organizerUserId, eventId, payload) => {
     }
   }
 
-  if (payload.scheduledAt !== undefined) {
-    event.scheduledAt = ensureFutureDate(payload.scheduledAt);
+  if (payload.learningOutcomes !== undefined) {
+    event.learningOutcomes = normalizeLearningOutcomes(payload.learningOutcomes);
+  }
+
+  if (payload.requestedScheduledAt !== undefined || payload.scheduledAt !== undefined) {
+    event.requestedScheduledAt = ensureFutureDateOrNull(
+      payload.requestedScheduledAt || payload.scheduledAt
+    );
+  }
+
+  if (payload.requestedDurationMinutes !== undefined || payload.durationMinutes !== undefined) {
+    event.requestedDurationMinutes =
+      payload.requestedDurationMinutes || payload.durationMinutes || null;
+  }
+
+  if (payload.requestedCapacity !== undefined || payload.capacity !== undefined) {
+    event.requestedCapacity =
+      payload.requestedCapacity || payload.capacity || null;
+  }
+
+  if (payload.requestedFee !== undefined || payload.fee !== undefined) {
+    event.requestedFee =
+      payload.requestedFee !== undefined ? payload.requestedFee : payload.fee;
   }
 
   if (Array.isArray(payload.speakers)) {
     event.speakers = await normalizeSpeakers(payload.speakers);
   }
 
-  if (Number(event.capacity || 0) < Number(event.registeredCount || 0)) {
-    throw new Error('Capacity cannot be reduced below current registeredCount');
+  // If admin rejected it before, editing it should return it to draft.
+  if (event.status === 'rejected') {
+    event.status = 'draft';
+    event.rejectionReason = '';
+    event.adminNotes = '';
+    event.adminReviewedBy = null;
+    event.adminReviewedAt = null;
   }
 
   await event.save();
   return event;
 };
-
-const publishEvent = async (organizerUserId, eventId) => {
+const submitEventRequest = async (organizerUserId, eventId) => {
   const event = await GroupEvent.findById(eventId);
   if (!event) {
     throw new Error('Event not found');
   }
 
   if (String(event.organizerUserId) !== String(organizerUserId)) {
-    throw new Error('You are not allowed to publish this event');
+    throw new Error('You are not allowed to submit this event request');
   }
 
-  if (!event.meetingLink) {
-    throw new Error('Event meetingLink is required before publishing');
+  if (!['draft', 'rejected'].includes(event.status)) {
+    throw new Error('Only draft or rejected event requests can be submitted');
+  }
+
+  if (!event.title) {
+    throw new Error('Event title is required');
+  }
+
+  if (!event.description) {
+    throw new Error('Event description is required');
+  }
+
+  if (!event.topic) {
+    throw new Error('Event topic is required');
+  }
+
+  event.status = 'pending_review';
+  event.submittedAt = new Date();
+
+  // Clear old rejection/admin data if resubmitting.
+  event.rejectionReason = '';
+  event.adminNotes = '';
+  event.adminReviewedBy = null;
+  event.adminReviewedAt = null;
+  event.approvedAt = null;
+
+  await event.save();
+
+  await notificationService.createNotification({
+    userId: event.organizerUserId,
+    type: 'event_request_submitted',
+    title: 'Event request submitted',
+    message: `Your event request "${event.title}" was submitted for admin review.`,
+    data: {
+      eventId: event._id,
+      status: event.status,
+    },
+  });
+
+  return event;
+};
+
+const getPendingEventRequests = async () => {
+  return GroupEvent.find({ status: 'pending_review' })
+    .sort({ submittedAt: 1, createdAt: 1 })
+    .populate('organizerUserId', 'fullName email phoneNumber role')
+    .populate('speakers.mentorUserId', 'fullName email')
+    .populate('speakers.mentorProfileId');
+};
+
+const getAllAdminEvents = async (filters = {}) => {
+  const query = {};
+
+  if (filters.status) {
+    query.status = filters.status;
+  }
+
+  const events = await GroupEvent.find(query)
+    .sort({ createdAt: -1 })
+    .populate('organizerUserId', 'fullName email phoneNumber role')
+    .populate('speakers.mentorUserId', 'fullName email')
+    .populate('speakers.mentorProfileId');
+
+  return events.map((event) => {
+    const obj = event.toObject();
+
+    return {
+      ...obj,
+      availability: buildEventAvailability(event),
+    };
+  });
+};
+
+const approveEventRequest = async (adminUserId, eventId, payload = {}) => {
+  const event = await GroupEvent.findById(eventId);
+  if (!event) {
+    throw new Error('Event not found');
+  }
+
+  if (event.status !== 'pending_review') {
+    throw new Error('Only pending event requests can be approved');
+  }
+
+  const finalScheduledAt = payload.scheduledAt || event.requestedScheduledAt;
+  const finalDurationMinutes =
+    payload.durationMinutes || event.requestedDurationMinutes || event.durationMinutes;
+  const finalCapacity =
+    payload.capacity || event.requestedCapacity || event.capacity;
+  const finalFee =
+    payload.fee !== undefined
+      ? payload.fee
+      : event.requestedFee !== null && event.requestedFee !== undefined
+        ? event.requestedFee
+        : event.fee;
+
+  if (!finalScheduledAt) {
+    throw new Error('scheduledAt is required before approval');
+  }
+
+  event.scheduledAt = ensureFutureDate(finalScheduledAt);
+  event.durationMinutes = finalDurationMinutes || 60;
+  event.capacity = finalCapacity || 100;
+  event.fee = finalFee || 0;
+  event.currency = payload.currency || event.currency || 'EGP';
+
+  if (payload.meetingProvider !== undefined) {
+    event.meetingProvider = payload.meetingProvider;
+  }
+
+  if (payload.meetingLink !== undefined) {
+    event.meetingLink = payload.meetingLink;
+  }
+
+  if (payload.adminNotes !== undefined) {
+    event.adminNotes = payload.adminNotes;
+  }
+
+  event.status = 'approved';
+  event.adminReviewedBy = adminUserId;
+  event.adminReviewedAt = new Date();
+  event.approvedAt = new Date();
+  event.rejectionReason = '';
+
+  await event.save();
+
+  await notificationService.createNotification({
+    userId: event.organizerUserId,
+    type: 'event_request_approved',
+    title: 'Event request approved',
+    message: `Your event request "${event.title}" was approved.`,
+    data: {
+      eventId: event._id,
+      status: event.status,
+      scheduledAt: event.scheduledAt,
+      durationMinutes: event.durationMinutes,
+      capacity: event.capacity,
+      fee: event.fee,
+      currency: event.currency,
+    },
+  });
+
+  return event;
+};
+
+const rejectEventRequest = async (adminUserId, eventId, payload = {}) => {
+  const event = await GroupEvent.findById(eventId);
+  if (!event) {
+    throw new Error('Event not found');
+  }
+
+  if (!['pending_review', 'approved'].includes(event.status)) {
+    throw new Error('Only pending or approved event requests can be rejected');
+  }
+
+  event.status = 'rejected';
+  event.adminReviewedBy = adminUserId;
+  event.adminReviewedAt = new Date();
+  event.adminNotes = payload.adminNotes || '';
+  event.rejectionReason = payload.rejectionReason || 'Event request was rejected by admin';
+  event.approvedAt = null;
+
+  await event.save();
+
+  await notificationService.createNotification({
+    userId: event.organizerUserId,
+    type: 'event_request_rejected',
+    title: 'Event request rejected',
+    message: `Your event request "${event.title}" was rejected.`,
+    data: {
+      eventId: event._id,
+      status: event.status,
+      rejectionReason: event.rejectionReason,
+    },
+  });
+
+  return event;
+};
+
+const publishEvent = async (adminUserId, eventId) => {
+  const event = await GroupEvent.findById(eventId);
+  if (!event) {
+    throw new Error('Event not found');
+  }
+
+  if (event.status !== 'approved') {
+    throw new Error('Only approved events can be published');
+  }
+
+  if (!event.scheduledAt) {
+    throw new Error('Event scheduledAt is required before publishing');
   }
 
   ensureFutureDate(event.scheduledAt);
 
+  if (Number(event.capacity || 0) < 1) {
+    throw new Error('Event capacity must be at least 1');
+  }
+
+  if (Number(event.registeredCount || 0) >= Number(event.capacity || 0)) {
+    throw new Error('Cannot publish a full event');
+  }
+
   event.status = 'published';
+  event.adminReviewedBy = event.adminReviewedBy || adminUserId;
+  event.publishedAt = new Date();
+
   await event.save();
+
+  await notificationService.createNotification({
+    userId: event.organizerUserId,
+    type: 'event_published',
+    title: 'Event published',
+    message: `Your event "${event.title}" has been published.`,
+    data: {
+      eventId: event._id,
+      title: event.title,
+      scheduledAt: event.scheduledAt,
+      capacity: event.capacity,
+      fee: event.fee,
+      currency: event.currency,
+    },
+  });
 
   for (const speaker of event.speakers || []) {
     await notificationService.createNotification({
@@ -201,9 +511,34 @@ const publishEvent = async (organizerUserId, eventId) => {
 };
 
 const getPublicEvents = async () => {
-  return GroupEvent.find({ status: 'published' })
+  const events = await GroupEvent.find({ status: 'published' })
     .sort({ scheduledAt: 1 })
     .populate('speakers.mentorUserId', 'fullName email');
+
+  return events.map((event) => {
+    const obj = event.toObject();
+
+    return {
+      ...obj,
+      availability: buildEventAvailability(event),
+    };
+  });
+};
+
+const getMyCreatedEvents = async (organizerUserId) => {
+  const events = await GroupEvent.find({ organizerUserId })
+    .sort({ createdAt: -1 })
+    .populate('speakers.mentorUserId', 'fullName email')
+    .populate('speakers.mentorProfileId');
+
+  return events.map((event) => {
+    const obj = event.toObject();
+
+    return {
+      ...obj,
+      availability: buildEventAvailability(event),
+    };
+  });
 };
 
 const getEventById = async (eventId) => {
@@ -216,7 +551,12 @@ const getEventById = async (eventId) => {
     throw new Error('Event not found');
   }
 
-  return event;
+  const obj = event.toObject();
+
+  return {
+    ...obj,
+    availability: buildEventAvailability(event),
+  };
 };
 
 const registerForEvent = async (userId, eventId) => {
@@ -227,6 +567,14 @@ const registerForEvent = async (userId, eventId) => {
 
   canRegisterForEvent(event);
 
+const availability = buildEventAvailability(event);
+if (availability.registrationState !== 'open') {
+  throw new Error(
+    availability.isFull
+      ? 'Event is full and no longer accepts registrations'
+      : 'Event registration is closed'
+  );
+}
   const existing = await EventRegistration.findOne({ eventId, userId });
   if (existing) {
     throw new Error('You are already registered for this event');
@@ -289,6 +637,15 @@ const registerForEventWithFawry = async (userId, eventId, payload = {}) => {
   }
 
   canRegisterForEvent(event);
+
+const availability = buildEventAvailability(event);
+if (availability.registrationState !== 'open') {
+  throw new Error(
+    availability.isFull
+      ? 'Event is full and no longer accepts registrations'
+      : 'Event registration is closed'
+  );
+}
 
   const existing = await EventRegistration.findOne({ eventId, userId });
   if (existing) {
@@ -675,7 +1032,15 @@ const cancelEvent = async (organizerUserId, eventId) => {
 module.exports = {
   createEvent,
   updateEvent,
+  submitEventRequest,
+
+  getMyCreatedEvents,
+  getPendingEventRequests,
+  getAllAdminEvents,
+  approveEventRequest,
+  rejectEventRequest,
   publishEvent,
+
   getPublicEvents,
   getEventById,
   registerForEvent,

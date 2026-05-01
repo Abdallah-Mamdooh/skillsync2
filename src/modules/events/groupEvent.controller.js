@@ -11,6 +11,55 @@ const updateEvent = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data });
 });
 
+const getAllAdminEvents = asyncHandler(async (req, res) => {
+  const data = await eventService.getAllAdminEvents({
+    status: req.query.status,
+  });
+
+  res.status(200).json({ success: true, data });
+});
+
+const getMyCreatedEvents = asyncHandler(async (req, res) => {
+  const data = await eventService.getMyCreatedEvents(req.user._id);
+
+  res.status(200).json({ success: true, data });
+});
+
+const submitEventRequest = asyncHandler(async (req, res) => {
+  const data = await eventService.submitEventRequest(
+    req.user._id,
+    req.params.eventId
+  );
+
+  res.status(200).json({ success: true, data });
+});
+
+const getPendingEventRequests = asyncHandler(async (req, res) => {
+  const data = await eventService.getPendingEventRequests();
+
+  res.status(200).json({ success: true, data });
+});
+
+const approveEventRequest = asyncHandler(async (req, res) => {
+  const data = await eventService.approveEventRequest(
+    req.user._id,
+    req.params.eventId,
+    req.body
+  );
+
+  res.status(200).json({ success: true, data });
+});
+
+const rejectEventRequest = asyncHandler(async (req, res) => {
+  const data = await eventService.rejectEventRequest(
+    req.user._id,
+    req.params.eventId,
+    req.body
+  );
+
+  res.status(200).json({ success: true, data });
+});
+
 const publishEvent = asyncHandler(async (req, res) => {
   const data = await eventService.publishEvent(req.user._id, req.params.eventId);
   res.status(200).json({ success: true, data });
@@ -82,6 +131,14 @@ const registerForEventWithFawry = asyncHandler(async (req, res) => {
 module.exports = {
   createEvent,
   updateEvent,
+  getMyCreatedEvents,
+  submitEventRequest,
+
+  getPendingEventRequests,
+  getAllAdminEvents,
+  approveEventRequest,
+  rejectEventRequest,
+
   publishEvent,
   cancelEvent,
   getPublicEvents,

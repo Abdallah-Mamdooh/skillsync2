@@ -48,6 +48,36 @@ const groupEventSchema = new mongoose.Schema(
       default: '',
     },
 
+    eventType: {
+      type: String,
+      enum: ['workshop', 'webinar', 'qa_session', 'career_talk', 'other'],
+      default: 'webinar',
+      index: true,
+    },
+
+    targetAudience: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+
+    agenda: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+
+    learningOutcomes: {
+      type: [String],
+      default: [],
+    },
+
+    requirements: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+
     speakers: {
       type: [speakerSchema],
       default: [],
@@ -82,32 +112,40 @@ const groupEventSchema = new mongoose.Schema(
     meetingProvider: {
       type: String,
       enum: ['google_meet', 'zoom', 'other'],
-      required: true,
       default: 'google_meet',
     },
 
+    // Important:
+    // This is now optional because admins/owners will manage meeting links externally by email.
     meetingLink: {
       type: String,
-      required: true,
       trim: true,
+      default: '',
     },
 
     scheduledAt: {
       type: Date,
-      required: true,
+      default: null,
       index: true,
     },
 
     durationMinutes: {
       type: Number,
-      required: true,
       min: 15,
       default: 60,
     },
 
     status: {
       type: String,
-      enum: ['draft', 'published', 'cancelled', 'completed'],
+      enum: [
+        'draft',
+        'pending_review',
+        'approved',
+        'published',
+        'rejected',
+        'cancelled',
+        'completed',
+      ],
       default: 'draft',
       index: true,
     },
@@ -117,8 +155,93 @@ const groupEventSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+
+    // Mentor request preferences
+    requestedScheduledAt: {
+      type: Date,
+      default: null,
+    },
+
+    requestedDurationMinutes: {
+      type: Number,
+      min: 15,
+      default: null,
+    },
+
+    requestedCapacity: {
+      type: Number,
+      min: 1,
+      default: null,
+    },
+
+    requestedFee: {
+      type: Number,
+      min: 0,
+      default: null,
+    },
+
+    mentorNotes: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+
+    submittedAt: {
+      type: Date,
+      default: null,
+    },
+
+    // Admin review data
+    adminReviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+
+    adminReviewedAt: {
+      type: Date,
+      default: null,
+    },
+
+    adminNotes: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+
+    rejectionReason: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+
+    approvedAt: {
+      type: Date,
+      default: null,
+    },
+
+    publishedAt: {
+      type: Date,
+      default: null,
+    },
+
+    closedAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );
+
+groupEventSchema.virtual('availableSeats').get(function () {
+  return Math.max(Number(this.capacity || 0) - Number(this.registeredCount || 0), 0);
+});
+
+groupEventSchema.virtual('isFull').get(function () {
+  return Number(this.registeredCount || 0) >= Number(this.capacity || 0);
+});
+
+groupEventSchema.set('toJSON', { virtuals: true });
+groupEventSchema.set('toObject', { virtuals: true });
 
 module.exports = mongoose.model('GroupEvent', groupEventSchema);

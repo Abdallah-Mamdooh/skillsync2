@@ -1,0 +1,443 @@
+[
+  {
+    "careerName": "Vue",
+    "totalSteps": 96,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Ux Design",
+    "totalSteps": 103,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Typescript",
+    "totalSteps": 98,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Terraform",
+    "totalSteps": 111,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Technical Writer",
+    "totalSteps": 86,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "System Design",
+    "totalSteps": 147,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Sql",
+    "totalSteps": 114,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Spring Boot",
+    "totalSteps": 46,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Software Design Architecture",
+    "totalSteps": 88,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Software Architect",
+    "totalSteps": 125,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Server Side Game Developer",
+    "totalSteps": 157,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Rust",
+    "totalSteps": 128,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Redis",
+    "totalSteps": 172,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "React Native",
+    "totalSteps": 97,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "React",
+    "totalSteps": 87,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Qa",
+    "totalSteps": 135,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Python",
+    "totalSteps": 83,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Product Manager",
+    "totalSteps": 183,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Postgresql Dba",
+    "totalSteps": 199,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Php",
+    "totalSteps": 144,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Nodejs",
+    "totalSteps": 124,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Mongodb",
+    "totalSteps": 115,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Mlops",
+    "totalSteps": 34,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Machine Learning",
+    "totalSteps": 154,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Linux",
+    "totalSteps": 102,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Kubernetes",
+    "totalSteps": 67,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Javascript",
+    "totalSteps": 129,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Java",
+    "totalSteps": 96,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Ios",
+    "totalSteps": 182,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Graphql",
+    "totalSteps": 69,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Golang",
+    "totalSteps": 1,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Git Github",
+    "totalSteps": 167,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Git Github Beginner",
+    "totalSteps": 13,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Game Developer",
+    "totalSteps": 146,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Full Stack",
+    "totalSteps": 46,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Frontend",
+    "totalSteps": 109,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Frontend Beginner",
+    "totalSteps": 30,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Flutter",
+    "totalSteps": 108,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Engineering Manager",
+    "totalSteps": 159,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Devrel",
+    "totalSteps": 147,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Devops",
+    "totalSteps": 138,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Devops Beginner",
+    "totalSteps": 38,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Design System",
+    "totalSteps": 126,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Datastructures And Algorithms",
+    "totalSteps": 102,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Data Engineer",
+    "totalSteps": 201,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Data Analyst",
+    "totalSteps": 126,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Cyber Security",
+    "totalSteps": 325,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Cpp",
+    "totalSteps": 135,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Computer Science",
+    "totalSteps": 190,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Cloudflare",
+    "totalSteps": 104,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Blockchain",
+    "totalSteps": 118,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Bi Analyst",
+    "totalSteps": 210,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Backend",
+    "totalSteps": 147,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Backend Beginner",
+    "totalSteps": 39,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Aws",
+    "totalSteps": 105,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Aspnet Core",
+    "totalSteps": 159,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Api Design",
+    "totalSteps": 85,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Angular",
+    "totalSteps": 158,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Android",
+    "totalSteps": 110,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Ai Red Teaming",
+    "totalSteps": 78,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Ai Engineer",
+    "totalSteps": 133,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Ai Data Scientist",
+    "totalSteps": 68,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  },
+  {
+    "careerName": "Ai Agents",
+    "totalSteps": 132,
+    "suspiciousCount": 0,
+    "suspiciousSteps": [],
+    "status": "CLEAN_BY_RULES"
+  }
+]

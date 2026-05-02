@@ -4,14 +4,16 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'dart:convert';
-import '../providers/auth_provider.dart';
-import '../services/profile_service.dart';
-import '../widgets/bottom_navigation.dart';
+import 'package:url_launcher/url_launcher.dart'; // ✅ Add this import for URL launching
+import '../../providers/auth_provider.dart';
+import '../../services/api_service.dart';
+import '../../services/profile_service.dart';
+import '../../widgets/bottom_navigation.dart';
+import '../auth/login_screen.dart';
 import 'assessment_flow.dart';
 import 'student_homescreen.dart';
-import 'auth/login_screen.dart';
 import 'Notifications screen.dart';
-import 'report issue.dart'; // ✅ أضف الـ import ده
+import 'report issue.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -23,19 +25,33 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final ImagePicker _picker = ImagePicker();
 
+  final Map<String, String> _availableInterests = {
+    'web': 'Web Development',
+    'data_ai': 'Data / AI',
+    'security': 'Security',
+    'design': 'Design',
+    'product': 'Product',
+    'devops': 'DevOps',
+    'qa': 'QA / Testing',
+    'mobile_game': 'Mobile / Game',
+  };
+
   List<String> _parseSkills(dynamic raw) {
     if (raw is List) {
-      return raw.map((s) {
-        if (s is String) return s;
-        if (s is Map) {
-          final map = Map<String, dynamic>.from(s);
-          return map['name']?.toString() ??
-              map['skill']?.toString() ??
-              map['title']?.toString() ??
-              s.toString();
-        }
-        return s.toString();
-      }).where((s) => s.trim().isNotEmpty).toList();
+      return raw
+          .map((s) {
+            if (s is String) return s;
+            if (s is Map) {
+              final map = Map<String, dynamic>.from(s);
+              return map['name']?.toString() ??
+                  map['skill']?.toString() ??
+                  map['title']?.toString() ??
+                  s.toString();
+            }
+            return s.toString();
+          })
+          .where((s) => s.trim().isNotEmpty)
+          .toList();
     }
     if (raw is String) {
       return raw
@@ -63,12 +79,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final dt = DateTime.parse(createdAt.toString());
       const months = [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December'
       ];
       return 'Joined ${months[dt.month - 1]} ${dt.year}';
     } catch (_) {
       return 'Join date unknown';
+    }
+  }
+
+  Future<void> _launchLinkedIn() async {
+    final Uri linkedInUrl = Uri.parse(
+        'https://www.linkedin.com/in/your-profile'); // Replace with actual LinkedIn URL
+    if (await canLaunchUrl(linkedInUrl)) {
+      await launchUrl(linkedInUrl, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not launch LinkedIn')),
+        );
+      }
     }
   }
 
@@ -102,13 +142,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           authProvider.updateUser(response['data']);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Profile photo updated successfully!')),
+              const SnackBar(
+                  content: Text('Profile photo updated successfully!')),
             );
           }
         } else {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(response['message'] ?? 'Failed to upload photo')),
+              SnackBar(
+                  content:
+                      Text(response['message'] ?? 'Failed to upload photo')),
             );
           }
         }
@@ -145,18 +188,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
           title: const Text('Add New Skill'),
           content: TextField(
             controller: skillController,
-            decoration: const InputDecoration(hintText: 'Skill name (e.g. Flutter, Dart)'),
+            decoration: const InputDecoration(
+                hintText: 'Skill name (e.g. Flutter, Dart)'),
             autofocus: true,
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel')),
             TextButton(
               onPressed: () async {
                 final skill = skillController.text.trim();
                 if (skill.isNotEmpty) {
-                  final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                  final currentSkills = _parseSkills(authProvider.user?['skills']);
-                  final exists = currentSkills.any((s) => s.toLowerCase() == skill.toLowerCase());
+                  final authProvider =
+                      Provider.of<AuthProvider>(context, listen: false);
+                  final currentSkills =
+                      _parseSkills(authProvider.user?['skills']);
+                  final exists = currentSkills
+                      .any((s) => s.toLowerCase() == skill.toLowerCase());
                   if (!exists) {
                     currentSkills.add(skill);
                     final success = await _updateSkillsOnServer(currentSkills);
@@ -176,6 +225,128 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  void _showCareerInterestsDialog() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final List<String> currentInterests =
+        _parseSkills(authProvider.user?['selectedInterests']);
+
+    List<String> tempSelected = List.from(currentInterests);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Select Career Interests'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: _availableInterests.entries.map((entry) {
+                    final bool isSelected = tempSelected.contains(entry.key);
+                    return CheckboxListTile(
+                      title: Text(entry.value),
+                      value: isSelected,
+                      activeColor: const Color(0xFF1D5572),
+                      onChanged: (bool? value) {
+                        setDialogState(() {
+                          if (value == true) {
+                            if (tempSelected.length < 3) {
+                              tempSelected.add(entry.key);
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text('Select up to 3 interests'),
+                                    duration: Duration(seconds: 1)),
+                              );
+                            }
+                          } else {
+                            tempSelected.remove(entry.key);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    await _updateInterestsOnServer(tempSelected);
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<bool> _updateInterestsOnServer(List<String> newInterests) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final token = authProvider.token;
+    if (token == null) return false;
+
+    authProvider.setLoading(true);
+
+    try {
+      final response = await ProfileService.updateProfile(
+        token: token,
+        updates: {'selectedInterests': newInterests},
+      );
+
+      if (response['success'] == true) {
+        final currentUser = Map<String, dynamic>.from(authProvider.user ?? {});
+        Map<String, dynamic>? updatedUser;
+        final data = response['data'];
+        if (data is Map<String, dynamic>) {
+          final userData = data['user'];
+          if (userData is Map<String, dynamic>) {
+            updatedUser = Map<String, dynamic>.from(currentUser)
+              ..addAll(userData);
+          } else {
+            updatedUser = Map<String, dynamic>.from(currentUser)..addAll(data);
+          }
+        }
+        updatedUser ??= Map<String, dynamic>.from(currentUser);
+        updatedUser['selectedInterests'] = newInterests;
+        authProvider.updateUser(updatedUser);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Interests updated successfully')),
+          );
+        }
+        return true;
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text(
+                    response['message']?.toString() ?? 'Failed to update')),
+          );
+        }
+        return false;
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+      return false;
+    } finally {
+      authProvider.setLoading(false);
+    }
+  }
+
   Future<bool> _updateSkillsOnServer(List<String> newSkills) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final token = authProvider.token;
@@ -193,7 +364,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (data is Map<String, dynamic>) {
           final userData = data['user'];
           if (userData is Map<String, dynamic>) {
-            updatedUser = Map<String, dynamic>.from(currentUser)..addAll(userData);
+            updatedUser = Map<String, dynamic>.from(currentUser)
+              ..addAll(userData);
           } else {
             updatedUser = Map<String, dynamic>.from(currentUser)..addAll(data);
           }
@@ -210,13 +382,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 lower.contains('profileservice.updateprofile');
 
         if (isProfileEndpointBroken) {
-          final currentUser = Map<String, dynamic>.from(authProvider.user ?? {});
-          final updatedUser = Map<String, dynamic>.from(currentUser)..['skills'] = newSkills;
+          final currentUser =
+              Map<String, dynamic>.from(authProvider.user ?? {});
+          final updatedUser = Map<String, dynamic>.from(currentUser)
+            ..['skills'] = newSkills;
           authProvider.updateUser(updatedUser);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Saved locally. Server profile update is unavailable.'),
+                content: Text(
+                    'Saved locally. Server profile update is unavailable.'),
               ),
             );
           }
@@ -225,7 +400,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(message.isEmpty ? 'Failed to update skills' : message)),
+            SnackBar(
+                content: Text(
+                    message.isEmpty ? 'Failed to update skills' : message)),
           );
         }
         return false;
@@ -250,6 +427,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final profilePhoto = user?['profileImageUrl'] as String?;
     final isLoading = authProvider.isLoading;
     final skills = _parseSkills(user?['skills']);
+    final linkedInUrl =
+        user?['linkedInUrl'] ?? 'https://www.linkedin.com/in/your-profile';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
@@ -281,7 +460,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: const [BoxShadow(color: Color(0x3F000000), spreadRadius: 0, offset: Offset(0, 4), blurRadius: 12)],
+                  boxShadow: const [
+                    BoxShadow(
+                        color: Color(0x3F000000),
+                        spreadRadius: 0,
+                        offset: Offset(0, 4),
+                        blurRadius: 12)
+                  ],
                 ),
                 child: Column(
                   children: [
@@ -291,42 +476,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         GestureDetector(
                           onTap: isLoading ? null : _pickAndUploadImage,
                           child: Container(
-                            width: 96, height: 96,
+                            width: 96,
+                            height: 96,
                             decoration: BoxDecoration(
                               color: const Color(0xFFF3E8FF),
                               borderRadius: BorderRadius.circular(48),
-                              image: profilePhoto != null && profilePhoto.isNotEmpty
+                              image: profilePhoto != null &&
+                                      profilePhoto.isNotEmpty
                                   ? DecorationImage(
-                                image: _getProfileImage(profilePhoto),
-                                fit: BoxFit.cover,
-                              )
+                                      image: _getProfileImage(profilePhoto),
+                                      fit: BoxFit.cover,
+                                    )
                                   : null,
                             ),
-                            child: (profilePhoto == null || profilePhoto.isEmpty)
+                            child: (profilePhoto == null ||
+                                    profilePhoto.isEmpty)
                                 ? Center(
-                              child: isLoading
-                                  ? const CircularProgressIndicator()
-                                  : Text(
-                                getInitials(fullName),
-                                style: GoogleFonts.inter(
-                                  color: const Color(0xFF1D5572),
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.bold,
-                                  height: 0.9,
-                                ),
-                              ),
-                            )
-                                : (isLoading ? const Center(child: CircularProgressIndicator(color: Colors.white)) : null),
+                                    child: isLoading
+                                        ? const CircularProgressIndicator()
+                                        : Text(
+                                            getInitials(fullName),
+                                            style: GoogleFonts.inter(
+                                              color: const Color(0xFF1D5572),
+                                              fontSize: 32,
+                                              fontWeight: FontWeight.bold,
+                                              height: 0.9,
+                                            ),
+                                          ),
+                                  )
+                                : (isLoading
+                                    ? const Center(
+                                        child: CircularProgressIndicator(
+                                            color: Colors.white))
+                                    : null),
                           ),
                         ),
                         Positioned(
-                          right: 0, bottom: 0,
+                          right: 0,
+                          bottom: 0,
                           child: GestureDetector(
                             onTap: isLoading ? null : _pickAndUploadImage,
                             child: Container(
-                              width: 32, height: 32,
-                              decoration: BoxDecoration(color: const Color(0xFF1D5572), borderRadius: BorderRadius.circular(16)),
-                              child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                  color: const Color(0xFF1D5572),
+                                  borderRadius: BorderRadius.circular(16)),
+                              child: const Icon(Icons.camera_alt,
+                                  color: Colors.white, size: 16),
                             ),
                           ),
                         ),
@@ -335,31 +532,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: 12),
                     Text(
                       fullName,
-                      style: GoogleFonts.inter(color: const Color(0xFF1F2937), fontSize: 20, fontWeight: FontWeight.bold, height: 1.4),
+                      style: GoogleFonts.inter(
+                          color: const Color(0xFF1F2937),
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          height: 1.4),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       role.toString().toUpperCase(),
-                      style: GoogleFonts.inter(color: const Color(0xFF6B7280), fontSize: 14, height: 1.1),
+                      style: GoogleFonts.inter(
+                          color: const Color(0xFF6B7280),
+                          fontSize: 14,
+                          height: 1.1),
                     ),
                     const SizedBox(height: 8),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: Text(
-                        (user?['bio'] != null && (user!['bio'] as String).isNotEmpty)
+                        (user?['bio'] != null &&
+                                (user!['bio'] as String).isNotEmpty)
                             ? user['bio'] as String
                             : 'No bio added yet',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: Color(0xFF6B7280), fontSize: 14, height: 1.1),
+                        style: const TextStyle(
+                            color: Color(0xFF6B7280),
+                            fontSize: 14,
+                            height: 1.1),
                       ),
                     ),
                     const SizedBox(height: 12),
                     GestureDetector(
                       onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen()));
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const EditProfileScreen()));
                       },
                       child: Container(
-                        width: 124, height: 32,
+                        width: 124,
+                        height: 32,
                         decoration: BoxDecoration(
                           color: Colors.white,
                           border: Border.all(color: const Color(0xFFE5E7EB)),
@@ -368,9 +580,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.edit, size: 13, color: Color(0xFF6B7280)),
+                            const Icon(Icons.edit,
+                                size: 13, color: Color(0xFF6B7280)),
                             const SizedBox(width: 4),
-                            Text('Edit Profile', style: GoogleFonts.inter(color: const Color(0xFF6B7280), fontSize: 14, height: 1.1)),
+                            Text('Edit Profile',
+                                style: GoogleFonts.inter(
+                                    color: const Color(0xFF6B7280),
+                                    fontSize: 14,
+                                    height: 1.1)),
                           ],
                         ),
                       ),
@@ -386,9 +603,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 _sectionTitle('Contact Information'),
                 const SizedBox(height: 12),
-                _infoRow(Icons.email_outlined, email),
-                _infoRow(Icons.school_outlined, 'Computer Science, SAMS University'),
-                _infoRow(Icons.calendar_today_outlined, _formatJoinDate(user?['createdAt'])),
+                _infoRow(Icons.email, email),
+                _infoRow(Icons.link, 'LinkedIn',
+                    onTap: _launchLinkedIn, isLinkedIn: true),
+                _infoRow(
+                    Icons.calendar_today, _formatJoinDate(user?['createdAt'])),
               ],
             ),
             const SizedBox(height: 16),
@@ -401,7 +620,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     _sectionTitle('Skills'),
                     GestureDetector(
                       onTap: _showAddSkillDialog,
-                      child: const Icon(Icons.add, size: 20, color: Color(0xFF1D5572)),
+                      child: const Icon(Icons.add,
+                          size: 20, color: Color(0xFF1D5572)),
                     ),
                   ],
                 ),
@@ -409,12 +629,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 if (skills.isEmpty)
                   Text(
                     'No skills added yet',
-                    style: GoogleFonts.inter(color: const Color(0xFF6B7280), fontSize: 14, height: 1.1),
+                    style: GoogleFonts.inter(
+                        color: const Color(0xFF6B7280),
+                        fontSize: 14,
+                        height: 1.1),
                   )
                 else
                   Wrap(
-                    spacing: 8, runSpacing: 8,
-                    children: skills.map((s) => _skillTag(s, filled: true)).toList(),
+                    spacing: 8,
+                    runSpacing: 8,
+                    children:
+                        skills.map((s) => _skillTag(s, filled: true)).toList(),
                   ),
               ],
             ),
@@ -426,19 +651,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _sectionTitle('Career Interests'),
-                    const Icon(Icons.add, size: 15, color: Color(0xFF1D5572)),
+                    GestureDetector(
+                      onTap: _showCareerInterestsDialog,
+                      child: const Icon(Icons.add,
+                          size: 20, color: Color(0xFF1D5572)),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 Builder(builder: (_) {
-                  final interests = _parseSkills(user?['selectedInterests']);
-                  if (interests.isEmpty) {
+                  final rawInterests = _parseSkills(user?['selectedInterests']);
+                  if (rawInterests.isEmpty) {
                     return Text('No career interests added yet',
-                        style: GoogleFonts.inter(color: const Color(0xFF6B7280), fontSize: 14, height: 1.1));
+                        style: GoogleFonts.inter(
+                            color: const Color(0xFF6B7280),
+                            fontSize: 14,
+                            height: 1.1));
                   }
                   return Wrap(
-                    spacing: 8, runSpacing: 8,
-                    children: interests.map((s) => _skillTag(s, filled: false)).toList(),
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: rawInterests.map((key) {
+                      final label = _availableInterests[key] ?? key;
+                      return _skillTag(label, filled: false);
+                    }).toList(),
                   );
                 }),
               ],
@@ -449,11 +685,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 _sectionTitle('Recent Achievements'),
                 const SizedBox(height: 12),
-                _achievementRow(Icons.emoji_events, 'Completed React Roadmap', 'Feb 2026'),
+                _achievementRow(
+                    Icons.emoji_events, 'Completed React Roadmap', 'Feb 2026'),
                 const Divider(),
-                _achievementRow(Icons.people, 'First Mentor Session', 'Feb 2026'),
+                _achievementRow(
+                    Icons.people, 'First Mentor Session', 'Feb 2026'),
                 const Divider(),
-                _achievementRow(Icons.assignment_turned_in, 'Skill Assessment Complete', 'Jan 2026'),
+                _achievementRow(Icons.assignment_turned_in,
+                    'Skill Assessment Complete', 'Jan 2026'),
               ],
             ),
             const SizedBox(height: 16),
@@ -467,19 +706,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   'Settings & Privacy',
                   const Color(0xFF1F2937),
                   const Color(0xFF6B7280),
-                      () {},
+                  () {},
                 ),
                 const Divider(),
-                // ✅ Report an Issue - تم الإضافة هنا
+                // ✅ Report an Issue
                 _accountRow(
                   Icons.flag_outlined,
                   'Report an Issue',
                   const Color(0xFF1F2937),
                   const Color(0xFF6B7280),
-                      () {
+                  () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const ReportIssueScreen()),
+                      MaterialPageRoute(
+                          builder: (_) => const ReportIssueScreen()),
                     );
                   },
                 ),
@@ -489,10 +729,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   'Notifications',
                   const Color(0xFF1F2937),
                   const Color(0xFF6B7280),
-                      () {
+                  () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                      MaterialPageRoute(
+                          builder: (context) => const NotificationsScreen()),
                     );
                   },
                 ),
@@ -502,12 +743,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   'Sign Out',
                   const Color(0xFFDC2626),
                   const Color(0xFFDC2626),
-                      () async {
+                  () async {
                     final confirmed = await showDialog<bool>(
                       context: context,
                       builder: (ctx) => AlertDialog(
                         title: const Text('Sign Out'),
-                        content: const Text('Are you sure you want to sign out?'),
+                        content:
+                            const Text('Are you sure you want to sign out?'),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.of(ctx).pop(false),
@@ -515,7 +757,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           TextButton(
                             onPressed: () => Navigator.of(ctx).pop(true),
-                            style: TextButton.styleFrom(foregroundColor: const Color(0xFFDC2626)),
+                            style: TextButton.styleFrom(
+                                foregroundColor: const Color(0xFFDC2626)),
                             child: const Text('Sign Out'),
                           ),
                         ],
@@ -526,7 +769,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       await authProvider.logout();
                       navigator.pushAndRemoveUntil(
                         MaterialPageRoute(builder: (_) => const LoginScreen()),
-                            (route) => false,
+                        (route) => false,
                       );
                     }
                   },
@@ -561,7 +804,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final user = authProvider.user;
     _nameController = TextEditingController(text: user?['fullName'] ?? '');
-    _roleController = TextEditingController(text: user?['role']?.toString().toUpperCase() ?? '');
+    _roleController = TextEditingController(
+        text: user?['role']?.toString().toUpperCase() ?? '');
     _bioController = TextEditingController(text: user?['bio'] ?? '');
   }
 
@@ -597,7 +841,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     final newName = _nameController.text.trim();
     final newBio = _bioController.text.trim();
-    if (newName == authProvider.user?['fullName'] && newBio == (authProvider.user?['bio'] ?? '')) {
+    if (newName == authProvider.user?['fullName'] &&
+        newBio == (authProvider.user?['bio'] ?? '')) {
       Navigator.pop(context);
       return;
     }
@@ -620,7 +865,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           Navigator.pop(context);
         }
       } else {
-        final errorMsg = response['message']?.toString() ?? 'Failed to update profile';
+        final errorMsg =
+            response['message']?.toString() ?? 'Failed to update profile';
         authProvider.setError(errorMsg);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -656,7 +902,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 alignment: Alignment.centerLeft,
                 child: Text('Edit Profile',
                     style: GoogleFonts.inter(
-                        color: const Color(0xFF1F2937), fontSize: 25, fontWeight: FontWeight.bold, height: 1.1)),
+                        color: const Color(0xFF1F2937),
+                        fontSize: 25,
+                        fontWeight: FontWeight.bold,
+                        height: 1.1)),
               ),
             ),
             const SizedBox(height: 16),
@@ -668,7 +917,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: const [
-                    BoxShadow(color: Color(0x3F000000), spreadRadius: 0, offset: Offset(0, 4), blurRadius: 12)
+                    BoxShadow(
+                        color: Color(0x3F000000),
+                        spreadRadius: 0,
+                        offset: Offset(0, 4),
+                        blurRadius: 12)
                   ],
                 ),
                 child: Padding(
@@ -680,9 +933,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         child: Stack(
                           children: [
                             Container(
-                              width: 96, height: 96,
+                              width: 96,
+                              height: 96,
                               decoration: BoxDecoration(
-                                  color: const Color(0xFFF3E8FF), borderRadius: BorderRadius.circular(48)),
+                                  color: const Color(0xFFF3E8FF),
+                                  borderRadius: BorderRadius.circular(48)),
                               child: Center(
                                   child: Text(getInitials(_nameController.text),
                                       style: GoogleFonts.inter(
@@ -692,12 +947,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                           height: 0.9))),
                             ),
                             Positioned(
-                              right: 0, bottom: 0,
+                              right: 0,
+                              bottom: 0,
                               child: Container(
-                                width: 32, height: 32,
+                                width: 32,
+                                height: 32,
                                 decoration: BoxDecoration(
-                                    color: const Color(0xFF1D5572), borderRadius: BorderRadius.circular(16)),
-                                child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
+                                    color: const Color(0xFF1D5572),
+                                    borderRadius: BorderRadius.circular(16)),
+                                child: const Icon(Icons.camera_alt,
+                                    color: Colors.white, size: 16),
                               ),
                             ),
                           ],
@@ -729,16 +988,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               child: Container(
                                 height: 40,
                                 decoration: BoxDecoration(
-                                    color: const Color(0xFF1D5572), borderRadius: BorderRadius.circular(8)),
+                                    color: const Color(0xFF1D5572),
+                                    borderRadius: BorderRadius.circular(8)),
                                 child: Center(
                                   child: isLoading
                                       ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                              color: Colors.white,
+                                              strokeWidth: 2))
                                       : Text('Save',
-                                      style: GoogleFonts.inter(
-                                          color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500)),
+                                          style: GoogleFonts.inter(
+                                              color: Colors.white,
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w500)),
                                 ),
                               ),
                             ),
@@ -750,11 +1014,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               child: Container(
                                 height: 40,
                                 decoration: BoxDecoration(
-                                    color: const Color(0xFF1D5572), borderRadius: BorderRadius.circular(8)),
+                                    color: const Color(0xFF1D5572),
+                                    borderRadius: BorderRadius.circular(8)),
                                 child: Center(
                                     child: Text('Cancel',
                                         style: GoogleFonts.inter(
-                                            color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500))),
+                                            color: Colors.white,
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w500))),
                               ),
                             ),
                           ),
@@ -787,10 +1054,15 @@ Widget _buildCard({required List<Widget> children}) {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: const [
-          BoxShadow(color: Color(0x3F000000), spreadRadius: 0, offset: Offset(0, 4), blurRadius: 12)
+          BoxShadow(
+              color: Color(0x3F000000),
+              spreadRadius: 0,
+              offset: Offset(0, 4),
+              blurRadius: 12)
         ],
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
+      child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start, children: children),
     ),
   );
 }
@@ -798,19 +1070,38 @@ Widget _buildCard({required List<Widget> children}) {
 Widget _sectionTitle(String title) {
   return Text(title,
       style: GoogleFonts.inter(
-          color: const Color(0xFF1F2937), fontSize: 16, fontWeight: FontWeight.w600, height: 0.9));
+          color: const Color(0xFF1F2937),
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          height: 0.9));
 }
 
-Widget _infoRow(IconData icon, String text) {
+Widget _infoRow(IconData icon, String text,
+    {VoidCallback? onTap, bool isLinkedIn = false}) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 8),
-    child: Row(children: [
-      Icon(icon, size: 16, color: const Color(0xFF6B7280)),
-      const SizedBox(width: 8),
-      Expanded(
-          child: Text(text,
-              style: GoogleFonts.inter(color: const Color(0xFF1F2937), fontSize: 14, height: 1.1))),
-    ]),
+    child: InkWell(
+      onTap: isLinkedIn ? onTap : null,
+      child: Row(children: [
+        Icon(icon, size: 16, color: const Color(0xFF1D5572)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: GoogleFonts.inter(
+              color: isLinkedIn
+                  ? const Color(0xFF1D5572)
+                  : const Color(0xFF1F2937),
+              fontSize: 14,
+              height: 1.1,
+              decoration: isLinkedIn ? TextDecoration.underline : null,
+            ),
+          ),
+        ),
+        if (isLinkedIn)
+          const Icon(Icons.open_in_new, size: 14, color: Color(0xFF1D5572)),
+      ]),
+    ),
   );
 }
 
@@ -824,7 +1115,9 @@ Widget _skillTag(String label, {required bool filled}) {
     ),
     child: Text(label,
         style: GoogleFonts.inter(
-            color: filled ? Colors.white : const Color(0xFF1D5572), fontSize: 12, height: 1.4)),
+            color: filled ? Colors.white : const Color(0xFF1D5572),
+            fontSize: 12,
+            height: 1.4)),
   );
 }
 
@@ -833,25 +1126,31 @@ Widget _achievementRow(IconData icon, String title, String date) {
     padding: const EdgeInsets.symmetric(vertical: 8),
     child: Row(children: [
       Container(
-        width: 40, height: 40,
-        decoration:
-        BoxDecoration(color: const Color(0xFFF5A100), borderRadius: BorderRadius.circular(20)),
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+            color: const Color(0xFFF5A100),
+            borderRadius: BorderRadius.circular(20)),
         child: Icon(icon, color: Colors.white, size: 20),
       ),
       const SizedBox(width: 12),
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(title,
             style: GoogleFonts.inter(
-                color: const Color(0xFF1F2937), fontSize: 14, fontWeight: FontWeight.w500, height: 1.1)),
+                color: const Color(0xFF1F2937),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                height: 1.1)),
         Text(date,
-            style: GoogleFonts.inter(color: const Color(0xFF1F2937), fontSize: 12, height: 1.3)),
+            style: GoogleFonts.inter(
+                color: const Color(0xFF1F2937), fontSize: 12, height: 1.3)),
       ]),
     ]),
   );
 }
 
-Widget _accountRow(
-    IconData icon, String title, Color titleColor, Color iconColor, VoidCallback onTap) {
+Widget _accountRow(IconData icon, String title, Color titleColor,
+    Color iconColor, VoidCallback onTap) {
   return GestureDetector(
     onTap: onTap,
     child: Padding(
@@ -861,7 +1160,10 @@ Widget _accountRow(
         const SizedBox(width: 12),
         Text(title,
             style: GoogleFonts.inter(
-                color: titleColor, fontSize: 14, fontWeight: FontWeight.w500, height: 1.1)),
+                color: titleColor,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                height: 1.1)),
       ]),
     ),
   );
@@ -872,11 +1174,15 @@ Widget _editLabel(String label) {
     padding: const EdgeInsets.only(bottom: 4),
     child: Text(label,
         style: GoogleFonts.inter(
-            color: const Color(0xFF1F2937), fontSize: 13, fontWeight: FontWeight.w600, height: 1.2)),
+            color: const Color(0xFF1F2937),
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            height: 1.2)),
   );
 }
 
-Widget _editField(TextEditingController controller, {int maxLines = 1, bool enabled = true}) {
+Widget _editField(TextEditingController controller,
+    {int maxLines = 1, bool enabled = true}) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 4),
     child: TextFormField(
@@ -895,4 +1201,3 @@ Widget _editField(TextEditingController controller, {int maxLines = 1, bool enab
     ),
   );
 }
-

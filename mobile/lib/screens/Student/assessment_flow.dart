@@ -2,8 +2,9 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
-import '../services/api_service.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/api_service.dart';
+import '../../widgets/bottom_navigation.dart';
 
 // ===== CAREER MODEL =====
 class CareerScore {
@@ -167,48 +168,85 @@ class AssessmentStartScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 32),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                PageRouteBuilder(
-                                  pageBuilder: (context, animation,
-                                          secondaryAnimation) =>
-                                      const AssessmentQuestion1(),
-                                  transitionsBuilder: (context, animation,
-                                      secondaryAnimation, child) {
-                                    const begin = Offset(1.0, 0.0);
-                                    const end = Offset.zero;
-                                    const curve = Curves.easeInOut;
-                                    var tween = Tween(begin: begin, end: end)
-                                        .chain(CurveTween(curve: curve));
-                                    return SlideTransition(
-                                        position: animation.drive(tween),
-                                        child: child);
-                                  },
-                                  transitionDuration:
-                                      const Duration(milliseconds: 400),
+                        Consumer<AuthProvider>(
+                          builder: (context, auth, _) {
+                            final interests = (auth.user?['selectedInterests'] as List?) ?? [];
+                            final hasInterests = interests.isNotEmpty;
+
+                            return Column(
+                              children: [
+                                if (!hasInterests)
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    margin: const EdgeInsets.only(bottom: 16),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFEF3C7),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: const Color(0xFFF59E0B)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.info_outline, color: Color(0xFFB45309)),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            'Tip: Set your Career Interests in Profile to get specialized technical questions!',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 13,
+                                              color: const Color(0xFFB45309),
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 50,
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        PageRouteBuilder(
+                                          pageBuilder: (context, animation,
+                                                  secondaryAnimation) =>
+                                              const AssessmentQuestion1(),
+                                          transitionsBuilder: (context, animation,
+                                              secondaryAnimation, child) {
+                                            const begin = Offset(1.0, 0.0);
+                                            const end = Offset.zero;
+                                            const curve = Curves.easeInOut;
+                                            var tween = Tween(begin: begin, end: end)
+                                                .chain(CurveTween(curve: curve));
+                                            return SlideTransition(
+                                                position: animation.drive(tween),
+                                                child: child);
+                                          },
+                                          transitionDuration:
+                                              const Duration(milliseconds: 400),
+                                        ),
+                                      );
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFF5A100),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8)),
+                                      elevation: 0,
+                                    ),
+                                    child: Text(
+                                      'Start Assessment',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFF001636),
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFF5A100),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8)),
-                              elevation: 0,
-                            ),
-                            child: Text(
-                              'Start Assessment',
-                              style: GoogleFonts.inter(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFF001636),
-                              ),
-                            ),
-                          ),
+                              ],
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -219,7 +257,7 @@ class AssessmentStartScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: buildBottomNav(1),
+      bottomNavigationBar: const BottomNavigation(selectedIndex: BottomNavIndex.assess),
     );
   }
 }
@@ -762,7 +800,7 @@ class _AssessmentQuestion1State extends State<AssessmentQuestion1> {
           ),
         ],
       ),
-      bottomNavigationBar: buildBottomNav(1),
+      bottomNavigationBar: const BottomNavigation(selectedIndex: BottomNavIndex.assess),
     );
   }
 
@@ -942,7 +980,7 @@ class AssessmentCompleteState extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: buildBottomNav(1),
+      bottomNavigationBar: const BottomNavigation(selectedIndex: BottomNavIndex.assess),
     );
   }
 }
@@ -1101,7 +1139,7 @@ class _CareerMatchesScreenState extends State<CareerMatchesScreen> {
                     ],
                   ),
                 ),
-      bottomNavigationBar: buildBottomNav(1),
+      bottomNavigationBar: const BottomNavigation(selectedIndex: BottomNavIndex.assess),
     );
   }
 
@@ -1213,6 +1251,18 @@ class LearningRoadmapScreen extends StatefulWidget {
 }
 
 class _LearningRoadmapScreenState extends State<LearningRoadmapScreen> {
+  static const double _roadLeft = 31;
+  static const double _roadTop = 212;
+  static const double _roadWidth = 331;
+  static const double _roadHeight = 629;
+  static const double _roadLabelWidth = 124;
+  static const double _roadLabelHeight = 34;
+  static const double _roadLabelGap = 48;
+  static const double _roadCenterX = _roadLeft + (_roadWidth / 2);
+  static const double _roadLabelFontSize = 11;
+  static const double _roadLabelLineHeight = 1.2;
+  static const double _roadPinMarkerSize = 22;
+
   bool _isLoading = true;
   String? _error;
   List<RoadmapStep> _steps = [];
@@ -1326,355 +1376,361 @@ class _LearningRoadmapScreenState extends State<LearningRoadmapScreen> {
                     ],
                   ),
                 )
-              : Stack(
-                  children: [
-                    // Background serpentine road (custom painted)
-                    Positioned(
-                      left: 31,
-                      top: 212,
-                      child: SizedBox(
-                        width: 331,
-                        height: 629,
-                        child: CustomPaint(
-                          painter: SerpentineRoadPainter(),
-                        ),
-                      ),
-                    ),
+              : SingleChildScrollView(
+                  child: FittedBox(
+                    alignment: Alignment.topCenter,
+                    fit: BoxFit.scaleDown,
+                    child: SizedBox(
+                      width: 393,
+                      height: 960,
+                      child: Stack(
+                        children: [
+                          // Background serpentine road (custom painted)
+                          Positioned(
+                            left: _roadLeft,
+                            top: _roadTop,
+                            child: SizedBox(
+                              width: _roadWidth,
+                              height: _roadHeight,
+                              child: CustomPaint(
+                                painter: SerpentineRoadPainter(),
+                              ),
+                            ),
+                          ),
 
-                    // Header Section
-                    Positioned(
-                      left: 0,
-                      top: 0,
-                      child: Container(
-                        width: 393,
-                        height: 132,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF1D5572),
-                        ),
-                        child: Stack(
-                          children: [
-                            Positioned(
-                              left: 31,
-                              top: 71,
-                              child: Text(
-                                'Learning Roadmap',
-                                style: GoogleFonts.inter(
-                                  color: Colors.white,
-                                  fontSize: 25,
-                                  fontWeight: FontWeight.bold,
-                                  height: 1.1,
-                                ),
+                          // Header Section
+                          Positioned(
+                            left: 0,
+                            top: 0,
+                            child: Container(
+                              width: 393,
+                              height: 132,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF1D5572),
                               ),
-                            ),
-                            Positioned(
-                              left: 31,
-                              top: 103,
-                              child: Text(
-                                widget.careerName != null
-                                    ? '${widget.careerName} - Your personalized path to success'
-                                    : 'Your personalized path to success',
-                                style: GoogleFonts.inter(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  height: 1.2,
-                                ),
-                              ),
-                            ),
-                            // Back button
-                            Positioned(
-                              left: 10,
-                              top: 50,
-                              child: IconButton(
-                                icon: const Icon(Icons.arrow_back,
-                                    color: Colors.white),
-                                onPressed: () => Navigator.pop(context),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // Career Title
-                    Positioned(
-                      left: 71,
-                      top: 149,
-                      child: Text(
-                        widget.careerName ?? 'Full Stack Developer',
-                        style: GoogleFonts.inter(
-                          color: const Color(0xFF1F2937),
-                          fontSize: 25,
-                          fontWeight: FontWeight.bold,
-                          height: 1.1,
-                        ),
-                      ),
-                    ),
-
-                    // START Node
-                    Positioned(
-                      left: 19,
-                      top: 205,
-                      child: Container(
-                        width: 41,
-                        height: 41,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF5A100),
-                          borderRadius: BorderRadius.circular(21),
-                        ),
-                        child: Stack(
-                          children: [
-                            Positioned(
-                              left: 5,
-                              top: 5,
-                              child: Container(
-                                width: 31,
-                                height: 31,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFCFCFC),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              left: 9,
-                              top: 9,
-                              child: Container(
-                                width: 23,
-                                height: 23,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF5A100),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                alignment: Alignment.center,
-                                child: const Text(
-                                  'START',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: Color(0xFFFCFCFC),
-                                    fontSize: 6,
-                                    fontWeight: FontWeight.bold,
+                              child: Stack(
+                                children: [
+                                  Positioned(
+                                    left: 31,
+                                    top: 71,
+                                    child: Text(
+                                      'Learning Roadmap',
+                                      style: GoogleFonts.inter(
+                                        color: Colors.white,
+                                        fontSize: 25,
+                                        fontWeight: FontWeight.bold,
+                                        height: 1.1,
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                  Positioned(
+                                    left: 31,
+                                    top: 103,
+                                    child: Text(
+                                      widget.careerName != null
+                                          ? '${widget.careerName} - Your personalized path to success'
+                                          : 'Your personalized path to success',
+                                      style: GoogleFonts.inter(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        height: 1.2,
+                                      ),
+                                    ),
+                                  ),
+                                  // Back button
+                                  Positioned(
+                                    left: 10,
+                                    top: 50,
+                                    child: IconButton(
+                                      icon: const Icon(Icons.arrow_back,
+                                          color: Colors.white),
+                                      onPressed: () => Navigator.pop(context),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
+                          ),
 
-                    // Roadmap Steps
-                    ..._buildStepWidgets(),
-
-                    // END Node
-                    Positioned(
-                      left: 26,
-                      top: 833,
-                      child: Container(
-                        width: 41,
-                        height: 41,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1D5572),
-                          borderRadius: BorderRadius.circular(21),
-                        ),
-                        child: Stack(
-                          children: [
-                            Positioned(
-                              left: 5,
-                              top: 5,
-                              child: Container(
-                                width: 31,
-                                height: 31,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFCFCFC),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
+                          // Career Title
+                          Positioned(
+                            left: 71,
+                            top: 149,
+                            child: Text(
+                              widget.careerName ?? 'Full Stack Developer',
+                              style: GoogleFonts.inter(
+                                color: const Color(0xFF1F2937),
+                                fontSize: 25,
+                                fontWeight: FontWeight.bold,
+                                height: 1.1,
                               ),
                             ),
-                            Positioned(
-                              left: 9,
-                              top: 9,
+                          ),
+
+                          // START Node
+                          Positioned(
+                            left: 19,
+                            top: 205,
+                            child: Container(
+                              width: 41,
+                              height: 41,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF5A100),
+                                borderRadius: BorderRadius.circular(21),
+                              ),
+                              child: Stack(
+                                children: [
+                                  Positioned(
+                                    left: 5,
+                                    top: 5,
+                                    child: Container(
+                                      width: 31,
+                                      height: 31,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFCFCFC),
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    left: 9,
+                                    top: 9,
+                                    child: Container(
+                                      width: 23,
+                                      height: 23,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF5A100),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: const Text(
+                                        'START',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: Color(0xFFFCFCFC),
+                                          fontSize: 6,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          // Roadmap Steps
+                          ..._buildStepWidgets(),
+
+                          // END Node
+                          Positioned(
+                            left: 26,
+                            top: 833,
+                            child: Container(
+                              width: 41,
+                              height: 41,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF5A100),
+                                borderRadius: BorderRadius.circular(21),
+                              ),
+                              child: Stack(
+                                children: [
+                                  Positioned(
+                                    left: 5,
+                                    top: 5,
+                                    child: Container(
+                                      width: 31,
+                                      height: 31,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFCFCFC),
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    left: 9,
+                                    top: 9,
+                                    child: Container(
+                                      width: 23,
+                                      height: 23,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF5A100),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: const Text(
+                                        'END',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: Color(0xFFFCFCFC),
+                                          fontSize: 7,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          // Choose This Roadmap Button
+                          Positioned(
+                            left: 26,
+                            top: 889,
+                            child: GestureDetector(
+                              onTap: widget.fromAssessment
+                                  ? () {
+                                      Navigator.popUntil(
+                                          context, (route) => route.isFirst);
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                            content: Text(
+                                                'Roadmap selected! Start your learning journey.')),
+                                      );
+                                    }
+                                  : null,
                               child: Container(
-                                width: 23,
-                                height: 23,
+                                width: 169,
+                                height: 36,
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF1D5572),
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(6),
                                 ),
-                                alignment: Alignment.center,
-                                child: const Text(
-                                  'END',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: Color(0xFFFCFCFC),
-                                    fontSize: 7,
-                                    fontWeight: FontWeight.bold,
+                                child: Center(
+                                  child: Text(
+                                    widget.fromAssessment
+                                        ? 'Choose This Roadmap'
+                                        : 'Continue Learning',
+                                    textAlign: TextAlign.center,
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      height: 2,
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // Choose This Roadmap Button
-                    Positioned(
-                      left: 26,
-                      top: 889,
-                      child: GestureDetector(
-                        onTap: widget.fromAssessment
-                            ? () {
-                                Navigator.popUntil(
-                                    context, (route) => route.isFirst);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content: Text(
-                                          'Roadmap selected! Start your learning journey.')),
-                                );
-                              }
-                            : null,
-                        child: Container(
-                          width: 169,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1D5572),
-                            borderRadius: BorderRadius.circular(6),
                           ),
-                          child: Center(
-                            child: Text(
-                              widget.fromAssessment
-                                  ? 'Choose This Roadmap'
-                                  : 'Continue Learning',
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.inter(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                height: 2,
+
+                          // Cancel Button
+                          Positioned(
+                            left: 199,
+                            top: 889,
+                            child: GestureDetector(
+                              onTap: () => Navigator.pop(context),
+                              child: Container(
+                                width: 169,
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFD9D9D9),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'Cancel',
+                                    textAlign: TextAlign.center,
+                                    style: GoogleFonts.inter(
+                                      color: const Color(0xFF1D5572),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      height: 2,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
-
-                    // Cancel Button
-                    Positioned(
-                      left: 199,
-                      top: 889,
-                      child: GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          width: 169,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFD9D9D9),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Center(
-                            child: Text(
-                              'Cancel',
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.inter(
-                                color: const Color(0xFF1D5572),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                height: 2,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
+      bottomNavigationBar: const BottomNavigation(selectedIndex: BottomNavIndex.assess),
     );
   }
 
   List<Widget> _buildStepWidgets() {
     final List<Widget> widgets = [];
 
-    // Define positions for all 10 steps based on Figma design
+    // Keep pins on the zigzag path, but anchor labels to the road center.
     final List<Map<String, dynamic>> stepPositions = [
       {
         'number': 1,
         'top': 190,
         'left': 67,
-        'textTop': 194,
-        'textLeft': 101,
-        'isLeft': true
+        'labelCenterX': _roadCenterX,
+        'labelTop': 190 - _roadLabelGap,
+        'labelOffsetY': 4.0,
       },
       {
         'number': 2,
         'top': 255,
         'left': 300,
-        'textTop': 264,
-        'textLeft': 140,
-        'isLeft': false
+        'labelCenterX': _roadCenterX,
+        'labelTop': 255 - _roadLabelGap,
       },
       {
         'number': 3,
         'top': 326,
         'left': 67,
-        'textTop': 333,
-        'textLeft': 101,
-        'isLeft': true
+        'labelCenterX': _roadCenterX,
+        'labelTop': 326 - _roadLabelGap,
       },
       {
         'number': 4,
         'top': 396,
         'left': 300,
-        'textTop': 401,
-        'textLeft': 136,
-        'isLeft': false
+        'labelCenterX': _roadCenterX,
+        'labelTop': 396 - _roadLabelGap,
       },
       {
         'number': 5,
         'top': 467,
         'left': 67,
-        'textTop': 470,
-        'textLeft': 101,
-        'isLeft': true
+        'labelCenterX': _roadCenterX,
+        'labelTop': 467 - _roadLabelGap,
       },
       {
         'number': 6,
         'top': 537,
         'left': 300,
-        'textTop': 545,
-        'textLeft': 308,
-        'isLeft': false
+        'labelCenterX': _roadCenterX,
+        'labelTop': 537 - _roadLabelGap,
+        'labelOffsetX': 4.0,
       },
       {
         'number': 7,
         'top': 603,
         'left': 67,
-        'textTop': 606,
-        'textLeft': 101,
-        'isLeft': true
+        'labelCenterX': _roadCenterX,
+        'labelTop': 603 - _roadLabelGap,
       },
       {
         'number': 8,
         'top': 673,
         'left': 300,
-        'textTop': 681,
-        'textLeft': 308,
-        'isLeft': false
+        'labelCenterX': _roadCenterX,
+        'labelTop': 673 - _roadLabelGap,
+        'labelOffsetX': 4.0,
       },
       {
         'number': 9,
         'top': 744,
         'left': 67,
-        'textTop': 747,
-        'textLeft': 101,
-        'isLeft': true
+        'labelCenterX': _roadCenterX,
+        'labelTop': 744 - _roadLabelGap,
       },
       {
         'number': 10,
         'top': 814,
         'left': 300,
-        'textTop': 822,
-        'textLeft': 308,
-        'isLeft': false
+        'labelCenterX': _roadCenterX,
+        'labelTop': 814 - _roadLabelGap,
+        'labelOffsetY': -2.0,
       },
     ];
 
@@ -1687,8 +1743,14 @@ class _LearningRoadmapScreenState extends State<LearningRoadmapScreen> {
       // Extract values with proper type casting
       final double top = (pos['top'] as num).toDouble();
       final double left = (pos['left'] as num).toDouble();
-      final double textTop = (pos['textTop'] as num).toDouble();
-      final double textLeft = (pos['textLeft'] as num).toDouble();
+      final double labelCenterX =
+          ((pos['labelCenterX'] as num?)?.toDouble()) ?? _roadCenterX;
+      final double labelTop =
+          ((pos['labelTop'] as num?)?.toDouble()) ?? (top - _roadLabelGap);
+      final double labelOffsetX =
+          ((pos['labelOffsetX'] as num?)?.toDouble()) ?? 0;
+      final double labelOffsetY =
+          ((pos['labelOffsetY'] as num?)?.toDouble()) ?? 0;
 
       // Add the pin
       widgets.add(_buildStepPin(
@@ -1701,20 +1763,11 @@ class _LearningRoadmapScreenState extends State<LearningRoadmapScreen> {
       // Add the text label
       widgets.add(_buildStepText(
         title: step.title,
-        top: textTop,
-        left: textLeft,
+        labelCenterX: labelCenterX,
+        labelTop: labelTop,
+        labelOffsetX: labelOffsetX,
+        labelOffsetY: labelOffsetY,
       ));
-
-      // Add connecting tail (except for last step)
-      if (i < _steps.length - 1) {
-        final double tailTop = (pos['top'] as num).toDouble() + 23;
-        final double tailLeft = (pos['left'] as num).toDouble() + 9;
-        widgets.add(_buildTail(
-          fillColor: fillColor,
-          top: tailTop,
-          left: tailLeft,
-        ));
-      }
     }
 
     return widgets;
@@ -1727,119 +1780,142 @@ class _LearningRoadmapScreenState extends State<LearningRoadmapScreen> {
     required double left,
   }) {
     return Positioned(
-      left: left,
-      top: top,
-      child: Container(
-        width: 24,
-        height: 24,
-        decoration: BoxDecoration(
-          color: fillColor,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Stack(
-          children: [
-            Positioned(
-              left: 3,
-              top: 3,
-              child: Container(
-                width: 18,
-                height: 18,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFCFCFC),
-                  borderRadius: BorderRadius.circular(9),
-                ),
-              ),
-            ),
-            Positioned(
-              left: 5,
-              top: 5,
-              child: Container(
-                width: 14,
-                height: 14,
-                decoration: BoxDecoration(
-                  color: fillColor,
-                  borderRadius: BorderRadius.circular(7),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  number.toString().padLeft(2, '0'),
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
-                    color: const Color(0xFFFCFCFC),
-                    fontSize: 7,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+      left: left + 1,
+      top: top + 2,
+      child: MapPinMarker(
+        number: number,
+        pinColor: fillColor,
+        size: _roadPinMarkerSize,
       ),
     );
   }
 
   Widget _buildStepText({
     required String title,
-    required double top,
-    required double left,
+    required double labelCenterX,
+    required double labelTop,
+    double labelOffsetX = 0,
+    double labelOffsetY = 0,
   }) {
     return Positioned(
-      left: left,
-      top: top,
+      left: labelCenterX - (_roadLabelWidth / 2) + labelOffsetX,
+      top: labelTop + labelOffsetY,
       child: SizedBox(
-        width: 200,
-        child: Text(
-          title,
-          textAlign: TextAlign.center,
-          style: GoogleFonts.inter(
-            color: Colors.black,
-            fontSize: 15,
-            height: 1,
+        width: _roadLabelWidth,
+        height: _roadLabelHeight,
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: Text(
+            title,
+            maxLines: 2,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              color: Colors.black,
+              fontSize: _roadLabelFontSize,
+              fontWeight: FontWeight.w600,
+              height: _roadLabelLineHeight,
+            ),
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _buildTail({
-    required Color fillColor,
-    required double top,
-    required double left,
-  }) {
-    return Positioned(
-      left: left,
-      top: top,
-      child: CustomPaint(
-        size: const Size(7, 20),
-        painter: _RoadmapTailPainter(color: fillColor),
-      ),
+class MapPinMarker extends StatelessWidget {
+  final int number;
+  final Color pinColor;
+  final double size;
+
+  const MapPinMarker({
+    super.key,
+    required this.number,
+    this.pinColor = const Color.fromARGB(255, 0, 0, 0),
+    this.size = 80,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size(size, size * 1.4),
+      painter: MapPinPainter(color: pinColor, number: number),
     );
   }
 }
 
-// Tail painter for connecting lines
-class _RoadmapTailPainter extends CustomPainter {
+class MapPinPainter extends CustomPainter {
   final Color color;
-  const _RoadmapTailPainter({required this.color});
+  final int number;
+
+  const MapPinPainter({required this.color, required this.number});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
+    final paint = Paint()..color = color;
+    final strokePaint = Paint()
+      ..color = Colors.black.withOpacity(0.15)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
 
-    final path = Path()
-      ..moveTo(0, 0)
-      ..lineTo(size.width, 0)
-      ..lineTo(size.width / 2, size.height)
-      ..close();
+    final double circleRadius = size.width * 0.46;
+    final Offset circleCenter = Offset(size.width / 2, circleRadius);
+    final Path pinPath = Path();
+    final Offset tip = Offset(size.width / 2, size.height);
+    final double leftTangent = circleCenter.dx - circleRadius * 0.45;
+    final double rightTangent = circleCenter.dx + circleRadius * 0.45;
+    final double tangentY = circleCenter.dy + circleRadius * 0.75;
 
-    canvas.drawPath(path, paint);
+    pinPath.moveTo(tip.dx, tip.dy);
+    pinPath.quadraticBezierTo(
+      leftTangent,
+      tangentY,
+      circleCenter.dx - circleRadius,
+      circleCenter.dy,
+    );
+    pinPath.arcTo(
+      Rect.fromCircle(center: circleCenter, radius: circleRadius),
+      pi,
+      -pi,
+      false,
+    );
+    pinPath.quadraticBezierTo(rightTangent, tangentY, tip.dx, tip.dy);
+    pinPath.close();
+
+    canvas.drawPath(pinPath, paint);
+    canvas.drawPath(pinPath, strokePaint);
+
+    final whitePaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = size.width * 0.08;
+    canvas.drawCircle(circleCenter, circleRadius * 0.72, whitePaint);
+
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: number.toString().padLeft(2, '0'),
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: size.width * 0.26,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(
+        circleCenter.dx - textPainter.width / 2,
+        circleCenter.dy - textPainter.height / 2,
+      ),
+    );
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return oldDelegate is _RoadmapTailPainter && oldDelegate.color != color;
+    return oldDelegate is MapPinPainter &&
+        (oldDelegate.color != color || oldDelegate.number != number);
   }
 }
 
@@ -1854,40 +1930,6 @@ class RoadmapStep {
     required this.title,
     this.isCompleted = false,
   });
-}
-
-// ===== SHARED BOTTOM NAV BAR =====
-BottomNavigationBar buildBottomNav(int currentIndex) {
-  return BottomNavigationBar(
-    backgroundColor: const Color(0xFF1D5572),
-    selectedItemColor: Colors.white,
-    unselectedItemColor: Colors.white70,
-    type: BottomNavigationBarType.fixed,
-    currentIndex: currentIndex,
-    showSelectedLabels: true,
-    showUnselectedLabels: true,
-    selectedLabelStyle:
-        const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-    unselectedLabelStyle: const TextStyle(fontSize: 12),
-    items: const [
-      BottomNavigationBarItem(
-          icon: Icon(Icons.home_outlined),
-          activeIcon: Icon(Icons.home),
-          label: 'Home'),
-      BottomNavigationBarItem(
-          icon: Icon(Icons.assessment_outlined),
-          activeIcon: Icon(Icons.assignment),
-          label: 'assess'),
-      BottomNavigationBarItem(
-          icon: Icon(Icons.chat_bubble_outline),
-          activeIcon: Icon(Icons.chat_bubble),
-          label: 'Chat'),
-      BottomNavigationBarItem(
-          icon: Icon(Icons.person_outline),
-          activeIcon: Icon(Icons.person),
-          label: 'Profile'),
-    ],
-  );
 }
 
 // ===== SERPENTINE ROAD PAINTER =====
@@ -1907,9 +1949,9 @@ class SerpentineRoadPainter extends CustomPainter {
     final double sw = w * 0.07;
 
     // Horizontal extents
-    final double lx = sw * 0.5;       // left endpoint x
-    final double rx = w - sw * 0.5;   // right endpoint x
-    final double mid = midX(w);         // color-switch x
+    final double lx = sw * 0.5; // left endpoint x
+    final double rx = w - sw * 0.5; // right endpoint x
+    final double mid = midX(w); // color-switch x
 
     // 7 horizontal rows, evenly spaced
     const int rows = 7;
@@ -1927,13 +1969,13 @@ class SerpentineRoadPainter extends CustomPainter {
 
     // Per-row: left-half color, right-half color, arc color, arc side
     final rowDefs = <_RowDef>[
-      _RowDef(lc: kOrange, rc: kTeal,   arcColor: kTeal,   arcRight: true),
-      _RowDef(lc: kOrange, rc: kTeal,   arcColor: kOrange, arcRight: false),
-      _RowDef(lc: kTeal,   rc: kOrange, arcColor: kTeal,   arcRight: true),
-      _RowDef(lc: kTeal,   rc: kOrange, arcColor: kOrange, arcRight: false),
-      _RowDef(lc: kOrange, rc: kTeal,   arcColor: kTeal,   arcRight: true),
-      _RowDef(lc: kOrange, rc: kTeal,   arcColor: kOrange, arcRight: false),
-      _RowDef(lc: kTeal,   rc: kOrange, arcColor: null,    arcRight: false),
+      _RowDef(lc: kOrange, rc: kTeal, arcColor: kTeal, arcRight: true),
+      _RowDef(lc: kOrange, rc: kTeal, arcColor: kOrange, arcRight: false),
+      _RowDef(lc: kTeal, rc: kOrange, arcColor: kTeal, arcRight: true),
+      _RowDef(lc: kTeal, rc: kOrange, arcColor: kOrange, arcRight: false),
+      _RowDef(lc: kOrange, rc: kTeal, arcColor: kTeal, arcRight: true),
+      _RowDef(lc: kOrange, rc: kTeal, arcColor: kOrange, arcRight: false),
+      _RowDef(lc: kTeal, rc: kOrange, arcColor: null, arcRight: false),
     ];
 
     for (int i = 0; i < rows; i++) {

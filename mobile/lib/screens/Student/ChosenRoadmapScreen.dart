@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
-import '../services/api_service.dart';
-import 'home_screen.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/api_service.dart';
+import 'student_homescreen.dart';
 import 'profile_screen.dart';
 import 'assessment_flow.dart';
 
@@ -343,7 +343,7 @@ BottomNavigationBar _buildBottomNav(BuildContext context) {
     onTap: (index) {
       if (index == 0) {
         Navigator.pushAndRemoveUntil(
-            context, MaterialPageRoute(builder: (_) => const HomeScreen()), (route) => false);
+            context, MaterialPageRoute(builder: (_) => const StudentHomeScreen()), (route) => false);
       } else if (index == 1) {
         Navigator.push(context, MaterialPageRoute(builder: (_) => const AssessmentStartScreen()));
       } else if (index == 3) {

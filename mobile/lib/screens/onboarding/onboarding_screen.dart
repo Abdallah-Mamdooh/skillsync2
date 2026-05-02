@@ -189,9 +189,11 @@ class _OnboardingPageOne extends StatelessWidget {
                   'SKILLSYNC',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 38,
+                    fontWeight: FontWeight.w700,
                     letterSpacing: 2.5,
+                    fontFamily: 'Inter',
+                    fontFamilyFallback: ['Roboto', 'sans-serif'], // optional fallback
                   ),
                 ),
 

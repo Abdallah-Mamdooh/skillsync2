@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import '../widgets/bottom_navigation.dart';
-import '../models/resume_analysis.dart';
-import '../services/resume_analyzer_service.dart';
+import '../../models/resume_analysis.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/api_service.dart';
+import '../../services/resume_analyzer_service.dart';
+import '../../widgets/bottom_navigation.dart';
 
 // First Screen - CV Upload Screen
 class CVOptimizerScreen extends StatefulWidget {

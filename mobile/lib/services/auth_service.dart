@@ -1,4 +1,5 @@
 import 'api_service.dart';
+import '../utils/role_utils.dart';
 
 class AuthService {
   static Future<Map<String, dynamic>> signup({
@@ -11,13 +12,14 @@ class AuthService {
     String? linkedinUrl,
     String? additionalInfo,
   }) async {
+    final includeMentorFields = isMentorRole(role);
     return ApiService.post('/auth/signup', {
       'fullName': fullName,
       'email': email,
       'phoneNumber': phoneNumber,
       'password': password,
       'role': role,
-      if (role == 'mentor') ...{
+      if (includeMentorFields) ...{
         'cvUrl': cvUrl,
         'linkedinUrl': linkedinUrl,
         'additionalInfo': additionalInfo,

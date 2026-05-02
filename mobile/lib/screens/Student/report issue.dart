@@ -92,7 +92,8 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                 onTap: () => Navigator.pop(context),
                 child: Row(
                   children: [
-                    const Icon(Icons.arrow_back_ios, size: 16, color: Color(0xFF1D5572)),
+                    const Icon(Icons.arrow_back_ios,
+                        size: 16, color: Color(0xFF1D5572)),
                     Text(
                       'Back',
                       style: GoogleFonts.inter(
@@ -144,7 +145,8 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.info_outline, color: Color(0xFF3B82F6), size: 18),
+                    const Icon(Icons.info_outline,
+                        color: Color(0xFF3B82F6), size: 18),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(
@@ -184,10 +186,12 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                 const SizedBox(height: 8),
                 // Custom inline dropdown
                 GestureDetector(
-                  onTap: () => setState(() => _isDropdownOpen = !_isDropdownOpen),
+                  onTap: () =>
+                      setState(() => _isDropdownOpen = !_isDropdownOpen),
                   child: Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 13),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       border: Border.all(
@@ -262,15 +266,15 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                                   : Colors.white,
                               borderRadius: isLast
                                   ? const BorderRadius.only(
-                                bottomLeft: Radius.circular(8),
-                                bottomRight: Radius.circular(8),
-                              )
+                                      bottomLeft: Radius.circular(8),
+                                      bottomRight: Radius.circular(8),
+                                    )
                                   : null,
                               border: isLast
                                   ? null
                                   : const Border(
-                                  bottom: BorderSide(
-                                      color: Color(0xFFF3F4F6))),
+                                      bottom:
+                                          BorderSide(color: Color(0xFFF3F4F6))),
                             ),
                             child: Text(
                               type,
@@ -291,37 +295,6 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                   ),
                 const SizedBox(height: 16),
 
-                // Issue type quick-select chips
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _issueTypes.map((type) {
-                    final isSelected = _selectedIssueType == type;
-                    return GestureDetector(
-                      onTap: () => setState(() => _selectedIssueType = type),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                        decoration: BoxDecoration(
-                          color: isSelected ? const Color(0xFF1D5572) : Colors.white,
-                          border: Border.all(
-                            color: isSelected ? const Color(0xFF1D5572) : const Color(0xFFD1D5DB),
-                          ),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          type,
-                          style: GoogleFonts.inter(
-                            color: isSelected ? Colors.white : const Color(0xFF4B5563),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 16),
-
                 _fieldLabel('Describe the Problem *'),
                 const SizedBox(height: 8),
                 TextField(
@@ -330,7 +303,8 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                   maxLength: 500,
                   decoration: InputDecoration(
                     hintText: 'Please provide details about the issue...',
-                    hintStyle: GoogleFonts.inter(color: const Color(0xFF9CA3AF), fontSize: 13),
+                    hintStyle: GoogleFonts.inter(
+                        color: const Color(0xFF9CA3AF), fontSize: 13),
                     filled: true,
                     fillColor: const Color(0xFFF9FAFB),
                     border: OutlineInputBorder(
@@ -347,7 +321,8 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                     ),
                     contentPadding: const EdgeInsets.all(12),
                   ),
-                  style: GoogleFonts.inter(color: const Color(0xFF1F2937), fontSize: 14),
+                  style: GoogleFonts.inter(
+                      color: const Color(0xFF1F2937), fontSize: 14),
                 ),
               ],
             ),
@@ -359,7 +334,10 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
               children: [
                 Text(
                   'Upload screenshots or other evidence to support your complaint.',
-                  style: GoogleFonts.inter(color: const Color(0xFF6B7280), fontSize: 13, height: 1.4),
+                  style: GoogleFonts.inter(
+                      color: const Color(0xFF6B7280),
+                      fontSize: 13,
+                      height: 1.4),
                 ),
                 const SizedBox(height: 12),
                 GestureDetector(
@@ -369,38 +347,44 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF9FAFB),
-                      border: Border.all(color: const Color(0xFFD1D5DB), style: BorderStyle.solid),
+                      border: Border.all(
+                          color: const Color(0xFFD1D5DB),
+                          style: BorderStyle.solid),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: _attachedImage != null
                         ? Column(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: Image.file(_attachedImage!, height: 100, fit: BoxFit.cover),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Tap to change',
-                          style: GoogleFonts.inter(color: const Color(0xFF6B7280), fontSize: 12),
-                        ),
-                      ],
-                    )
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(6),
+                                child: Image.file(_attachedImage!,
+                                    height: 100, fit: BoxFit.cover),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Tap to change',
+                                style: GoogleFonts.inter(
+                                    color: const Color(0xFF6B7280),
+                                    fontSize: 12),
+                              ),
+                            ],
+                          )
                         : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.upload_outlined, color: Color(0xFF6B7280), size: 24),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Upload Screenshot',
-                          style: GoogleFonts.inter(
-                            color: const Color(0xFF1D5572),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.upload_outlined,
+                                  color: Color(0xFF6B7280), size: 24),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Upload Screenshot',
+                                style: GoogleFonts.inter(
+                                  color: const Color(0xFF1D5572),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
                   ),
                 ),
               ],
@@ -443,12 +427,14 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                         'Users are responsible for providing accurate details when submitting a complaint.',
                         'Repeated misuse of the refund system may result in account restrictions.',
                       ].map(
-                            (point) => Padding(
+                        (point) => Padding(
                           padding: const EdgeInsets.only(bottom: 5),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('• ', style: TextStyle(color: Color(0xFF16A34A), fontSize: 13)),
+                              const Text('• ',
+                                  style: TextStyle(
+                                      color: Color(0xFF16A34A), fontSize: 13)),
                               Expanded(
                                 child: Text(
                                   point,
@@ -495,12 +481,14 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                         'If you left the session voluntarily before it ended.',
                         'If the issue was caused by your own internet connection or device.',
                       ].map(
-                            (point) => Padding(
+                        (point) => Padding(
                           padding: const EdgeInsets.only(bottom: 5),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('• ', style: TextStyle(color: Color(0xFFDC2626), fontSize: 13)),
+                              const Text('• ',
+                                  style: TextStyle(
+                                      color: Color(0xFFDC2626), fontSize: 13)),
                               Expanded(
                                 child: Text(
                                   point,
@@ -537,18 +525,19 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                   child: Center(
                     child: _isSubmitting
                         ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                    )
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2),
+                          )
                         : Text(
-                      'Submit Complaint',
-                      style: GoogleFonts.inter(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                            'Submit Complaint',
+                            style: GoogleFonts.inter(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                   ),
                 ),
               ),
@@ -560,7 +549,8 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
     );
   }
 
-  Widget _buildSectionCard({required String title, required List<Widget> children}) {
+  Widget _buildSectionCard(
+      {required String title, required List<Widget> children}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
@@ -570,7 +560,11 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
           boxShadow: const [
-            BoxShadow(color: Color(0x1A000000), spreadRadius: 0, offset: Offset(0, 2), blurRadius: 8),
+            BoxShadow(
+                color: Color(0x1A000000),
+                spreadRadius: 0,
+                offset: Offset(0, 2),
+                blurRadius: 8),
           ],
         ),
         child: Column(

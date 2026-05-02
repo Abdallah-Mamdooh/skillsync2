@@ -4,8 +4,15 @@ import 'student_homescreen.dart';
 
 class PaymentConfirmationScreen extends StatelessWidget {
   final bool isSuccess;
+  final String? sessionId;
+  final String? message;
 
-  const PaymentConfirmationScreen({super.key, required this.isSuccess});
+  const PaymentConfirmationScreen({
+    super.key,
+    required this.isSuccess,
+    this.sessionId,
+    this.message,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -79,9 +86,10 @@ class PaymentConfirmationScreen extends StatelessWidget {
 
                           // Subtitle
                           Text(
-                            isSuccess
-                                ? "You'll receive a confirmation email shortly"
-                                : 'Something went wrong. Please try again.',
+                            message ??
+                                (isSuccess
+                                    ? "You'll receive a confirmation email shortly"
+                                    : 'Something went wrong. Please try again.'),
                             textAlign: TextAlign.center,
                             style: GoogleFonts.inter(
                               fontSize: 14,
@@ -110,7 +118,7 @@ class PaymentConfirmationScreen extends StatelessWidget {
                                 elevation: 0,
                               ),
                               child: Text(
-                                'Back To Home',
+                                isSuccess ? 'Back To Home' : 'Try Again',
                                 style: GoogleFonts.inter(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,

@@ -123,38 +123,62 @@ const forgotPassword = async (email) => {
   }
 
   const user = await User.findOne({ email });
+
   if (!user) {
-    throw new Error('No user found with this email');
+    return {
+      success: true,
+      message: 'If this email exists, a reset link has been sent.',
+    };
   }
 
   const resetToken = crypto.randomBytes(32).toString('hex');
-  const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+  const hashedToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
 
   user.passwordResetToken = hashedToken;
   user.passwordResetExpires = Date.now() + 10 * 60 * 1000;
 
   await user.save();
 
-  const resetUrl = `http://localhost:3000/reset-password/${resetToken}`;
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
 
   await sendEmail(
     user.email,
-    'Password Reset',
+    'SkillSync Password Reset',
     `
-### Password Reset
+Hello ${user.fullName || ''},
 
-Click below to reset your password:
+You requested to reset your SkillSync password.
+
+Click the link below to set a new password:
 ${resetUrl}
-`
+
+This link will expire in 10 minutes.
+
+If you did not request this, please ignore this email.
+    `
   );
 
   return {
     success: true,
-    message: 'Reset link sent to email',
+    message: 'If this email exists, a reset link has been sent.',
   };
 };
 
 const resetPassword = async (token, newPassword) => {
+
+  if (!token) {
+  throw new Error('Reset token is required');
+}
+
+if (!newPassword || newPassword.length < 8) {
+  throw new Error('Password must be at least 8 characters');
+}
+
   const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
   const user = await User.findOne({

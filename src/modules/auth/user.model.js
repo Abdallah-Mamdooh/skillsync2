@@ -96,13 +96,34 @@ const userSchema = new mongoose.Schema(
     },
 
     mentorProfile: {
-      linkedinUrl: String,
-      additionalInfo: String,
-      isVerified: {
-        type: Boolean,
-        default: false,
-      },
-    },
+  linkedinUrl: {
+    type: String,
+    trim: true,
+  },
+
+  additionalInfo: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+
+  proposedHourlyRate: {
+    type: Number,
+    min: 0,
+    default: 0,
+  },
+
+  payoutAccountInfo: {
+  iv: String,
+  content: String,
+  authTag: String,
+},
+
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
+},
 
     isActive: {
       type: Boolean,

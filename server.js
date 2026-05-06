@@ -16,12 +16,16 @@ startMentorSessionCron();
 const PORT = process.env.PORT || 5000;
 
 const server = http.createServer(app);
+const { setIo } = require('./src/utils/socket');
+
 
 const io = new Server(server, {
   cors: {
     origin: '*',
   },
 });
+setIo(io);
+
 
 async function getUserFromSocket(socket, eventToken = null) {
   const authHeader = socket.handshake.headers?.authorization || '';
@@ -47,6 +51,25 @@ async function getUserFromSocket(socket, eventToken = null) {
 }
 
 io.on('connection', (socket) => {
+
+  socket.on('join_user_room', async ({ token }) => {
+  try {
+    const user = await getUserFromSocket(socket, token);
+    const room = `user_${user._id.toString()}`;
+
+    socket.join(room);
+
+    socket.emit('joined_user_room', {
+      userId: user._id,
+      room,
+    });
+  } catch (err) {
+    socket.emit('notification_error', {
+      message: err.message,
+    });
+  }
+});
+
   socket.on('join_session_room', async ({ sessionId, token }) => {
     try {
       const user = await getUserFromSocket(socket, token);

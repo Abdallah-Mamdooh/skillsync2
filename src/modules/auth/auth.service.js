@@ -4,18 +4,21 @@ const crypto = require('crypto');
 const User = require('./user.model');
 const jwtUtils = require('../../utils/jwt');
 const sendEmail = require('../../utils/sendEmail');
+const { encryptText } = require('../../utils/encryption');
 
 const signup = async (data) => {
   const {
-    fullName,
-    email,
-    phoneNumber,
-    password,
-    role,
-    cvUrl,
-    linkedinUrl,
-    additionalInfo,
-  } = data;
+  fullName,
+  email,
+  phoneNumber,
+  password,
+  role,
+  cvUrl,
+  linkedinUrl,
+  additionalInfo,
+  proposedHourlyRate,
+  payoutAccountInfo,
+} = data;
 
   if (!fullName || !email || !password || !role) {
     throw new Error('fullName, email, password, and role are required');
@@ -36,10 +39,22 @@ const signup = async (data) => {
   }
 
   if (role === 'mentor') {
-    if (!cvUrl || !linkedinUrl) {
-      throw new Error('Mentors must provide CV and LinkedIn profile');
-    }
+  if (!cvUrl || !linkedinUrl) {
+    throw new Error('Mentors must provide CV and LinkedIn profile');
   }
+
+  if (
+    proposedHourlyRate === undefined ||
+    proposedHourlyRate === null ||
+    Number(proposedHourlyRate) <= 0
+  ) {
+    throw new Error('Mentors must provide a valid proposed hourly rate');
+  }
+
+  if (!payoutAccountInfo || !payoutAccountInfo.trim()) {
+  throw new Error('Mentors must provide payout account information');
+}
+}
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -51,13 +66,14 @@ const signup = async (data) => {
     role,
     authProvider: 'local',
     cvUrl: role === 'mentor' ? cvUrl : (cvUrl || ''),
-    mentorProfile:
-      role === 'mentor'
-        ? {
-            linkedinUrl,
-            additionalInfo,
-          }
-        : undefined,
+    mentorProfile: role === 'mentor'
+  ? {
+      linkedinUrl,
+      additionalInfo,
+      proposedHourlyRate: Number(proposedHourlyRate),
+      payoutAccountInfo: encryptText(payoutAccountInfo),
+    }
+  : undefined,
   });
 
   const userObject = user.toObject();

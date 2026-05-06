@@ -1,5 +1,5 @@
 const Notification = require('./notification.model');
-
+const { getIo } = require('../../utils/socket');
 const NOTIFICATION_TYPES = {
   // auth / account
   ACCOUNT_STATUS_UPDATED: 'account_status_updated',
@@ -77,7 +77,7 @@ async function createNotification({
     throw new Error('message is required');
   }
 
-  return Notification.create({
+  const notification = await Notification.create({
     userId,
     type,
     title,
@@ -86,8 +86,17 @@ async function createNotification({
     isRead: false,
     readAt: null,
   });
-}
 
+  const io = getIo();
+
+  if (io) {
+    io.to(`user_${userId.toString()}`).emit('new_notification', {
+      notification,
+    });
+  }
+
+  return notification;
+}
 async function createManyNotifications(items = []) {
   if (!Array.isArray(items) || items.length === 0) {
     return [];
@@ -111,9 +120,20 @@ async function createManyNotifications(items = []) {
     };
   });
 
-  return Notification.insertMany(docs);
-}
+  const notifications = await Notification.insertMany(docs);
 
+  const io = getIo();
+
+  if (io) {
+    notifications.forEach((notification) => {
+      io.to(`user_${notification.userId.toString()}`).emit('new_notification', {
+        notification,
+      });
+    });
+  }
+
+  return notifications;
+}
 async function getMyNotifications(userId, query = {}) {
   const {
     isRead = '',

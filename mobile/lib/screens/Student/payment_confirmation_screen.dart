@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../widgets/bottom_navigation.dart';
 import 'student_homescreen.dart';
 
 class PaymentConfirmationScreen extends StatelessWidget {
@@ -61,21 +62,23 @@ class PaymentConfirmationScreen extends StatelessWidget {
                             ),
                             child: isSuccess
                                 ? const Icon(
-                              Icons.check_circle_outline_rounded,
-                              color: Color(0xFF059669),
-                              size: 72,
-                            )
+                                    Icons.check_circle_outline_rounded,
+                                    color: Color(0xFF059669),
+                                    size: 72,
+                                  )
                                 : const Icon(
-                              Icons.cancel_outlined,
-                              color: Color(0xFFDC2626),
-                              size: 72,
-                            ),
+                                    Icons.cancel_outlined,
+                                    color: Color(0xFFDC2626),
+                                    size: 72,
+                                  ),
                           ),
                           const SizedBox(height: 28),
 
                           // Title
                           Text(
-                            isSuccess ? 'Session Booked!' : 'Session Not Booked!',
+                            isSuccess
+                                ? 'Session Booked!'
+                                : 'Session Not Booked!',
                             style: GoogleFonts.inter(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
@@ -106,8 +109,10 @@ class PaymentConfirmationScreen extends StatelessWidget {
                               onPressed: () {
                                 Navigator.pushAndRemoveUntil(
                                   context,
-                                  MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
-                                      (route) => false,
+                                  MaterialPageRoute(
+                                      builder: (_) =>
+                                          const StudentHomeScreen()),
+                                  (route) => false,
                                 );
                               },
                               style: ElevatedButton.styleFrom(
@@ -137,36 +142,8 @@ class PaymentConfirmationScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(context),
-    );
-  }
-
-  BottomNavigationBar _buildBottomNav(BuildContext context) {
-    return BottomNavigationBar(
-      backgroundColor: const Color(0xFF1D5572),
-      selectedItemColor: Colors.white,
-      unselectedItemColor: Colors.white70,
-      type: BottomNavigationBarType.fixed,
-      currentIndex: 0,
-      showSelectedLabels: true,
-      showUnselectedLabels: true,
-      selectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-      unselectedLabelStyle: const TextStyle(fontSize: 12),
-      onTap: (index) {
-        if (index == 0) {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
-                (route) => false,
-          );
-        }
-      },
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
-        BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined), activeIcon: Icon(Icons.assignment), label: 'assess'),
-        BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), activeIcon: Icon(Icons.chat_bubble), label: 'Chat'),
-        BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profile'),
-      ],
+      bottomNavigationBar:
+          const BottomNavigation(selectedIndex: BottomNavIndex.none),
     );
   }
 }

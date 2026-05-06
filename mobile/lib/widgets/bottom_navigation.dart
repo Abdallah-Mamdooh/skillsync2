@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
 import '../screens/Student/student_homescreen.dart';
 import '../screens/Student/assessment_flow.dart';
 import '../screens/Student/chathistory.dart';
 import '../screens/Student/profile_screen.dart';
 
-enum BottomNavIndex { home, assess, chat, profile }
+enum BottomNavIndex { home, assess, chat, profile, none }
 
 class BottomNavigation extends StatelessWidget {
   final BottomNavIndex selectedIndex;
@@ -94,9 +92,6 @@ class BottomNavigation extends StatelessWidget {
     // Don't navigate if already on this screen
     if (selectedIndex == index) return;
 
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final token = authProvider.token;
-
     switch (index) {
       case BottomNavIndex.home:
         Navigator.pushAndRemoveUntil(
@@ -125,6 +120,8 @@ class BottomNavigation extends StatelessWidget {
           context,
           MaterialPageRoute(builder: (_) => const ProfileScreen()),
         );
+        break;
+      case BottomNavIndex.none:
         break;
     }
   }

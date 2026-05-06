@@ -42,7 +42,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
   bool _loadingWallet = true;
   bool _submitting = false;
 
-  int get _durationMinutes => int.tryParse(widget.sessionDuration.split(' ').first) ?? 30;
+  int get _durationMinutes =>
+      int.tryParse(widget.sessionDuration.split(' ').first) ?? 30;
 
   @override
   void initState() {
@@ -85,7 +86,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
         payload: payload,
       );
       sessionId = bookingResponse['data']?['sessionId']?.toString();
-      transactionId = bookingResponse['data']?['checkout']?['transactionId']?.toString();
+      transactionId =
+          bookingResponse['data']?['checkout']?['transactionId']?.toString();
 
       if (bookingResponse['success'] == true && transactionId != null) {
         for (var i = 0; i < 6; i++) {
@@ -125,46 +127,83 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.only(left: 16, right: 20, top: 40, bottom: 15),
+      decoration: const BoxDecoration(
+        color: Color(0xFF1D5572),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: const Padding(
+              padding: EdgeInsets.only(left: 8, bottom: 8),
+              child: Icon(Icons.arrow_back, color: Colors.white),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Text(
+              'PAYMENT',
+              style: GoogleFonts.inter(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Text(
+              'Pay Here',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final double remains = _walletBalance - widget.sessionPrice;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: const Color(0xFF1D5572),
       body: SafeArea(
         child: Column(
           children: [
+            _buildHeader(context),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(26, 20, 26, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ── Header ──
-                    Row(children: [
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: const Icon(Icons.arrow_back, color: Color(0xFF1F2937)),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('PAYMENT', style: GoogleFonts.inter(fontSize: 25, fontWeight: FontWeight.bold, color: const Color(0xFF1F2937))),
-                          Text('Pay Here', style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF1F2937))),
-                        ],
-                      ),
-                    ]),
-                    const SizedBox(height: 16),
-
-                    // ── Wallet Balance Card ──
+              child: Container(
+                color: const Color(0xFFF2F4F6),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(26, 20, 26, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 16),
+                      // ── Wallet Balance Card ──
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(10),
-                        boxShadow: const [BoxShadow(color: Color(0x3F000000), spreadRadius: 0, offset: Offset(0, 2), blurRadius: 2)],
+                        boxShadow: const [
+                          BoxShadow(
+                              color: Color(0x3F000000),
+                              spreadRadius: 0,
+                              offset: Offset(0, 2),
+                              blurRadius: 2)
+                        ],
                       ),
                       child: Row(
                         children: [
@@ -172,26 +211,42 @@ class _PaymentScreenState extends State<PaymentScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Balance', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF2E2E2E))),
+                                Text('Balance',
+                                    style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: const Color(0xFF2E2E2E))),
                                 const SizedBox(height: 4),
                                 Text(
                                   _loadingWallet
                                       ? 'Loading...'
                                       : '${_walletBalance.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')} $_walletCurrency',
-                                  style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF2E2E2E)),
+                                  style: GoogleFonts.inter(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF2E2E2E)),
                                 ),
                               ],
                             ),
                           ),
                           Container(
-                            width: 52, height: 58,
-                            decoration: BoxDecoration(color: Colors.white, border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(4)),
+                            width: 52,
+                            height: 58,
+                            decoration: BoxDecoration(
+                                color: Colors.white,
+                                border: Border.all(color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(4)),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Image.asset('assets/images/wallet.png', width: 26, height: 26),
+                                Image.asset('assets/images/wallet.png',
+                                    width: 26, height: 26),
                                 const SizedBox(height: 4),
-                                Text('Wallet', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF333333))),
+                                Text('Wallet',
+                                    style: GoogleFonts.inter(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF333333))),
                               ],
                             ),
                           ),
@@ -207,12 +262,22 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
-                        boxShadow: const [BoxShadow(color: Color(0x1E000000), spreadRadius: 0, offset: Offset(0, 2), blurRadius: 8)],
+                        boxShadow: const [
+                          BoxShadow(
+                              color: Color(0x1E000000),
+                              spreadRadius: 0,
+                              offset: Offset(0, 2),
+                              blurRadius: 8)
+                        ],
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Booking Summary', style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF1F2937))),
+                          Text('Booking Summary',
+                              style: GoogleFonts.inter(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF1F2937))),
                           const SizedBox(height: 16),
                           _summaryRow('Mentor:', widget.mentorName),
                           const SizedBox(height: 8),
@@ -220,21 +285,31 @@ class _PaymentScreenState extends State<PaymentScreen> {
                           const SizedBox(height: 8),
                           _summaryRow('Duration:', widget.sessionDuration),
                           const SizedBox(height: 8),
-                          _summaryRow('Session type:', widget.sessionType.toUpperCase()),
+                          _summaryRow('Session type:',
+                              widget.sessionType.toUpperCase()),
                           const SizedBox(height: 8),
-                          _summaryRow('Payment:', widget.paymentMethod.toUpperCase()),
+                          _summaryRow(
+                              'Payment:', widget.paymentMethod.toUpperCase()),
                           const SizedBox(height: 16),
                           const Divider(color: Color(0xFFD9D9D9), height: 1),
                           const SizedBox(height: 16),
-                          _summaryRow('TOTAL BALANCE:', '${_walletBalance.toStringAsFixed(0)} $_walletCurrency', valueColor: const Color(0xFFF5A100)),
+                          _summaryRow('TOTAL BALANCE:',
+                              '${_walletBalance.toStringAsFixed(0)} $_walletCurrency',
+                              valueColor: const Color(0xFFF5A100)),
                           const SizedBox(height: 8),
-                          _summaryRow('', '-${widget.sessionPrice.toStringAsFixed(0)} $_walletCurrency', valueColor: const Color(0xFFF5A100)),
+                          _summaryRow('',
+                              '-${widget.sessionPrice.toStringAsFixed(0)} $_walletCurrency',
+                              valueColor: const Color(0xFFF5A100)),
                           const SizedBox(height: 8),
-                          _summaryRow('REMAINS:', '${remains.toStringAsFixed(0)} $_walletCurrency', valueColor: const Color(0xFFF5A100)),
+                          _summaryRow('REMAINS:',
+                              '${remains.toStringAsFixed(0)} $_walletCurrency',
+                              valueColor: const Color(0xFFF5A100)),
                           const SizedBox(height: 16),
                           const Divider(color: Color(0xFFD9D9D9), height: 1),
                           const SizedBox(height: 16),
-                          _summaryRow('TOTAL:', '${widget.sessionPrice.toStringAsFixed(0)} $_walletCurrency', labelBold: true),
+                          _summaryRow('TOTAL:',
+                              '${widget.sessionPrice.toStringAsFixed(0)} $_walletCurrency',
+                              labelBold: true),
                         ],
                       ),
                     ),
@@ -250,7 +325,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
                               if (_submitting) return;
                               _confirmBooking();
                             },
-                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1D5572), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF1D5572),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6))),
                             child: _submitting
                                 ? const SizedBox(
                                     width: 18,
@@ -260,7 +338,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                       color: Colors.white,
                                     ),
                                   )
-                                : Text('Confirm', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white)),
+                                : Text('Confirm',
+                                    style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.white)),
                           ),
                         ),
                       ),
@@ -275,10 +357,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                 barrierDismissible: false,
                                 builder: (BuildContext dialogContext) {
                                   return Dialog(
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(16)),
                                     backgroundColor: Colors.white,
                                     child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 24, vertical: 28),
                                       child: Column(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
@@ -329,21 +414,29 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                                   height: 44,
                                                   child: ElevatedButton(
                                                     onPressed: () {
-                                                      Navigator.pop(dialogContext);
+                                                      Navigator.pop(
+                                                          dialogContext);
                                                       Navigator.pop(context);
                                                     },
-                                                    style: ElevatedButton.styleFrom(
-                                                      backgroundColor: const Color(0xFF1D5572),
+                                                    style: ElevatedButton
+                                                        .styleFrom(
+                                                      backgroundColor:
+                                                          const Color(
+                                                              0xFF1D5572),
                                                       elevation: 0,
-                                                      shape: RoundedRectangleBorder(
-                                                        borderRadius: BorderRadius.circular(8),
+                                                      shape:
+                                                          RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(8),
                                                       ),
                                                     ),
                                                     child: Text(
                                                       'Yes,cancel',
                                                       style: GoogleFonts.inter(
                                                         fontSize: 12,
-                                                        fontWeight: FontWeight.w600,
+                                                        fontWeight:
+                                                            FontWeight.w600,
                                                         color: Colors.white,
                                                       ),
                                                     ),
@@ -355,20 +448,30 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                                 child: SizedBox(
                                                   height: 46,
                                                   child: ElevatedButton(
-                                                    onPressed: () => Navigator.pop(dialogContext),
-                                                    style: ElevatedButton.styleFrom(
-                                                      backgroundColor: const Color(0xFFE0E0E0),
+                                                    onPressed: () =>
+                                                        Navigator.pop(
+                                                            dialogContext),
+                                                    style: ElevatedButton
+                                                        .styleFrom(
+                                                      backgroundColor:
+                                                          const Color(
+                                                              0xFFE0E0E0),
                                                       elevation: 0,
-                                                      shape: RoundedRectangleBorder(
-                                                        borderRadius: BorderRadius.circular(8),
+                                                      shape:
+                                                          RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(8),
                                                       ),
                                                     ),
                                                     child: Text(
                                                       'NO',
                                                       style: GoogleFonts.inter(
                                                         fontSize: 12,
-                                                        fontWeight: FontWeight.w600,
-                                                        color: const Color(0xFF555555),
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color: const Color(
+                                                            0xFF555555),
                                                       ),
                                                     ),
                                                   ),
@@ -383,8 +486,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                 },
                               );
                             },
-                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD9D9D9), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)), elevation: 0),
-                            child: Text('Cancel', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF1D5572))),
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFD9D9D9),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6)),
+                                elevation: 0),
+                            child: Text('Cancel',
+                                style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: const Color(0xFF1D5572))),
                           ),
                         ),
                       ),
@@ -394,24 +505,32 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 ),
               ),
             ),
+            ),
           ],
         ),
       ),
-      bottomNavigationBar: const BottomNavigation(selectedIndex: BottomNavIndex.chat),
+      bottomNavigationBar:
+          const BottomNavigation(selectedIndex: BottomNavIndex.none),
     );
   }
 
-  Widget _summaryRow(String label, String value, {Color valueColor = const Color(0xFF1D5572), bool labelBold = false}) {
+  Widget _summaryRow(String label, String value,
+      {Color valueColor = const Color(0xFF1D5572), bool labelBold = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         if (label.isNotEmpty)
-          Text(label, style: GoogleFonts.inter(fontSize: 14, fontWeight: labelBold ? FontWeight.bold : FontWeight.w500, color: const Color(0xFF2E2E2E)))
+          Text(label,
+              style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: labelBold ? FontWeight.bold : FontWeight.w500,
+                  color: const Color(0xFF2E2E2E)))
         else
           const SizedBox(),
-        Text(value, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: valueColor)),
+        Text(value,
+            style: GoogleFonts.inter(
+                fontSize: 14, fontWeight: FontWeight.w500, color: valueColor)),
       ],
     );
   }
 }
-

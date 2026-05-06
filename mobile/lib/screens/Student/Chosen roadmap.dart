@@ -6,10 +6,6 @@ import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 import '../../widgets/bottom_navigation.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Models
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _Resource {
   final String title;
   final String url;
@@ -18,10 +14,10 @@ class _Resource {
   const _Resource({required this.title, required this.url, required this.type});
 
   factory _Resource.fromJson(Map<String, dynamic> j) => _Resource(
-    title: j['title']?.toString() ?? '',
-    url: j['url']?.toString() ?? '',
-    type: j['type']?.toString() ?? 'course',
-  );
+        title: j['title']?.toString() ?? '',
+        url: j['url']?.toString() ?? '',
+        type: j['type']?.toString() ?? 'course',
+      );
 }
 
 class _Step {
@@ -42,16 +38,16 @@ class _Step {
   });
 
   factory _Step.fromJson(Map<String, dynamic> j) => _Step(
-    id: j['_id']?.toString() ?? '',
-    title: j['title']?.toString() ?? '',
-    skillTag: j['skillTag']?.toString() ?? '',
-    order: (j['order'] as num?)?.toInt() ?? 0,
-    isCompleted: j['isCompleted'] == true,
-    resources: (j['resources'] as List<dynamic>? ?? [])
-        .whereType<Map<String, dynamic>>()
-        .map(_Resource.fromJson)
-        .toList(),
-  );
+        id: j['_id']?.toString() ?? '',
+        title: j['title']?.toString() ?? '',
+        skillTag: j['skillTag']?.toString() ?? '',
+        order: (j['order'] as num?)?.toInt() ?? 0,
+        isCompleted: j['isCompleted'] == true,
+        resources: (j['resources'] as List<dynamic>? ?? [])
+            .whereType<Map<String, dynamic>>()
+            .map(_Resource.fromJson)
+            .toList(),
+      );
 }
 
 class _Phase {
@@ -59,22 +55,17 @@ class _Phase {
   final int order;
   final List<_Step> steps;
 
-  const _Phase(
-      {required this.title, required this.order, required this.steps});
+  const _Phase({required this.title, required this.order, required this.steps});
 
   factory _Phase.fromJson(Map<String, dynamic> j) => _Phase(
-    title: j['title']?.toString() ?? '',
-    order: (j['order'] as num?)?.toInt() ?? 0,
-    steps: (j['steps'] as List<dynamic>? ?? [])
-        .whereType<Map<String, dynamic>>()
-        .map(_Step.fromJson)
-        .toList(),
-  );
+        title: j['title']?.toString() ?? '',
+        order: (j['order'] as num?)?.toInt() ?? 0,
+        steps: (j['steps'] as List<dynamic>? ?? [])
+            .whereType<Map<String, dynamic>>()
+            .map(_Step.fromJson)
+            .toList(),
+      );
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Screen
-// ─────────────────────────────────────────────────────────────────────────────
 
 class ChosenRoadmapScreen extends StatefulWidget {
   const ChosenRoadmapScreen({super.key});
@@ -103,7 +94,6 @@ class _ChosenRoadmapScreenState extends State<ChosenRoadmapScreen> {
 
   String? get _token => context.read<AuthProvider>().token;
 
-  // ── Load: generate resources first, then fetch roadmap ────────────────────
   Future<void> _load() async {
     final token = _token;
     if (token == null) {
@@ -115,32 +105,25 @@ class _ChosenRoadmapScreenState extends State<ChosenRoadmapScreen> {
     }
 
     try {
-      // Step 1: trigger resource generation on the backend so steps have links.
-      // This is safe to call every time — backend only updates empty steps.
       await ApiService.postWithAuth('/roadmap/generate-resources', {}, token);
 
-      // Step 2: fetch the roadmap (steps now have resources populated)
       final response = await ApiService.get('/roadmap/my-roadmap', token);
 
       if (response['success'] != true) {
         setState(() {
           _isLoading = false;
-          _error =
-              response['message']?.toString() ?? 'Failed to load roadmap.';
+          _error = response['message']?.toString() ?? 'Failed to load roadmap.';
         });
         return;
       }
 
       final data = response['data'] as Map<String, dynamic>? ?? {};
 
-      // Career name
       final careerMap = data['career'] as Map<String, dynamic>? ?? {};
       final careerName = careerMap['name']?.toString() ?? '';
 
-      // Overall completion
       final percent = (data['completionPercent'] as num?)?.toInt() ?? 0;
 
-      // Flatten phases → steps
       final roadmapMap = data['roadmap'] as Map<String, dynamic>? ?? {};
       final rawPhases = roadmapMap['phases'] as List<dynamic>? ?? [];
 
@@ -157,7 +140,6 @@ class _ChosenRoadmapScreenState extends State<ChosenRoadmapScreen> {
         flatSteps.addAll(sorted);
       }
 
-      // If any step still has no resources, build fallback search links locally
       for (final step in flatSteps) {
         if (step.resources.isEmpty) {
           step.resources = _buildFallbackResources(step.skillTag, step.title);
@@ -179,10 +161,8 @@ class _ChosenRoadmapScreenState extends State<ChosenRoadmapScreen> {
     }
   }
 
-  /// Fallback: build YouTube / Coursera / Udemy search links if DB has none.
   List<_Resource> _buildFallbackResources(String skillTag, String title) {
-    final keyword = Uri.encodeComponent(
-        skillTag.isNotEmpty ? skillTag : title);
+    final keyword = Uri.encodeComponent(skillTag.isNotEmpty ? skillTag : title);
     return [
       _Resource(
         title: 'YouTube: $skillTag',
@@ -201,21 +181,18 @@ class _ChosenRoadmapScreenState extends State<ChosenRoadmapScreen> {
       ),
       _Resource(
         title: 'Documentation: $skillTag',
-        url:
-        'https://www.google.com/search?q=$keyword+documentation',
+        url: 'https://www.google.com/search?q=$keyword+documentation',
         type: 'documentation',
       ),
     ];
   }
 
-  // ── Toggle step ────────────────────────────────────────────────────────────
   Future<void> _toggleStep(int index) async {
     final token = _token;
     if (token == null) return;
 
     final step = _flatSteps[index];
 
-    // Optimistic update
     setState(() {
       step.isCompleted = !step.isCompleted;
       _recalcPercent();
@@ -229,22 +206,19 @@ class _ChosenRoadmapScreenState extends State<ChosenRoadmapScreen> {
       );
 
       if (response['success'] == true) {
-        final serverPercent =
-        (response['completionPercent'] as num?)?.toInt();
+        final serverPercent = (response['completionPercent'] as num?)?.toInt();
         if (serverPercent != null) {
           setState(() {
             _completionPercent = serverPercent;
           });
         }
       } else {
-        // Revert
         setState(() {
           step.isCompleted = !step.isCompleted;
           _recalcPercent();
         });
       }
     } catch (_) {
-      // Revert
       setState(() {
         step.isCompleted = !step.isCompleted;
         _recalcPercent();
@@ -276,7 +250,6 @@ class _ChosenRoadmapScreenState extends State<ChosenRoadmapScreen> {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -292,39 +265,49 @@ class _ChosenRoadmapScreenState extends State<ChosenRoadmapScreen> {
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : _error != null
-                    ? _buildError()
-                    : _buildBody(),
+                        ? _buildError()
+                        : _buildBody(),
               ),
             ),
           ],
         ),
       ),
       bottomNavigationBar:
-      const BottomNavigation(selectedIndex: BottomNavIndex.assess),
+          const BottomNavigation(selectedIndex: BottomNavIndex.assess),
     );
   }
 
   Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 12, 20, 16),
-      child: Row(
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.only(left: 16, right: 20, top: 45, bottom: 15),
+      decoration: const BoxDecoration(
+        color: Color(0xFF1D5572),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Text(
+              'Chosen Roadmap',
+              style: GoogleFonts.inter(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Chosen Roadmap',
-                  style: GoogleFonts.inter(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white)),
-              Text('Your personalized path to reach your goals',
-                  style: GoogleFonts.inter(
-                      fontSize: 12, color: Colors.white70)),
-            ],
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Text(
+              'Your personalized path to reach your goals',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: Colors.white,
+              ),
+            ),
           ),
         ],
       ),
@@ -340,7 +323,7 @@ class _ChosenRoadmapScreenState extends State<ChosenRoadmapScreen> {
             child: Text(
               _careerName.isNotEmpty ? _careerName : 'Your Roadmap',
               style: GoogleFonts.inter(
-                  fontSize: 20,
+                  fontSize: 28,
                   fontWeight: FontWeight.bold,
                   color: const Color(0xFF1A1A2E)),
             ),
@@ -354,27 +337,26 @@ class _ChosenRoadmapScreenState extends State<ChosenRoadmapScreen> {
         Expanded(
           child: _flatSteps.isEmpty
               ? Center(
-            child: Text('No steps found.',
-                style: GoogleFonts.inter(
-                    fontSize: 14,
-                    color: const Color(0xFF6B7280))),
-          )
+                  child: Text('No steps found.',
+                      style: GoogleFonts.inter(
+                          fontSize: 14, color: const Color(0xFF6B7280))),
+                )
               : ListView.builder(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-            itemCount: _flatSteps.length,
-            itemBuilder: (context, index) {
-              final step = _flatSteps[index];
-              final status = _statusOf(index);
-              final isLast = index == _flatSteps.length - 1;
-              return _TimelineItem(
-                step: step,
-                status: status,
-                isLast: isLast,
-                onTap: () => _toggleStep(index),
-                onLinkTap: _launchUrl,
-              );
-            },
-          ),
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                  itemCount: _flatSteps.length,
+                  itemBuilder: (context, index) {
+                    final step = _flatSteps[index];
+                    final status = _statusOf(index);
+                    final isLast = index == _flatSteps.length - 1;
+                    return _TimelineItem(
+                      step: step,
+                      status: status,
+                      isLast: isLast,
+                      onTap: () => _toggleStep(index),
+                      onLinkTap: _launchUrl,
+                    );
+                  },
+                ),
         ),
       ],
     );
@@ -382,15 +364,13 @@ class _ChosenRoadmapScreenState extends State<ChosenRoadmapScreen> {
 
   Widget _buildProgressCard() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.only(left: 16, right: 16, top: 22, bottom: 24),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        color: const Color(0xFFD9D9D9),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: const [
           BoxShadow(
-              color: Color(0x0D000000),
-              blurRadius: 8,
-              offset: Offset(0, 2)),
+              color: Color(0x0D000000), blurRadius: 8, offset: Offset(0, 2)),
         ],
       ),
       child: Column(
@@ -400,14 +380,14 @@ class _ChosenRoadmapScreenState extends State<ChosenRoadmapScreen> {
             children: [
               Text('Overall Progress',
                   style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF333333))),
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF1D5572))),
               Text('$_completionPercent%',
                   style: GoogleFonts.inter(
-                      fontSize: 14,
+                      fontSize: 22,
                       fontWeight: FontWeight.bold,
-                      color: const Color(0xFF1D5572))),
+                      color: const Color(0xFF001636))),
             ],
           ),
           const SizedBox(height: 10),
@@ -416,9 +396,9 @@ class _ChosenRoadmapScreenState extends State<ChosenRoadmapScreen> {
             child: LinearProgressIndicator(
               value: _completionPercent / 100,
               minHeight: 10,
-              backgroundColor: const Color(0xFFCDD3DA),
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                  Color(0xFF2A7F8F)),
+              backgroundColor: Colors.white,
+              valueColor:
+                  const AlwaysStoppedAnimation<Color>(Color(0xFF2A7F8F)),
             ),
           ),
         ],
@@ -486,87 +466,84 @@ class _TimelineItem extends StatelessWidget {
 
   Widget _buildCircle() {
     if (status == _completed) {
-      return Container(
-        width: 46, height: 46,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: const Color(0xFF2DBE6C),
-          boxShadow: [
-            BoxShadow(
-                color: const Color(0xFF2DBE6C).withOpacity(0.4),
-                blurRadius: 10,
-                offset: const Offset(0, 4))
-          ],
+      return SizedBox(
+        width: 60,
+        height: 60,
+        child: CustomPaint(
+          painter: _CompletedCirclePainter(),
         ),
-        child: const Icon(Icons.check_circle_rounded,
-            color: Colors.white, size: 30),
       );
     }
     if (status == _inProgress) {
-      return Container(
-        width: 46, height: 46,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: const Color(0xFFF5A623),
-          boxShadow: [
-            BoxShadow(
-                color: const Color(0xFFF5A623).withOpacity(0.4),
-                blurRadius: 10,
-                offset: const Offset(0, 4))
-          ],
-        ),
-        child: Center(
-          child: Container(
-            width: 22, height: 22,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 3.5),
-            ),
-          ),
-        ),
+      return SizedBox(
+        width: 60,
+        height: 60,
+        child: _LoadingCirclePainter(),
       );
     }
     return Container(
-      width: 46, height: 46,
-      decoration: const BoxDecoration(
-          shape: BoxShape.circle, color: Color(0xFFCDD3DA)),
-      child: const Icon(Icons.lock_rounded, color: Colors.white, size: 20),
+      width: 60,
+      height: 60,
+      decoration:
+          const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFD9D9D9)),
+      child: Center(
+        child: Image.asset(
+          'assets/images/lock-outline.png',
+          width: 20,
+          height: 20,
+        ),
+      ),
     );
   }
 
   Widget _buildCheckbox() {
     if (status == _completed) {
-      return Container(
-        width: 30, height: 30,
-        decoration: BoxDecoration(
-            color: const Color(0xFF2DBE6C),
-            borderRadius: BorderRadius.circular(6)),
-        child:
-        const Icon(Icons.check_rounded, color: Colors.white, size: 18),
-      );
-    }
-    if (status == _inProgress) {
-      return Container(
-        width: 30, height: 30,
-        decoration: BoxDecoration(
-            color: const Color(0xFFF5A623),
-            borderRadius: BorderRadius.circular(6)),
-        child: Center(
-          child: Container(
-            width: 12, height: 12,
-            decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2.5)),
+      return SizedBox(
+        width: 42,
+        height: 42,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: CustomPaint(
+            painter: _CompletedCheckboxPainter(),
+            size: const Size(42, 42),
           ),
         ),
       );
     }
+    if (status == _inProgress) {
+      return SizedBox(
+        width: 42,
+        height: 42,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: CustomPaint(
+            painter: _InProgressCheckboxPainter(),
+            size: const Size(42, 42),
+          ),
+        ),
+      );
+    }
+    // Locked state checkbox - D9D9D9 background with solid white square
     return Container(
-      width: 30, height: 30,
+      width: 42,
+      height: 42,
       decoration: BoxDecoration(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFFCDD3DA), width: 1.5),
+        color: const Color(0xFFD9D9D9),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Center(
+        child: Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(
+            color: const Color(0xFFD9D9D9), // Same color as background
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: Color(0xFF575757), // Black border
+              width: 3,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -580,10 +557,14 @@ class _TimelineItem extends StatelessWidget {
 
   IconData _resourceIcon(String type) {
     switch (type) {
-      case 'video':         return Icons.play_circle_outline_rounded;
-      case 'documentation': return Icons.menu_book_rounded;
-      case 'course':        return Icons.school_rounded;
-      default:              return Icons.link_rounded;
+      case 'video':
+        return Icons.play_circle_outline_rounded;
+      case 'documentation':
+        return Icons.menu_book_rounded;
+      case 'course':
+        return Icons.school_rounded;
+      default:
+        return Icons.link_rounded;
     }
   }
 
@@ -595,7 +576,7 @@ class _TimelineItem extends StatelessWidget {
         children: [
           // ── Left: circle + line ─────────────────────────────────────────
           SizedBox(
-            width: 60,
+            width: 56,
             child: Column(
               children: [
                 AnimatedSwitcher(
@@ -607,8 +588,7 @@ class _TimelineItem extends StatelessWidget {
                 ),
                 if (!isLast)
                   Expanded(
-                    child: Container(
-                        width: 2, color: const Color(0xFFCDD3DA)),
+                    child: Container(width: 2, color: const Color(0xFF1D5572)),
                   ),
               ],
             ),
@@ -616,77 +596,55 @@ class _TimelineItem extends StatelessWidget {
 
           const SizedBox(width: 10),
 
-          // ── Right: card ─────────────────────────────────────────────────
+          // ── Middle: card + links ─────────────────────────────────────────
           Expanded(
             child: Padding(
               padding: EdgeInsets.only(bottom: isLast ? 0 : 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Card row
-                  GestureDetector(
-                    onTap: status != _locked ? onTap : null,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 14),
-                      decoration: BoxDecoration(
-                        color: _cardBg,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: status == _locked
-                            ? []
-                            : [
-                          BoxShadow(
-                              color: Colors.black.withOpacity(0.06),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2))
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(step.title,
-                                style: GoogleFonts.inter(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: _titleColor)),
-                          ),
-                          const SizedBox(width: 10),
-                          GestureDetector(
-                            onTap: status != _locked ? onTap : null,
-                            child: AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 400),
-                              transitionBuilder: (child, animation) =>
-                                  ScaleTransition(
-                                      scale: animation, child: child),
-                              child: KeyedSubtree(
-                                  key: ValueKey(status),
-                                  child: _buildCheckbox()),
-                            ),
-                          ),
-                        ],
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD9D9D9),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: status == _locked
+                          ? []
+                          : [
+                              BoxShadow(
+                                  color: Colors.black.withOpacity(0.06),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2))
+                            ],
+                    ),
+                    child: Container(
+                      width: double.infinity,
+                      child: Text(
+                        step.title,
+                        textAlign: TextAlign.left,
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: _titleColor,
+                        ),
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 8),
-
-                  // Links label
                   Text('Links:',
                       style: GoogleFonts.inter(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
                           color: _linksLabelColor)),
-
                   const SizedBox(height: 4),
-
-                  // Resource links
                   ...step.resources.map(
-                        (r) => GestureDetector(
+                    (r) => GestureDetector(
                       onTap: r.url.isNotEmpty ? () => onLinkTap(r.url) : null,
                       child: Padding(
                         padding:
-                        const EdgeInsets.only(left: 4, top: 4, bottom: 2),
+                            const EdgeInsets.only(left: 4, top: 4, bottom: 2),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -724,8 +682,303 @@ class _TimelineItem extends StatelessWidget {
               ),
             ),
           ),
+
+          const SizedBox(width: 10),
+
+          // ── Right: checkbox outside card ─────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: GestureDetector(
+              onTap: status != _locked ? onTap : null,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 400),
+                transitionBuilder: (child, animation) =>
+                    ScaleTransition(scale: animation, child: child),
+                child: KeyedSubtree(
+                    key: ValueKey(status), child: _buildCheckbox()),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Custom Painter for loading circle (timeline left side)
+// Yellow background with white rotating arc (no shadow)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _LoadingCirclePainter extends StatefulWidget {
+  @override
+  __LoadingCirclePainterState createState() => __LoadingCirclePainterState();
+}
+
+class __LoadingCirclePainterState extends State<_LoadingCirclePainter>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 1),
+      vsync: this,
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return CustomPaint(
+          painter: _LoadingCirclePainterWidget(_controller.value),
+        );
+      },
+    );
+  }
+}
+
+class _LoadingCirclePainterWidget extends CustomPainter {
+  final double progress;
+
+  _LoadingCirclePainterWidget(this.progress);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+
+    // Yellow background circle
+    final bgPaint = Paint()
+      ..color = const Color(0xFFF5A623)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, radius, bgPaint);
+
+    // White rotating arc (no shadow)
+    final whiteArcPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 5.0
+      ..strokeCap = StrokeCap.round;
+
+    // Arc length - 120 degrees (shorter arc)
+    const double sweepAngle = 2.0944; // 120 degrees in radians
+    final double startAngle = progress * 3.14159 * 2;
+
+    // Draw white arc
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius * 0.68),
+      startAngle,
+      sweepAngle,
+      false,
+      whiteArcPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => true;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Custom Painter for in-progress checkbox (right side)
+// Yellow background with white square that has the same L-shaped gap as the completed checkbox
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _InProgressCheckboxPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double cornerRadius = 10.0;
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    final rrect = RRect.fromRectAndRadius(rect, Radius.circular(cornerRadius));
+
+    // Yellow rounded-square background
+    final bgPaint = Paint()..color = const Color(0xFFF5A623);
+    canvas.drawRRect(rrect, bgPaint);
+
+    // White inner rounded-square outline with the same L-shaped gap as the completed checkbox
+    final squarePaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    // Inner square bounds (inset from the outer edges) - same as completed checkbox
+    final double inset = size.width * 0.28;
+    final double cr = 3.0; // inner corner radius
+    final double l = inset;
+    final double t = inset;
+    final double r = size.width - inset;
+    final double b = size.height - inset;
+
+    // Gap boundaries - same as completed checkbox
+    final double gapTopStart = l + (r - l) * 0.50;
+    final double gapRightEnd = t + (b - t) * 0.50;
+
+    // Draw the square with the L-shaped gap (no checkmark)
+    final squarePath = Path();
+
+    squarePath.moveTo(r, gapRightEnd); // resume on right edge (below gap)
+    squarePath.lineTo(r, b - cr); // right edge to bottom-right corner
+    squarePath.quadraticBezierTo(r, b, r - cr, b);
+    squarePath.lineTo(l + cr, b); // bottom edge
+    squarePath.quadraticBezierTo(l, b, l, b - cr);
+    squarePath.lineTo(l, t + cr); // left edge
+    squarePath.quadraticBezierTo(l, t, l + cr, t);
+    squarePath.lineTo(gapTopStart, t); // top edge up to gap start
+
+    canvas.drawPath(squarePath, squarePaint);
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Custom Painter for completed circle (timeline left side)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CompletedCirclePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+
+    // Green background circle
+    final bgPaint = Paint()..color = const Color(0xFF1FAD6A);
+    canvas.drawCircle(center, radius, bgPaint);
+
+    // White arc with gap at top-right where checkmark tail exits
+    final arcPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0
+      ..strokeCap = StrokeCap.round;
+
+    const double gapDegrees = 50.0;
+    const double startDeg = 335.0;
+    const double sweepDeg = 360.0 - gapDegrees;
+    const double toRad = 3.14159265 / 180.0;
+
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius * 0.58),
+      startDeg * toRad,
+      sweepDeg * toRad,
+      false,
+      arcPaint,
+    );
+
+    // White checkmark poking through the gap
+    final checkPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final path = Path();
+    path.moveTo(size.width * 0.36, size.height * 0.50);
+    path.lineTo(size.width * 0.46, size.height * 0.60);
+    path.lineTo(size.width * 0.74, size.height * 0.20);
+
+    canvas.drawPath(path, checkPaint);
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Custom Painter for completed checkbox (right side) — rounded-square version
+// Green bg + white inner rounded-square with gap spanning the top-right corner
+// AND the upper half of the right edge + checkmark poking through the gap
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CompletedCheckboxPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double cornerRadius = 10.0;
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    final rrect = RRect.fromRectAndRadius(rect, Radius.circular(cornerRadius));
+
+    // Green rounded-square background
+    final bgPaint = Paint()..color = const Color(0xFF1FAD6A);
+    canvas.drawRRect(rrect, bgPaint);
+
+    // White inner rounded-square outline with a gap that spans:
+    //   • the top-right corner (from ~50% of the top edge)
+    //   • the upper half of the right edge (down to ~50% of the right edge)
+    // This creates an L-shaped opening at the top-right where the checkmark tail exits.
+    final squarePaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    // Inner square bounds (inset from the outer edges)
+    final double inset = size.width * 0.28;
+    final double cr = 3.0; // inner corner radius
+    final double l = inset;
+    final double t = inset;
+    final double r = size.width - inset;
+    final double b = size.height - inset;
+
+    // Gap boundaries:
+    //   gapTopStart  — gap opens at this x on the top edge (~50% across)
+    //   gapRightEnd  — gap closes at this y on the right edge (~50% down)
+    final double gapTopStart = l + (r - l) * 0.50;
+    final double gapRightEnd = t + (b - t) * 0.50;
+
+    // Draw the remaining three-sided path (clockwise), skipping the
+    // top-right corner and upper-right edge:
+    //
+    //   resume at gapRightEnd on right edge
+    //   → bottom-right corner
+    //   → bottom edge
+    //   → bottom-left corner
+    //   → left edge
+    //   → top-left corner
+    //   → top edge up to gapTopStart
+    //   (gap here — top-right corner + upper right edge omitted)
+    final squarePath = Path();
+
+    squarePath.moveTo(r, gapRightEnd); // resume on right edge (below gap)
+    squarePath.lineTo(r, b - cr); // right edge to bottom-right corner
+    squarePath.quadraticBezierTo(r, b, r - cr, b);
+    squarePath.lineTo(l + cr, b); // bottom edge
+    squarePath.quadraticBezierTo(l, b, l, b - cr);
+    squarePath.lineTo(l, t + cr); // left edge
+    squarePath.quadraticBezierTo(l, t, l + cr, t);
+    squarePath.lineTo(gapTopStart, t); // top edge up to gap start
+
+    canvas.drawPath(squarePath, squarePaint);
+
+    // White checkmark whose tail pokes out through the top-right gap
+    final checkPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final checkPath = Path();
+    checkPath.moveTo(size.width * 0.40, size.height * 0.50);
+    checkPath.lineTo(size.width * 0.44, size.height * 0.64);
+    checkPath.lineTo(size.width * 0.73, size.height * 0.20);
+
+    canvas.drawPath(checkPath, checkPaint);
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }

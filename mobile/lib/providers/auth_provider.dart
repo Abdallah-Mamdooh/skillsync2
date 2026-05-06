@@ -113,6 +113,7 @@ class AuthProvider extends ChangeNotifier {
     String? cvUrl,
     String? linkedinUrl,
     String? additionalInfo,
+    num? baseRate,
   }) async {
     _isLoading = true;
     _error = null;
@@ -127,6 +128,7 @@ class AuthProvider extends ChangeNotifier {
       cvUrl: cvUrl,
       linkedinUrl: linkedinUrl,
       additionalInfo: additionalInfo,
+      baseRate: baseRate,
     );
 
     if (response['success'] != true) {

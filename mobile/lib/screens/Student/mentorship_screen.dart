@@ -7,6 +7,7 @@ import 'payment.dart';
 // ===== MENTOR MODEL =====
 class MentorData {
   final String id;
+  final String userId;
   final String name;
   final String role;
   final String rating;
@@ -23,6 +24,7 @@ class MentorData {
 
   MentorData({
     required this.id,
+    required this.userId,
     required this.name,
     required this.role,
     required this.rating,
@@ -112,6 +114,7 @@ class _MentorshipScreenState extends State<MentorshipScreen> {
           : <String>[];
       return MentorData(
         id: (data['id'] ?? data['_id'] ?? '').toString(),
+        userId: (data['userId'] ?? '').toString(),
         name: (data['fullName'] ?? 'Mentor').toString(),
         role:
             (data['headline'] ?? data['specialization'] ?? 'Mentor').toString(),
@@ -140,226 +143,287 @@ class _MentorshipScreenState extends State<MentorshipScreen> {
     });
   }
 
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.only(left: 16, right: 20, top: 45, bottom: 15),
+      decoration: const BoxDecoration(
+        color: Color(0xFF1D5572),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Text(
+              'Mentorship',
+              style: GoogleFonts.inter(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Text(
+              'Connect with verified industry experts',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: const Color(0xFF1D5572),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(26, 20, 26, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Mentorship',
-                        style: GoogleFonts.inter(
-                            fontSize: 25,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF1F2937))),
-                    const SizedBox(height: 4),
-                    Text('Connect with verified industry experts',
-                        style: GoogleFonts.inter(
-                            fontSize: 13, color: const Color(0xFF1F2937))),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Featured Section
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 26),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0x3F1D5572),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: const [
-                      BoxShadow(
-                          color: Color(0x1E000000),
-                          spreadRadius: 0,
-                          offset: Offset(0, 2),
-                          blurRadius: 8)
-                    ],
-                  ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(),
+            Expanded(
+              child: Container(
+                color: const Color(0xFFF9FAFB),
+                child: SingleChildScrollView(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(children: [
-                        const Icon(Icons.calendar_today,
-                            size: 17, color: Color(0xFF1F2937)),
-                        const SizedBox(width: 8),
-                        Text('Mentorship Talk',
-                            style: GoogleFonts.inter(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFF1F2937))),
-                      ]),
-                      const SizedBox(height: 8),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(8)),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Sarah Johnson',
-                                style: GoogleFonts.inter(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFF1F2937))),
-                            Text('Full Stack Developer',
-                                style: GoogleFonts.inter(
-                                    fontSize: 12,
-                                    color: const Color(0xFF6B7280))),
-                            const SizedBox(height: 8),
-                            Row(children: [
-                              const Icon(Icons.access_time,
-                                  size: 12, color: Color(0xFF6B7280)),
-                              const SizedBox(width: 4),
-                              Text('May 17, 2026 at 2:00 PM',
-                                  style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      color: const Color(0xFF6B7280))),
-                              const Spacer(),
-                              const Icon(Icons.timer_outlined,
-                                  size: 11, color: Color(0xFF6B7280)),
-                              const SizedBox(width: 4),
-                              Text('120 min',
-                                  style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      color: const Color(0xFF6B7280))),
-                            ]),
-                            const SizedBox(height: 8),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                onPressed: () {},
-                                icon: const Icon(Icons.video_call,
-                                    size: 16, color: Colors.white),
-                                label: Text('Book Session',
+                      const SizedBox(height: 16),
+                      // Featured Section
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 26),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0x3F1D5572),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: const [
+                              BoxShadow(
+                                  color: Color(0x1E000000),
+                                  spreadRadius: 0,
+                                  offset: Offset(0, 2),
+                                  blurRadius: 8)
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(children: [
+                                Image.asset(
+                                  'assets/images/calendar-fill.png',
+                                  width: 17,
+                                  height: 17,
+                                ),
+                                const SizedBox(width: 8),
+                                Text('Mentorship Talk',
                                     style: GoogleFonts.inter(
-                                        fontSize: 14,
+                                        fontSize: 20,
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.white)),
-                                style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF1D5572),
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(6))),
+                                        color: const Color(0xFF1F2937))),
+                              ]),
+                              const SizedBox(height: 8),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8)),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Sarah Johnson',
+                                        style: GoogleFonts.inter(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: const Color(0xFF1F2937))),
+                                    Text('Full Stack Developer',
+                                        style: GoogleFonts.inter(
+                                            fontSize: 12,
+                                            color: const Color(0xFF6B7280))),
+                                    const SizedBox(height: 8),
+                                    Row(children: [
+                                      Image.asset(
+                                          'assets/images/calendar-fill.png',
+                                          width: 12,
+                                          height: 12,
+                                          color: Color(0xFF6B7280)),
+                                      const SizedBox(width: 4),
+                                      Text('May 17, 2026 at 2:00 PM',
+                                          style: GoogleFonts.inter(
+                                              fontSize: 12,
+                                              color: const Color(0xFF6B7280))),
+                                      const Spacer(),
+                                      const Icon(Icons.access_time,
+                                          size: 11, color: Color(0xFF6B7280)),
+                                      const SizedBox(width: 4),
+                                      Text('120 min',
+                                          style: GoogleFonts.inter(
+                                              fontSize: 12,
+                                              color: const Color(0xFF6B7280))),
+                                    ]),
+                                    const SizedBox(height: 8),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton.icon(
+                                        onPressed: () {},
+                                        icon: const Icon(
+                                            Icons.calendar_today_outlined,
+                                            size: 16,
+                                            color: Colors.white),
+                                        label: Text('Book Session',
+                                            style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white)),
+                                        style: ElevatedButton.styleFrom(
+                                            backgroundColor:
+                                                const Color(0xFF1D5572),
+                                            shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(6))),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
+                      const SizedBox(height: 16),
+                      // Search Bar - Without search icon
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 26),
+                        child: Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: const [
+                              BoxShadow(
+                                  color: Color(0x1E000000),
+                                  spreadRadius: 0,
+                                  offset: Offset(0, 2),
+                                  blurRadius: 8)
+                            ],
+                          ),
+                          padding: const EdgeInsets.all(12),
+                          child: Row(children: [
+                            Expanded(
+                              child: Container(
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE5E7EB),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: TextField(
+                                  controller: _searchController,
+                                  style: GoogleFonts.inter(
+                                      fontSize: 14, color: Colors.black),
+                                  decoration: InputDecoration(
+                                    hintText: 'Search mentors',
+                                    hintStyle: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        color: const Color(0xFF9CA3AF)),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 10),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                      color: const Color(0xFFE5E7EB))),
+                              child: Center(
+                                child: Image.asset(
+                                  'assets/images/Filter.png',
+                                  width: 18,
+                                  height: 18,
+                                ),
+                              ),
+                            ),
+                          ]),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      if (_isLoading)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.only(top: 40),
+                            child: CircularProgressIndicator(),
+                          ),
+                        )
+                      else if (_error != null)
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              children: [
+                                Text(_error!,
+                                    style: GoogleFonts.inter(fontSize: 13)),
+                                const SizedBox(height: 8),
+                                ElevatedButton(
+                                  onPressed: _loadMentors,
+                                  child: const Text('Retry'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      else if (_filteredMentors.isEmpty)
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 40),
+                            child: Text('No mentors found.',
+                                style: GoogleFonts.inter(
+                                    color: const Color(0xFF6B7280))),
+                          ),
+                        )
+                      else
+                        ..._filteredMentors.map((m) => _buildMentorCard(
+                              context: context,
+                              initials: m.initials,
+                              initialsColor: m.isOnline
+                                  ? const Color(0xFF1D5572)
+                                  : const Color(0xFFF5A100),
+                              name: m.name,
+                              role: m.role,
+                              isOnline: m.isOnline,
+                              rating: m.rating,
+                              reviews: m.reviews,
+                              experience: m.experience,
+                              expertise: m.expertise,
+                              price: m.price,
+                              buttonColor: const Color(0xFF1D5572),
+                              mentorData: m,
+                            )),
+                      const SizedBox(height: 20),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              // Search Bar
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 26),
-                child: Row(children: [
-                  Expanded(
-                    child: Container(
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE5E7EB),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: TextField(
-                        controller: _searchController,
-                        style: GoogleFonts.inter(
-                            fontSize: 14, color: Colors.black),
-                        decoration: InputDecoration(
-                          hintText: 'Search mentors',
-                          hintStyle: GoogleFonts.inter(
-                              fontSize: 12, color: const Color(0xFF9CA3AF)),
-                          prefixIcon: const Icon(Icons.search,
-                              size: 18, color: Color(0xFF9CA3AF)),
-                          border: InputBorder.none,
-                          contentPadding:
-                              const EdgeInsets.symmetric(vertical: 10),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: const Color(0xFFE5E7EB))),
-                    child: const Icon(Icons.filter_list,
-                        size: 18, color: Color(0xFF6B7280)),
-                  ),
-                ]),
-              ),
-              const SizedBox(height: 16),
-              if (_isLoading)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.only(top: 40),
-                    child: CircularProgressIndicator(),
-                  ),
-                )
-              else if (_error != null)
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      children: [
-                        Text(_error!, style: GoogleFonts.inter(fontSize: 13)),
-                        const SizedBox(height: 8),
-                        ElevatedButton(
-                          onPressed: _loadMentors,
-                          child: const Text('Retry'),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else if (_filteredMentors.isEmpty)
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 40),
-                    child: Text('No mentors found.',
-                        style:
-                            GoogleFonts.inter(color: const Color(0xFF6B7280))),
-                  ),
-                )
-              else
-                ..._filteredMentors.map((m) => _buildMentorCard(
-                      context: context,
-                      initials: m.initials,
-                      initialsColor: m.isOnline
-                          ? const Color(0xFF1D5572)
-                          : const Color(0xFFF5A100),
-                      name: m.name,
-                      role: m.role,
-                      isOnline: m.isOnline,
-                      rating: m.rating,
-                      reviews: m.reviews,
-                      experience: m.experience,
-                      expertise: m.expertise,
-                      price: m.price,
-                      buttonColor: const Color(0xFF1D5572),
-                      mentorData: m,
-                    )),
-              const SizedBox(height: 20),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
       bottomNavigationBar:
-          const BottomNavigation(selectedIndex: BottomNavIndex.home),
+          const BottomNavigation(selectedIndex: BottomNavIndex.none),
     );
   }
 
@@ -541,7 +605,8 @@ class _MentorshipScreenState extends State<MentorshipScreen> {
                   child: Text(
                     'Available from 2:00 AM',
                     style: GoogleFonts.inter(
-                        fontSize: 12, color: const Color(0xFF6B7280)),
+                        fontSize: 12,
+                        color: const Color.fromARGB(255, 0, 0, 0)),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -558,7 +623,7 @@ class _MentorshipScreenState extends State<MentorshipScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1D5572),
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(6)),
                     minimumSize: Size.zero,
@@ -609,195 +674,218 @@ class _BookSessionScreenState extends State<BookSessionScreen> {
                 selectedDuration: _selectedDuration!)));
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
-      body: SafeArea(
-        child: Column(children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(26, 20, 26, 20),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(children: [
-                      GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: const Icon(Icons.arrow_back,
-                              color: Color(0xFF1F2937))),
-                      const SizedBox(width: 12),
-                      Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('BOOK SESSION',
-                                style: GoogleFonts.inter(
-                                    fontSize: 25,
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFF1F2937))),
-                            Text('Schedule your mentorship session',
-                                style: GoogleFonts.inter(
-                                    fontSize: 13,
-                                    color: const Color(0xFF1F2937))),
-                          ]),
-                    ]),
-                    const SizedBox(height: 16),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: const [
-                            BoxShadow(
-                                color: Color(0x1E000000),
-                                blurRadius: 8,
-                                offset: Offset(0, 2))
-                          ]),
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                      width: 50,
-                                      height: 50,
-                                      decoration: BoxDecoration(
-                                          color: const Color(0xFF1D5572),
-                                          borderRadius:
-                                              BorderRadius.circular(25)),
-                                      child: Center(
-                                          child: Text(widget.mentor.initials,
-                                              style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 20,
-                                                  fontWeight:
-                                                      FontWeight.bold)))),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                      child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                        Text(widget.mentor.name,
-                                            style: GoogleFonts.inter(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                                color:
-                                                    const Color(0xFF1F2937))),
-                                        Text(widget.mentor.role,
-                                            style: GoogleFonts.inter(
-                                                fontSize: 12,
-                                                color:
-                                                    const Color(0xFF6B7280))),
-                                      ])),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                        color: widget.mentor.isOnline
-                                            ? const Color(0xFFD1FAE5)
-                                            : const Color(0xFFFED7AA),
-                                        borderRadius:
-                                            BorderRadius.circular(11)),
-                                    child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Container(
-                                              width: 6,
-                                              height: 6,
-                                              decoration: BoxDecoration(
-                                                  color: widget.mentor.isOnline
-                                                      ? const Color(0xFF059669)
-                                                      : const Color(0xFFC2410C),
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                          3))),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                              widget.mentor.isOnline
-                                                  ? 'ONLINE'
-                                                  : 'OFFLINE',
-                                              style: GoogleFonts.inter(
-                                                  fontSize: 11,
-                                                  color: widget.mentor.isOnline
-                                                      ? const Color(0xFF059669)
-                                                      : const Color(
-                                                          0xFFC2410C))),
-                                        ]),
-                                  ),
-                                ]),
-                            const SizedBox(height: 8),
-                            Row(children: [
-                              const Icon(Icons.star,
-                                  size: 11, color: Color(0xFFFFA629)),
-                              const SizedBox(width: 4),
-                              Text(widget.mentor.rating,
-                                  style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: const Color(0xFFFFA629))),
-                              const SizedBox(width: 4),
-                              Flexible(
-                                  child: Text(widget.mentor.reviews,
-                                      style: GoogleFonts.inter(
-                                          fontSize: 8,
-                                          color: const Color(0xFF6B7280)),
-                                      overflow: TextOverflow.ellipsis)),
-                              const SizedBox(width: 8),
-                              Text(widget.mentor.experience,
-                                  style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: const Color(0xFFFFA629))),
-                              const SizedBox(width: 4),
-                              Flexible(
-                                  child: Text('Experience',
-                                      style: GoogleFonts.inter(
-                                          fontSize: 8,
-                                          color: const Color(0xFF6B7280)),
-                                      overflow: TextOverflow.ellipsis)),
-                            ]),
-                          ]),
-                    ),
-                    const SizedBox(height: 20),
-                    Text('Choose Session Type',
-                        style: GoogleFonts.inter(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF1F2937))),
-                    const SizedBox(height: 4),
-                    Text('Select the type of session that works best for you',
-                        style: GoogleFonts.inter(
-                            fontSize: 13, color: const Color(0xFF1F2937))),
-                    const SizedBox(height: 16),
-                    _buildSessionTypeCard(
-                        type: 'chat',
-                        icon: Icons.chat_bubble_outline,
-                        title: 'Chat Session',
-                        subtitle: 'Text-based conversation with the Mentor',
-                        durations: [
-                          {'duration': '15 minutes', 'price': '75 EGP'},
-                          {'duration': '30 minutes', 'price': '100 EGP'},
-                          {'duration': '60 minutes', 'price': '150 EGP'}
-                        ]),
-                    const SizedBox(height: 16),
-                    _buildSessionTypeCard(
-                        type: 'call',
-                        icon: Icons.phone_outlined,
-                        title: 'Call Session',
-                        subtitle: 'Voice call with the Mentor',
-                        durations: [
-                          {'duration': '15 minutes', 'price': '125 EGP'},
-                          {'duration': '30 minutes', 'price': '175 EGP'},
-                          {'duration': '60 minutes', 'price': '200 EGP'}
-                        ]),
-                    const SizedBox(height: 20),
-                  ]),
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.only(left: 16, right: 20, top: 40, bottom: 15),
+      decoration: const BoxDecoration(
+        color: Color(0xFF1D5572),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: const Padding(
+              padding: EdgeInsets.only(left: 8, bottom: 8),
+              child: Icon(Icons.arrow_back, color: Colors.white),
             ),
           ),
           Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Text(
+              'BOOK SESSION',
+              style: GoogleFonts.inter(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Text(
+              'Schedule your mentorship session',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF1D5572),
+      body: SafeArea(
+        child: Column(children: [
+          _buildHeader(context),
+          Expanded(
+            child: Container(
+              color: const Color(0xFFF2F4F6),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(26, 20, 26, 20),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 16),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: const [
+                              BoxShadow(
+                                  color: Color(0x1E000000),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2))
+                            ]),
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                        width: 50,
+                                        height: 50,
+                                        decoration: BoxDecoration(
+                                            color: const Color(0xFF1D5572),
+                                            borderRadius:
+                                                BorderRadius.circular(25)),
+                                        child: Center(
+                                            child: Text(widget.mentor.initials,
+                                                style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 20,
+                                                    fontWeight:
+                                                        FontWeight.bold)))),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                        child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                          Text(widget.mentor.name,
+                                              style: GoogleFonts.inter(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                  color:
+                                                      const Color(0xFF1F2937))),
+                                          Text(widget.mentor.role,
+                                              style: GoogleFonts.inter(
+                                                  fontSize: 12,
+                                                  color:
+                                                      const Color(0xFF6B7280))),
+                                        ])),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                          color: widget.mentor.isOnline
+                                              ? const Color(0xFFD1FAE5)
+                                              : const Color(0xFFFED7AA),
+                                          borderRadius:
+                                              BorderRadius.circular(11)),
+                                      child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                                width: 6,
+                                                height: 6,
+                                                decoration: BoxDecoration(
+                                                    color:
+                                                        widget.mentor.isOnline
+                                                            ? const Color(
+                                                                0xFF059669)
+                                                            : const Color(
+                                                                0xFFC2410C),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            3))),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                                widget.mentor.isOnline
+                                                    ? 'ONLINE'
+                                                    : 'OFFLINE',
+                                                style: GoogleFonts.inter(
+                                                    fontSize: 11,
+                                                    color:
+                                                        widget.mentor.isOnline
+                                                            ? const Color(
+                                                                0xFF059669)
+                                                            : const Color(
+                                                                0xFFC2410C))),
+                                          ]),
+                                    ),
+                                  ]),
+                              const SizedBox(height: 8),
+                              Row(children: [
+                                const Icon(Icons.star,
+                                    size: 11, color: Color(0xFFFFA629)),
+                                const SizedBox(width: 4),
+                                Text(widget.mentor.rating,
+                                    style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFFFFA629))),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                    child: Text(widget.mentor.reviews,
+                                        style: GoogleFonts.inter(
+                                            fontSize: 8,
+                                            color: const Color(0xFF6B7280)),
+                                        overflow: TextOverflow.ellipsis)),
+                                const SizedBox(width: 8),
+                                Text(widget.mentor.experience,
+                                    style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFFFFA629))),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                    child: Text('Experience',
+                                        style: GoogleFonts.inter(
+                                            fontSize: 8,
+                                            color: const Color(0xFF6B7280)),
+                                        overflow: TextOverflow.ellipsis)),
+                              ]),
+                            ]),
+                      ),
+                      const SizedBox(height: 20),
+                      Text('Choose Session Type',
+                          style: GoogleFonts.inter(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1F2937))),
+                      const SizedBox(height: 4),
+                      Text('Select the type of session that works best for you',
+                          style: GoogleFonts.inter(
+                              fontSize: 12, color: const Color(0xFF1F2937))),
+                      const SizedBox(height: 16),
+                      _buildSessionTypeCard(
+                          type: 'chat',
+                          icon: Icons.chat_bubble_outline,
+                          title: 'Chat Session',
+                          subtitle: 'Text-based conversation with the Mentor',
+                          durations: [
+                            {'duration': '15 minutes', 'price': '75 EGP'},
+                            {'duration': '30 minutes', 'price': '100 EGP'},
+                            {'duration': '60 minutes', 'price': '150 EGP'}
+                          ]),
+                      const SizedBox(height: 20),
+                    ]),
+              ),
+            ),
+          ),
+          Container(
+            color: const Color(0xFFF2F4F6),
             padding: const EdgeInsets.fromLTRB(26, 0, 26, 16),
             child: SizedBox(
               width: double.infinity,
@@ -818,6 +906,8 @@ class _BookSessionScreenState extends State<BookSessionScreen> {
           ),
         ]),
       ),
+      bottomNavigationBar:
+          const BottomNavigation(selectedIndex: BottomNavIndex.none),
     );
   }
 
@@ -871,8 +961,7 @@ class _BookSessionScreenState extends State<BookSessionScreen> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
           child: Row(children: [
-            const Icon(Icons.timer_outlined,
-                size: 14, color: Color(0xFF6B7280)),
+            const Icon(Icons.access_time, size: 17, color: Color(0xFF6B7280)),
             const SizedBox(width: 6),
             Text('Available durations:',
                 style: GoogleFonts.inter(
@@ -948,17 +1037,11 @@ class _ChatBookSessionScreenState extends State<ChatBookSessionScreen> {
   bool _loadingSlots = false;
   List<Map<String, String>> _slots = [];
 
-  List<Map<String, String>> get _durations => widget.sessionType == 'chat'
-      ? [
-          {'duration': '15 minutes', 'price': '75 EGP'},
-          {'duration': '30 minutes', 'price': '100 EGP'},
-          {'duration': '60 minutes', 'price': '150 EGP'}
-        ]
-      : [
-          {'duration': '15 minutes', 'price': '125 EGP'},
-          {'duration': '30 minutes', 'price': '175 EGP'},
-          {'duration': '60 minutes', 'price': '200 EGP'}
-        ];
+  List<Map<String, String>> get _durations => [
+        {'duration': '15 minutes', 'price': '75 EGP'},
+        {'duration': '30 minutes', 'price': '100 EGP'},
+        {'duration': '60 minutes', 'price': '150 EGP'}
+      ];
 
   @override
   void initState() {
@@ -977,7 +1060,7 @@ class _ChatBookSessionScreenState extends State<ChatBookSessionScreen> {
     final date =
         '${_selectedDate.year.toString().padLeft(4, '0')}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}';
     final response = await ApiService.getPublicMentorSlots(
-      mentorId: widget.mentor.id,
+      mentorId: widget.mentor.userId,
       date: date,
       durationMinutes: _durationMinutes,
     );
@@ -1057,171 +1140,164 @@ class _ChatBookSessionScreenState extends State<ChatBookSessionScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
-      body: SafeArea(
-        child: Column(children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(26, 20, 26, 20),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(children: [
-                      GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: const Icon(Icons.arrow_back,
-                              color: Color(0xFF1F2937))),
-                      const SizedBox(width: 12),
-                      Expanded(
-                          child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                            Text(
-                                widget.sessionType == 'chat'
-                                    ? 'CHAT SESSION BOOKING'
-                                    : 'CALL SESSION BOOKING',
-                                style: GoogleFonts.inter(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFF1F2937))),
-                            Text('Schedule your mentorship session',
-                                style: GoogleFonts.inter(
-                                    fontSize: 13,
-                                    color: const Color(0xFF1F2937))),
-                          ])),
-                    ]),
-                    const SizedBox(height: 24),
-                    if (widget.sessionType == 'call') ...[
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFF4400).withOpacity(0.25),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: RichText(
-                          text: TextSpan(
-                            children: [
-                              TextSpan(
-                                text: 'NOTE:\n',
-                                style: GoogleFonts.inter(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFFF5A100)),
-                              ),
-                              TextSpan(
-                                text:
-                                    'Meeting link availability depends on backend setup.',
-                                style: GoogleFonts.inter(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFF1F2937)),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-                    Text('Choose Session Duration',
-                        style: GoogleFonts.inter(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF1F2937))),
-                    const SizedBox(height: 12),
-                    ..._durations
-                        .map((d) =>
-                            _buildDurationRow(d['duration']!, d['price']!))
-                        .toList(),
-                    const SizedBox(height: 16),
-                    OutlinedButton.icon(
-                      onPressed: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: _selectedDate,
-                          firstDate: DateTime.now(),
-                          lastDate:
-                              DateTime.now().add(const Duration(days: 30)),
-                        );
-                        if (picked != null) {
-                          setState(() => _selectedDate = picked);
-                          _loadSlots();
-                        }
-                      },
-                      icon: const Icon(Icons.calendar_today),
-                      label: Text(
-                        'Date: ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    if (_loadingSlots)
-                      const LinearProgressIndicator()
-                    else if (_slots.isEmpty)
-                      const Text('No slots available for this date/duration.')
-                    else
-                      DropdownButtonFormField<String>(
-                        value: _selectedStartTime,
-                        decoration: const InputDecoration(
-                          labelText: 'Choose time slot',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: _slots
-                            .map(
-                              (slot) => DropdownMenuItem<String>(
-                                value: slot['startTime'],
-                                child: Text(
-                                  '${slot['startTime']} - ${slot['endTime']}',
-                                ),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (value) =>
-                            setState(() => _selectedStartTime = value),
-                      ),
-                    const SizedBox(height: 24),
-                    Text('Choose Payment Method',
-                        style: GoogleFonts.inter(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF1F2937))),
-                    const SizedBox(height: 12),
-                    _buildPaymentOption(
-                      value: 'wallet',
-                      child: Row(children: [
-                        Expanded(
-                            child: Text('SKILLSYNC WALLET',
-                                style: GoogleFonts.inter(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black))),
-                        const SizedBox(width: 12),
-                        Image.asset('assets/images/wallet.png',
-                            width: 32, height: 32),
-                      ]),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildPaymentOption(
-                      value: 'fawry',
-                      child: Row(children: [
-                        Expanded(
-                            child: Text('FAWRY',
-                                style: GoogleFonts.inter(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black))),
-                        const SizedBox(width: 12),
-                        Image.asset('assets/images/Fawry.png',
-                            width: 98, height: 50),
-                      ]),
-                    ),
-                    const SizedBox(height: 24),
-                  ]),
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.only(left: 16, right: 20, top: 40, bottom: 15),
+      decoration: const BoxDecoration(
+        color: Color(0xFF1D5572),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: const Padding(
+              padding: EdgeInsets.only(left: 8, bottom: 8),
+              child: Icon(Icons.arrow_back, color: Colors.white),
             ),
           ),
           Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Text(
+              'CHAT SESSION BOOKING',
+              style: GoogleFonts.inter(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Text(
+              'Schedule your mentorship session',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF1D5572),
+      body: SafeArea(
+        child: Column(children: [
+          _buildHeader(context),
+          Expanded(
+            child: Container(
+              color: const Color(0xFFF2F4F6),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(26, 20, 26, 20),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 16),
+                      Text('Choose Session Duration',
+                          style: GoogleFonts.inter(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1F2937))),
+                      const SizedBox(height: 12),
+                      ..._durations
+                          .map((d) =>
+                              _buildDurationRow(d['duration']!, d['price']!))
+                          .toList(),
+                      const SizedBox(height: 16),
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: _selectedDate,
+                            firstDate: DateTime.now(),
+                            lastDate:
+                                DateTime.now().add(const Duration(days: 30)),
+                          );
+                          if (picked != null) {
+                            setState(() => _selectedDate = picked);
+                            _loadSlots();
+                          }
+                        },
+                        icon: const Icon(Icons.calendar_today),
+                        label: Text(
+                          'Date: ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (_loadingSlots)
+                        const LinearProgressIndicator()
+                      else if (_slots.isEmpty)
+                        const Text('No slots available for this date/duration.')
+                      else
+                        DropdownButtonFormField<String>(
+                          value: _selectedStartTime,
+                          decoration: const InputDecoration(
+                            labelText: 'Choose time slot',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: _slots
+                              .map(
+                                (slot) => DropdownMenuItem<String>(
+                                  value: slot['startTime'],
+                                  child: Text(
+                                    '${slot['startTime']} - ${slot['endTime']}',
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) =>
+                              setState(() => _selectedStartTime = value),
+                        ),
+                      const SizedBox(height: 24),
+                      Text('Choose Payment Method',
+                          style: GoogleFonts.inter(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1F2937))),
+                      const SizedBox(height: 12),
+                      _buildPaymentOption(
+                        value: 'wallet',
+                        child: Row(children: [
+                          Expanded(
+                              child: Text('SKILLSYNC WALLET',
+                                  style: GoogleFonts.inter(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black))),
+                          const SizedBox(width: 12),
+                          Image.asset('assets/images/wallet.png',
+                              width: 32, height: 32),
+                        ]),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildPaymentOption(
+                        value: 'fawry',
+                        child: Row(children: [
+                          Expanded(
+                              child: Text('FAWRY',
+                                  style: GoogleFonts.inter(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black))),
+                          const SizedBox(width: 12),
+                          Image.asset('assets/images/Fawry.png',
+                              width: 98, height: 50),
+                        ]),
+                      ),
+                      const SizedBox(height: 24),
+                    ]),
+              ),
+            ),
+          ),
+          Container(
+            color: const Color(0xFFF2F4F6),
             padding: const EdgeInsets.fromLTRB(26, 0, 26, 16),
             child: SizedBox(
               width: double.infinity,
@@ -1243,7 +1319,7 @@ class _ChatBookSessionScreenState extends State<ChatBookSessionScreen> {
         ]),
       ),
       bottomNavigationBar:
-          const BottomNavigation(selectedIndex: BottomNavIndex.home),
+          const BottomNavigation(selectedIndex: BottomNavIndex.none),
     );
   }
 

@@ -12,7 +12,6 @@ import '../../widgets/bottom_navigation.dart';
 import '../auth/login_screen.dart';
 import 'assessment_flow.dart';
 import 'student_homescreen.dart';
-import 'Notifications screen.dart';
 import 'report issue.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -24,6 +23,36 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final ImagePicker _picker = ImagePicker();
+
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.only(left: 16, right: 20, top: 45, bottom: 15),
+      decoration: const BoxDecoration(
+        color: Color(0xFF1D5572),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Text(
+              'Profile',
+              style: GoogleFonts.inter(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+          ),
+        ],
+      ),
+    );
+  }
 
   final Map<String, String> _availableInterests = {
     'web': 'Web Development',
@@ -98,17 +127,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _launchLinkedIn() async {
-    final Uri linkedInUrl = Uri.parse(
-        'https://www.linkedin.com/in/your-profile'); // Replace with actual LinkedIn URL
-    if (await canLaunchUrl(linkedInUrl)) {
-      await launchUrl(linkedInUrl, mode: LaunchMode.externalApplication);
-    } else {
+  String? _getLinkedInUrl(Map<String, dynamic>? user) {
+    final rawUrl = user?['linkedinUrl'] ?? user?['linkedInUrl'];
+    if (rawUrl == null) return null;
+
+    final trimmed = rawUrl.toString().trim();
+    if (trimmed.isEmpty) return null;
+
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+
+    return 'https://$trimmed';
+  }
+
+  Future<void> _launchLinkedIn(String? rawUrl) async {
+    if (rawUrl == null || rawUrl.trim().isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not launch LinkedIn')),
+          const SnackBar(content: Text('No LinkedIn URL found for this user')),
         );
       }
+      return;
+    }
+
+    final Uri linkedInUrl = Uri.parse(rawUrl);
+    if (await canLaunchUrl(linkedInUrl)) {
+      await launchUrl(linkedInUrl, mode: LaunchMode.externalApplication);
+      return;
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not launch LinkedIn')),
+      );
     }
   }
 
@@ -427,361 +479,363 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final profilePhoto = user?['profileImageUrl'] as String?;
     final isLoading = authProvider.isLoading;
     final skills = _parseSkills(user?['skills']);
-    final linkedInUrl =
-        user?['linkedInUrl'] ?? 'https://www.linkedin.com/in/your-profile';
+    final linkedInUrl = _getLinkedInUrl(user);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
-      body: SingleChildScrollView(
+      backgroundColor: const Color(0xFF1D5572),
+      body: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 71),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 23),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Profile',
-                  style: GoogleFonts.inter(
-                    color: const Color(0xFF1F2937),
-                    fontSize: 25,
-                    fontWeight: FontWeight.bold,
-                    height: 1.1,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Profile Card
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 26),
+            _buildHeader(),
+            Expanded(
               child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: const [
-                    BoxShadow(
-                        color: Color(0x3F000000),
-                        spreadRadius: 0,
-                        offset: Offset(0, 4),
-                        blurRadius: 12)
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 22),
-                    Stack(
-                      children: [
-                        GestureDetector(
-                          onTap: isLoading ? null : _pickAndUploadImage,
-                          child: Container(
-                            width: 96,
-                            height: 96,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF3E8FF),
-                              borderRadius: BorderRadius.circular(48),
-                              image: profilePhoto != null &&
-                                      profilePhoto.isNotEmpty
-                                  ? DecorationImage(
-                                      image: _getProfileImage(profilePhoto),
-                                      fit: BoxFit.cover,
-                                    )
-                                  : null,
-                            ),
-                            child: (profilePhoto == null ||
-                                    profilePhoto.isEmpty)
-                                ? Center(
-                                    child: isLoading
-                                        ? const CircularProgressIndicator()
-                                        : Text(
-                                            getInitials(fullName),
-                                            style: GoogleFonts.inter(
-                                              color: const Color(0xFF1D5572),
-                                              fontSize: 32,
-                                              fontWeight: FontWeight.bold,
-                                              height: 0.9,
-                                            ),
-                                          ),
-                                  )
-                                : (isLoading
-                                    ? const Center(
-                                        child: CircularProgressIndicator(
-                                            color: Colors.white))
-                                    : null),
+                color: const Color(0xFFF9FAFB),
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 16),
+                      // Profile Card
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 26),
+                        child: Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: const [
+                              BoxShadow(
+                                  color: Color(0x3F000000),
+                                  spreadRadius: 0,
+                                  offset: Offset(0, 4),
+                                  blurRadius: 12)
+                            ],
                           ),
-                        ),
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: GestureDetector(
-                            onTap: isLoading ? null : _pickAndUploadImage,
-                            child: Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                  color: const Color(0xFF1D5572),
-                                  borderRadius: BorderRadius.circular(16)),
-                              child: const Icon(Icons.camera_alt,
-                                  color: Colors.white, size: 16),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      fullName,
-                      style: GoogleFonts.inter(
-                          color: const Color(0xFF1F2937),
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          height: 1.4),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      role.toString().toUpperCase(),
-                      style: GoogleFonts.inter(
-                          color: const Color(0xFF6B7280),
-                          fontSize: 14,
-                          height: 1.1),
-                    ),
-                    const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Text(
-                        (user?['bio'] != null &&
-                                (user!['bio'] as String).isNotEmpty)
-                            ? user['bio'] as String
-                            : 'No bio added yet',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                            color: Color(0xFF6B7280),
-                            fontSize: 14,
-                            height: 1.1),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const EditProfileScreen()));
-                      },
-                      child: Container(
-                        width: 124,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          border: Border.all(color: const Color(0xFFE5E7EB)),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.edit,
-                                size: 13, color: Color(0xFF6B7280)),
-                            const SizedBox(width: 4),
-                            Text('Edit Profile',
+                          child: Column(
+                            children: [
+                              const SizedBox(height: 22),
+                              Stack(
+                                children: [
+                                  GestureDetector(
+                                    onTap:
+                                        isLoading ? null : _pickAndUploadImage,
+                                    child: Container(
+                                      width: 96,
+                                      height: 96,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF3E8FF),
+                                        borderRadius: BorderRadius.circular(48),
+                                        image: profilePhoto != null &&
+                                                profilePhoto.isNotEmpty
+                                            ? DecorationImage(
+                                                image: _getProfileImage(
+                                                    profilePhoto),
+                                                fit: BoxFit.cover,
+                                              )
+                                            : null,
+                                      ),
+                                      child: (profilePhoto == null ||
+                                              profilePhoto.isEmpty)
+                                          ? Center(
+                                              child: isLoading
+                                                  ? const CircularProgressIndicator()
+                                                  : Text(
+                                                      getInitials(fullName),
+                                                      style: GoogleFonts.inter(
+                                                        color: const Color(
+                                                            0xFF1D5572),
+                                                        fontSize: 32,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        height: 0.9,
+                                                      ),
+                                                    ),
+                                            )
+                                          : (isLoading
+                                              ? const Center(
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                          color: Colors.white))
+                                              : null),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    right: 0,
+                                    bottom: 0,
+                                    child: GestureDetector(
+                                      onTap: isLoading
+                                          ? null
+                                          : _pickAndUploadImage,
+                                      child: Container(
+                                        width: 32,
+                                        height: 32,
+                                        decoration: BoxDecoration(
+                                            color: const Color(0xFF1D5572),
+                                            borderRadius:
+                                                BorderRadius.circular(16)),
+                                        child: const Icon(Icons.camera_alt,
+                                            color: Colors.white, size: 16),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                fullName,
+                                style: GoogleFonts.inter(
+                                    color: const Color(0xFF1F2937),
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    height: 1.4),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                role.toString().toUpperCase(),
                                 style: GoogleFonts.inter(
                                     color: const Color(0xFF6B7280),
                                     fontSize: 14,
-                                    height: 1.1)),
-                          ],
+                                    height: 1.1),
+                              ),
+                              const SizedBox(height: 8),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 12),
+                                child: Text(
+                                  (user?['bio'] != null &&
+                                          (user!['bio'] as String).isNotEmpty)
+                                      ? user['bio'] as String
+                                      : 'No bio added yet',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                      color: Color(0xFF6B7280),
+                                      fontSize: 14,
+                                      height: 1.1),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (_) =>
+                                              const EditProfileScreen()));
+                                },
+                                child: Container(
+                                  width: 124,
+                                  height: 32,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    border: Border.all(
+                                        color: const Color(0xFFE5E7EB)),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Image.asset('assets/images/Edits.png',
+                                          width: 14, height: 14),
+                                      const SizedBox(width: 4),
+                                      Text('Edit Profile',
+                                          style: GoogleFonts.inter(
+                                              color: const Color(0xFF6B7280),
+                                              fontSize: 14,
+                                              height: 1.1)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Contact Information
-            _buildCard(
-              children: [
-                _sectionTitle('Contact Information'),
-                const SizedBox(height: 12),
-                _infoRow(Icons.email, email),
-                _infoRow(Icons.link, 'LinkedIn',
-                    onTap: _launchLinkedIn, isLinkedIn: true),
-                _infoRow(
-                    Icons.calendar_today, _formatJoinDate(user?['createdAt'])),
-              ],
-            ),
-            const SizedBox(height: 16),
-            // Skills
-            _buildCard(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _sectionTitle('Skills'),
-                    GestureDetector(
-                      onTap: _showAddSkillDialog,
-                      child: const Icon(Icons.add,
-                          size: 20, color: Color(0xFF1D5572)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                if (skills.isEmpty)
-                  Text(
-                    'No skills added yet',
-                    style: GoogleFonts.inter(
-                        color: const Color(0xFF6B7280),
-                        fontSize: 14,
-                        height: 1.1),
-                  )
-                else
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children:
-                        skills.map((s) => _skillTag(s, filled: true)).toList(),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            // Career Interests
-            _buildCard(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _sectionTitle('Career Interests'),
-                    GestureDetector(
-                      onTap: _showCareerInterestsDialog,
-                      child: const Icon(Icons.add,
-                          size: 20, color: Color(0xFF1D5572)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Builder(builder: (_) {
-                  final rawInterests = _parseSkills(user?['selectedInterests']);
-                  if (rawInterests.isEmpty) {
-                    return Text('No career interests added yet',
-                        style: GoogleFonts.inter(
-                            color: const Color(0xFF6B7280),
-                            fontSize: 14,
-                            height: 1.1));
-                  }
-                  return Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: rawInterests.map((key) {
-                      final label = _availableInterests[key] ?? key;
-                      return _skillTag(label, filled: false);
-                    }).toList(),
-                  );
-                }),
-              ],
-            ),
-            const SizedBox(height: 16),
-            // Recent Achievements
-            _buildCard(
-              children: [
-                _sectionTitle('Recent Achievements'),
-                const SizedBox(height: 12),
-                _achievementRow(
-                    Icons.emoji_events, 'Completed React Roadmap', 'Feb 2026'),
-                const Divider(),
-                _achievementRow(
-                    Icons.people, 'First Mentor Session', 'Feb 2026'),
-                const Divider(),
-                _achievementRow(Icons.assignment_turned_in,
-                    'Skill Assessment Complete', 'Jan 2026'),
-              ],
-            ),
-            const SizedBox(height: 16),
-            // Account
-            _buildCard(
-              children: [
-                _sectionTitle('Account'),
-                const SizedBox(height: 12),
-                _accountRow(
-                  Icons.settings_outlined,
-                  'Settings & Privacy',
-                  const Color(0xFF1F2937),
-                  const Color(0xFF6B7280),
-                  () {},
-                ),
-                const Divider(),
-                // ✅ Report an Issue
-                _accountRow(
-                  Icons.flag_outlined,
-                  'Report an Issue',
-                  const Color(0xFF1F2937),
-                  const Color(0xFF6B7280),
-                  () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const ReportIssueScreen()),
-                    );
-                  },
-                ),
-                const Divider(),
-                _accountRow(
-                  Icons.notifications_outlined,
-                  'Notifications',
-                  const Color(0xFF1F2937),
-                  const Color(0xFF6B7280),
-                  () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const NotificationsScreen()),
-                    );
-                  },
-                ),
-                const Divider(),
-                _accountRow(
-                  Icons.logout,
-                  'Sign Out',
-                  const Color(0xFFDC2626),
-                  const Color(0xFFDC2626),
-                  () async {
-                    final confirmed = await showDialog<bool>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Sign Out'),
-                        content:
-                            const Text('Are you sure you want to sign out?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(ctx).pop(false),
-                            child: const Text('Cancel'),
+                      const SizedBox(height: 16),
+                      // Contact Information
+                      _buildCard(
+                        children: [
+                          _sectionTitle('Contact Information'),
+                          const SizedBox(height: 12),
+                          _infoRow(Icons.email, email),
+                          _infoRow(
+                            'assets/images/linkedin.png',
+                            linkedInUrl ?? 'No LinkedIn URL provided',
+                            onTap: () => _launchLinkedIn(linkedInUrl),
+                            isLinkedIn: linkedInUrl != null,
                           ),
-                          TextButton(
-                            onPressed: () => Navigator.of(ctx).pop(true),
-                            style: TextButton.styleFrom(
-                                foregroundColor: const Color(0xFFDC2626)),
-                            child: const Text('Sign Out'),
+                          _infoRow(Icons.calendar_today,
+                              _formatJoinDate(user?['createdAt'])),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      // Skills
+                      _buildCard(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _sectionTitle('Skills'),
+                              GestureDetector(
+                                onTap: _showAddSkillDialog,
+                                child: const Icon(Icons.add,
+                                    size: 20, color: Color(0xFF1D5572)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          if (skills.isEmpty)
+                            Text(
+                              'No skills added yet',
+                              style: GoogleFonts.inter(
+                                  color: const Color(0xFF6B7280),
+                                  fontSize: 14,
+                                  height: 1.1),
+                            )
+                          else
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: skills
+                                  .map((s) => _skillTag(s, filled: true))
+                                  .toList(),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      // Career Interests
+                      _buildCard(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _sectionTitle('Career Interests'),
+                              GestureDetector(
+                                onTap: _showCareerInterestsDialog,
+                                child: const Icon(Icons.add,
+                                    size: 20, color: Color(0xFF1D5572)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Builder(builder: (_) {
+                            final rawInterests =
+                                _parseSkills(user?['selectedInterests']);
+                            if (rawInterests.isEmpty) {
+                              return Text('No career interests added yet',
+                                  style: GoogleFonts.inter(
+                                      color: const Color(0xFF6B7280),
+                                      fontSize: 14,
+                                      height: 1.1));
+                            }
+                            return Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: rawInterests.map((key) {
+                                final label = _availableInterests[key] ?? key;
+                                return _skillTag(label, filled: false);
+                              }).toList(),
+                            );
+                          }),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      // Recent Achievements
+                      _buildCard(
+                        children: [
+                          _sectionTitle('Recent Achievements'),
+                          const SizedBox(height: 12),
+                          _achievementRow(Icons.emoji_events,
+                              'Completed React Roadmap', 'Feb 2026'),
+                          const Divider(),
+                          _achievementRow(
+                              Icons.people, 'First Mentor Session', 'Feb 2026'),
+                          const Divider(),
+                          _achievementRow(Icons.assignment_turned_in,
+                              'Skill Assessment Complete', 'Jan 2026'),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      // Account
+                      _buildCard(
+                        children: [
+                          _sectionTitle('Account'),
+                          const SizedBox(height: 12),
+                          _accountRow(
+                            Icons.settings_outlined,
+                            'Settings & Privacy',
+                            const Color(0xFF1F2937),
+                            const Color(0xFF6B7280),
+                            () {},
+                          ),
+                          const Divider(),
+                          // ✅ Report an Issue
+                          _accountRow(
+                            Icons.flag_outlined,
+                            'Report an Issue',
+                            const Color(0xFF1F2937),
+                            const Color(0xFF6B7280),
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const ReportIssueScreen()),
+                              );
+                            },
+                          ),
+                          const Divider(),
+                          _accountRow(
+                            Icons.logout,
+                            'Sign Out',
+                            const Color(0xFFDC2626),
+                            const Color(0xFFDC2626),
+                            () async {
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('Sign Out'),
+                                  content: const Text(
+                                      'Are you sure you want to sign out?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(ctx).pop(false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(ctx).pop(true),
+                                      style: TextButton.styleFrom(
+                                          foregroundColor:
+                                              const Color(0xFFDC2626)),
+                                      child: const Text('Sign Out'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirmed == true && context.mounted) {
+                                final navigator = Navigator.of(context);
+                                await authProvider.logout();
+                                navigator.pushAndRemoveUntil(
+                                  MaterialPageRoute(
+                                      builder: (_) => const LoginScreen()),
+                                  (route) => false,
+                                );
+                              }
+                            },
                           ),
                         ],
                       ),
-                    );
-                    if (confirmed == true && context.mounted) {
-                      final navigator = Navigator.of(context);
-                      await authProvider.logout();
-                      navigator.pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (_) => const LoginScreen()),
-                        (route) => false,
-                      );
-                    }
-                  },
+                      const SizedBox(height: 20),
+                    ],
+                  ),
                 ),
-              ],
+              ),
             ),
-            const SizedBox(height: 20),
-            const BottomNavigation(selectedIndex: BottomNavIndex.profile),
-            const SizedBox(height: 20),
           ],
         ),
       ),
+      bottomNavigationBar:
+          const BottomNavigation(selectedIndex: BottomNavIndex.profile),
     );
   }
 }
@@ -797,6 +851,43 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _nameController;
   late TextEditingController _roleController;
   late TextEditingController _bioController;
+
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.only(left: 16, right: 20, top: 40, bottom: 15),
+      decoration: const BoxDecoration(
+        color: Color(0xFF1D5572),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: const Padding(
+              padding: EdgeInsets.only(left: 8, bottom: 8),
+              child: Icon(Icons.arrow_back, color: Colors.white),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Text(
+              'Edit Profile',
+              style: GoogleFonts.inter(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -891,153 +982,162 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final isLoading = context.watch<AuthProvider>().isLoading;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
-      body: SingleChildScrollView(
+      backgroundColor: const Color(0xFF1D5572),
+      body: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 71),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 23),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Edit Profile',
-                    style: GoogleFonts.inter(
-                        color: const Color(0xFF1F2937),
-                        fontSize: 25,
-                        fontWeight: FontWeight.bold,
-                        height: 1.1)),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 26),
+            _buildHeader(context),
+            Expanded(
               child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: const [
-                    BoxShadow(
-                        color: Color(0x3F000000),
-                        spreadRadius: 0,
-                        offset: Offset(0, 4),
-                        blurRadius: 12)
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
+                color: const Color(0xFFF9FAFB),
+                child: SingleChildScrollView(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Center(
-                        child: Stack(
-                          children: [
-                            Container(
-                              width: 96,
-                              height: 96,
-                              decoration: BoxDecoration(
-                                  color: const Color(0xFFF3E8FF),
-                                  borderRadius: BorderRadius.circular(48)),
-                              child: Center(
-                                  child: Text(getInitials(_nameController.text),
-                                      style: GoogleFonts.inter(
-                                          color: const Color(0xFF1D5572),
-                                          fontSize: 32,
-                                          fontWeight: FontWeight.bold,
-                                          height: 0.9))),
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 26),
+                        child: Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: const [
+                              BoxShadow(
+                                  color: Color(0x3F000000),
+                                  spreadRadius: 0,
+                                  offset: Offset(0, 4),
+                                  blurRadius: 12)
+                            ],
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Center(
+                                  child: Stack(
+                                    children: [
+                                      Container(
+                                        width: 96,
+                                        height: 96,
+                                        decoration: BoxDecoration(
+                                            color: const Color(0xFFF3E8FF),
+                                            borderRadius:
+                                                BorderRadius.circular(48)),
+                                        child: Center(
+                                            child: Text(
+                                                getInitials(
+                                                    _nameController.text),
+                                                style: GoogleFonts.inter(
+                                                    color:
+                                                        const Color(0xFF1D5572),
+                                                    fontSize: 32,
+                                                    fontWeight: FontWeight.bold,
+                                                    height: 0.9))),
+                                      ),
+                                      Positioned(
+                                        right: 0,
+                                        bottom: 0,
+                                        child: Container(
+                                          width: 32,
+                                          height: 32,
+                                          decoration: BoxDecoration(
+                                              color: const Color(0xFF1D5572),
+                                              borderRadius:
+                                                  BorderRadius.circular(16)),
+                                          child: const Icon(Icons.camera_alt,
+                                              color: Colors.white, size: 16),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Center(
+                                    child: Text(_nameController.text,
+                                        style: GoogleFonts.inter(
+                                            color: const Color(0xFF1F2937),
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            height: 1.4))),
+                                const SizedBox(height: 20),
+                                _editLabel('Full Name'),
+                                _editField(_nameController),
+                                const SizedBox(height: 12),
+                                _editLabel('Current Role'),
+                                _editField(_roleController, enabled: false),
+                                const SizedBox(height: 12),
+                                _editLabel('Bio'),
+                                _editField(_bioController, maxLines: 3),
+                                const SizedBox(height: 16),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: GestureDetector(
+                                        onTap: isLoading ? null : _saveProfile,
+                                        child: Container(
+                                          height: 40,
+                                          decoration: BoxDecoration(
+                                              color: const Color(0xFF1D5572),
+                                              borderRadius:
+                                                  BorderRadius.circular(8)),
+                                          child: Center(
+                                            child: isLoading
+                                                ? const SizedBox(
+                                                    width: 20,
+                                                    height: 20,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                            color: Colors.white,
+                                                            strokeWidth: 2))
+                                                : Text('Save',
+                                                    style: GoogleFonts.inter(
+                                                        color: Colors.white,
+                                                        fontSize: 15,
+                                                        fontWeight:
+                                                            FontWeight.w500)),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: GestureDetector(
+                                        onTap: () => Navigator.pop(context),
+                                        child: Container(
+                                          height: 40,
+                                          decoration: BoxDecoration(
+                                              color: const Color(0xFF1D5572),
+                                              borderRadius:
+                                                  BorderRadius.circular(8)),
+                                          child: Center(
+                                              child: Text('Cancel',
+                                                  style: GoogleFonts.inter(
+                                                      color: Colors.white,
+                                                      fontSize: 15,
+                                                      fontWeight:
+                                                          FontWeight.w500))),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
-                            Positioned(
-                              right: 0,
-                              bottom: 0,
-                              child: Container(
-                                width: 32,
-                                height: 32,
-                                decoration: BoxDecoration(
-                                    color: const Color(0xFF1D5572),
-                                    borderRadius: BorderRadius.circular(16)),
-                                child: const Icon(Icons.camera_alt,
-                                    color: Colors.white, size: 16),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      Center(
-                          child: Text(_nameController.text,
-                              style: GoogleFonts.inter(
-                                  color: const Color(0xFF1F2937),
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  height: 1.4))),
                       const SizedBox(height: 20),
-                      _editLabel('Full Name'),
-                      _editField(_nameController),
-                      const SizedBox(height: 12),
-                      _editLabel('Current Role'),
-                      _editField(_roleController, enabled: false),
-                      const SizedBox(height: 12),
-                      _editLabel('Bio'),
-                      _editField(_bioController, maxLines: 3),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: isLoading ? null : _saveProfile,
-                              child: Container(
-                                height: 40,
-                                decoration: BoxDecoration(
-                                    color: const Color(0xFF1D5572),
-                                    borderRadius: BorderRadius.circular(8)),
-                                child: Center(
-                                  child: isLoading
-                                      ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                              color: Colors.white,
-                                              strokeWidth: 2))
-                                      : Text('Save',
-                                          style: GoogleFonts.inter(
-                                              color: Colors.white,
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w500)),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => Navigator.pop(context),
-                              child: Container(
-                                height: 40,
-                                decoration: BoxDecoration(
-                                    color: const Color(0xFF1D5572),
-                                    borderRadius: BorderRadius.circular(8)),
-                                child: Center(
-                                    child: Text('Cancel',
-                                        style: GoogleFonts.inter(
-                                            color: Colors.white,
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w500))),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
                     ],
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 20),
-            const BottomNavigation(selectedIndex: BottomNavIndex.profile),
-            const SizedBox(height: 20),
           ],
         ),
       ),
+      bottomNavigationBar:
+          const BottomNavigation(selectedIndex: BottomNavIndex.profile),
     );
   }
 }
@@ -1076,21 +1176,24 @@ Widget _sectionTitle(String title) {
           height: 0.9));
 }
 
-Widget _infoRow(IconData icon, String text,
+Widget _infoRow(dynamic icon, String text,
     {VoidCallback? onTap, bool isLinkedIn = false}) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 8),
     child: InkWell(
       onTap: isLinkedIn ? onTap : null,
       child: Row(children: [
-        Icon(icon, size: 16, color: const Color(0xFF1D5572)),
+        if (icon is IconData)
+          Icon(icon, size: 16, color: const Color(0xFF1D5572))
+        else if (icon is String)
+          Image.asset(icon, width: 16, height: 16),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
             text,
             style: GoogleFonts.inter(
               color: isLinkedIn
-                  ? const Color(0xFF1D5572)
+                  ? const Color(0xFF0077B5)
                   : const Color(0xFF1F2937),
               fontSize: 14,
               height: 1.1,

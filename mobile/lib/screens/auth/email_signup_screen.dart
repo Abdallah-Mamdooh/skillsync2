@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/api_service.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../Student/student_homescreen.dart';
-import '../Mentor/Mentor homescreen.dart';
 
 enum UserRole { student, mentor }
 
@@ -81,7 +81,91 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                       ),
                     ),
                     child: const Text(
-                      'try again',
+                      'Try Again',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ── Mentor Pending Approval Dialog ──────────────────────────────────────
+  void _showMentorPendingDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          backgroundColor: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFE8F5E9),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_circle_outline,
+                    color: Color(0xFF2E7D32),
+                    size: 36,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'Thank You for Applying!',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1D5572),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Your mentor application has been submitted.\n'
+                  'Once our team reviews and approves your profile,\n'
+                  'you will be able to log in.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF555555),
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(dialogContext).pop();
+                      Navigator.of(context).popUntil((route) => route.isFirst);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1D5572),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Text(
+                      'Back to Login',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
@@ -101,7 +185,7 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedRole = widget.role.toLowerCase() == 'Mentor'
+    _selectedRole = widget.role.toLowerCase() == 'mentor'
         ? UserRole.mentor
         : UserRole.student;
   }
@@ -110,6 +194,8 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _bankAccountNumberController = TextEditingController();
+  final _sessionFareController = TextEditingController();
   final _cvUrlController = TextEditingController();
   final _linkedinUrlController = TextEditingController();
 
@@ -129,11 +215,14 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _phoneController.dispose();
+    _bankAccountNumberController.dispose();
+    _sessionFareController.dispose();
     _cvUrlController.dispose();
     _linkedinUrlController.dispose();
     super.dispose();
   }
 
+  // ── Session Fare Button ──────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -144,7 +233,7 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
+              // ── Header ───────────────────────────────────────────────────
               const Text(
                 'Create Account',
                 style: TextStyle(
@@ -164,7 +253,7 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Card
+              // ── Card ─────────────────────────────────────────────────────
               Container(
                 decoration: BoxDecoration(
                   color: _cardBg,
@@ -192,7 +281,7 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    // Role Selection
+                    // ── Role Selection ────────────────────────────────────
                     Row(
                       children: [
                         Expanded(
@@ -239,7 +328,7 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
 
                     const SizedBox(height: 20),
 
-                    // Full Name
+                    // ── Full Name ─────────────────────────────────────────
                     _buildLabel('Full Name *'),
                     _buildTextField(
                       controller: _fullNameController,
@@ -247,7 +336,7 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    // Email
+                    // ── Email ─────────────────────────────────────────────
                     _buildLabel('Email Address *'),
                     _buildTextField(
                       controller: _emailController,
@@ -256,7 +345,7 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    // Password
+                    // ── Password ──────────────────────────────────────────
                     _buildLabel('Password *'),
                     _buildTextField(
                       controller: _passwordController,
@@ -282,7 +371,7 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    // Phone
+                    // ── Phone ─────────────────────────────────────────────
                     _buildLabel('Phone number *'),
                     _buildTextField(
                       controller: _phoneController,
@@ -291,7 +380,18 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    // CV URL — only required for mentor
+                    // ── Mentor-only fields ────────────────────────────────
+                    if (_selectedRole == UserRole.mentor) ...[
+                      _buildLabel('Bank Account Number *'),
+                      _buildTextField(
+                        controller: _bankAccountNumberController,
+                        hint: '**** **** **** ****',
+                        keyboardType: TextInputType.number,
+                      ),
+                      const SizedBox(height: 14),
+                    ],
+
+                    // ── CV URL ────────────────────────────────────────────
                     _buildLabel(
                       _selectedRole == UserRole.mentor ? 'CV url *' : 'CV url',
                     ),
@@ -302,7 +402,7 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    // LinkedIn URL — only required for mentor
+                    // ── LinkedIn URL ──────────────────────────────────────
                     _buildLabel(
                       _selectedRole == UserRole.mentor
                           ? 'Linkedin url *'
@@ -314,9 +414,22 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                       keyboardType: TextInputType.url,
                     ),
 
+                    // ── Session Fare (mentor only) ────────────────────────
+                    if (_selectedRole == UserRole.mentor) ...[
+                      const SizedBox(height: 14),
+                      _buildLabel('Session Fare *'),
+                      _buildTextField(
+                        controller: _sessionFareController,
+                        hint: 'Enter session fare in EGP',
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                      ),
+                    ],
+
                     const SizedBox(height: 20),
 
-                    // Terms text
+                    // ── Terms ─────────────────────────────────────────────
                     RichText(
                       text: const TextSpan(
                         style: TextStyle(fontSize: 11, color: _hintColor),
@@ -338,7 +451,7 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Sign Up Button
+                    // ── Sign Up Button ────────────────────────────────────
                     Consumer<AuthProvider>(
                       builder: (context, authProvider, _) {
                         return SizedBox(
@@ -354,6 +467,11 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                                     final password =
                                         _passwordController.text.trim();
                                     final phone = _phoneController.text.trim();
+                                    final bankAccountNumber =
+                                        _bankAccountNumberController.text
+                                            .trim();
+                                    final sessionFare =
+                                        _sessionFareController.text.trim();
                                     final cvUrl = _cvUrlController.text.trim();
                                     final linkedinUrl =
                                         _linkedinUrlController.text.trim();
@@ -362,6 +480,7 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                                             ? 'mentor'
                                             : 'user';
 
+                                    // ── Basic validation ──────────────────
                                     if (fullName.isEmpty ||
                                         email.isEmpty ||
                                         password.isEmpty ||
@@ -371,14 +490,32 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                                               'Please fill in all required fields');
                                       return;
                                     }
-                                    if (roleStr == 'mentor' &&
-                                        (cvUrl.isEmpty ||
-                                            linkedinUrl.isEmpty)) {
-                                      _showSignupFailedDialog(context,
-                                          message:
-                                              'Mentors must provide CV and LinkedIn URLs');
-                                      return;
+
+                                    // ── Mentor-specific validation ────────
+                                    if (roleStr == 'mentor') {
+                                      if (bankAccountNumber.isEmpty ||
+                                          sessionFare.isEmpty ||
+                                          cvUrl.isEmpty ||
+                                          linkedinUrl.isEmpty) {
+                                        _showSignupFailedDialog(context,
+                                            message:
+                                                'Mentors must provide bank account number, session fare, CV, and LinkedIn URLs');
+                                        return;
+                                      }
+                                      if (double.tryParse(sessionFare) ==
+                                              null ||
+                                          (double.tryParse(sessionFare) ?? 0) <=
+                                              0) {
+                                        _showSignupFailedDialog(context,
+                                            message:
+                                                'Please enter a valid session fare');
+                                        return;
+                                      }
                                     }
+
+                                    // ── Map session fare to string ─────────
+                                    final parsedBaseRate =
+                                        double.tryParse(sessionFare);
 
                                     final success = await authProvider.signup(
                                       fullName: fullName,
@@ -390,16 +527,30 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                                       linkedinUrl: roleStr == 'mentor'
                                           ? linkedinUrl
                                           : null,
+                                      additionalInfo: roleStr == 'mentor'
+                                          ? bankAccountNumber
+                                          : null,
+                                      baseRate: roleStr == 'mentor'
+                                          ? parsedBaseRate
+                                          : null,
                                     );
 
                                     if (success && context.mounted) {
                                       if (roleStr == 'mentor') {
-                                        Navigator.of(context).pushReplacement(
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                const MentorHomeScreen(),
-                                          ),
-                                        );
+                                        final token = authProvider.token;
+                                        if (token != null) {
+                                          await ApiService.postWithAuth(
+                                            '/mentors/me',
+                                            {
+                                              'baseRate': parsedBaseRate ?? 0,
+                                              'linkedinUrl': linkedinUrl,
+                                            },
+                                            token,
+                                          );
+                                        }
+                                        if (context.mounted) {
+                                          _showMentorPendingDialog(context);
+                                        }
                                       } else {
                                         Navigator.of(context).pushReplacement(
                                           MaterialPageRoute(
@@ -448,7 +599,7 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                 ),
               ),
 
-              // Already have an account?
+              // ── Already have an account? ──────────────────────────────
               const SizedBox(height: 24),
               Center(
                 child: GestureDetector(
@@ -531,6 +682,7 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
   }
 }
 
+// ── Role Card Widget ─────────────────────────────────────────────────────────
 class _RoleCard extends StatelessWidget {
   final UserRole role;
   final UserRole selectedRole;

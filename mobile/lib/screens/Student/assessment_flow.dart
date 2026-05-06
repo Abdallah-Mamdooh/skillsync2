@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 import '../../widgets/bottom_navigation.dart';
+import 'learning_roadmap_screen.dart'; // Import the roadmap screen
 
 // ===== CAREER MODEL =====
 class CareerScore {
@@ -99,165 +100,191 @@ class AssessmentStartScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
       body: SafeArea(
-        child: Stack(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Positioned(
-              top: 10,
-              left: 10,
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Color(0xFF1D5572)),
-                onPressed: () => Navigator.pop(context),
+            // Header matching ChosenRoadmapScreen style
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.only(
+                  left: 16, right: 20, top: 40, bottom: 15),
+              decoration: const BoxDecoration(
+                color: Color(0xFF1D5572),
               ),
-            ),
-            Column(
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const SizedBox(height: 80),
-                        Image.asset(
-                          'assets/images/assessment_start_logo.png',
-                          width: 120,
-                          height: 120,
-                          fit: BoxFit.contain,
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          "Career Skill Assessment",
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.inter(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF1F2937),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 20),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                            border: Border.all(color: const Color(0xFFE5E7EB)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
-                              _BulletPoint(
-                                text:
-                                    'Your answers directly influence your career recommendations.',
-                              ),
-                              SizedBox(height: 12),
-                              _BulletPoint(
-                                text:
-                                    'Please respond carefully and honestly to ensure accurate results.',
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-                        Consumer<AuthProvider>(
-                          builder: (context, auth, _) {
-                            final interests = (auth.user?['selectedInterests'] as List?) ?? [];
-                            final hasInterests = interests.isNotEmpty;
-
-                            return Column(
-                              children: [
-                                if (!hasInterests)
-                                  Container(
-                                    padding: const EdgeInsets.all(12),
-                                    margin: const EdgeInsets.only(bottom: 16),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFFEF3C7),
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(color: const Color(0xFFF59E0B)),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        const Icon(Icons.info_outline, color: Color(0xFFB45309)),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Text(
-                                            'Tip: Set your Career Interests in Profile to get specialized technical questions!',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 13,
-                                              color: const Color(0xFFB45309),
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                SizedBox(
-                                  width: double.infinity,
-                                  height: 50,
-                                  child: ElevatedButton(
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        PageRouteBuilder(
-                                          pageBuilder: (context, animation,
-                                                  secondaryAnimation) =>
-                                              const AssessmentQuestion1(),
-                                          transitionsBuilder: (context, animation,
-                                              secondaryAnimation, child) {
-                                            const begin = Offset(1.0, 0.0);
-                                            const end = Offset.zero;
-                                            const curve = Curves.easeInOut;
-                                            var tween = Tween(begin: begin, end: end)
-                                                .chain(CurveTween(curve: curve));
-                                            return SlideTransition(
-                                                position: animation.drive(tween),
-                                                child: child);
-                                          },
-                                          transitionDuration:
-                                              const Duration(milliseconds: 400),
-                                        ),
-                                      );
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFFF5A100),
-                                      shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(8)),
-                                      elevation: 0,
-                                    ),
-                                    child: Text(
-                                      'Start Assessment',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: const Color(0xFF001636),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        ),
-                      ],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Skill Assessment',
+                    style: GoogleFonts.inter(
+                      fontSize: 27,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Discover your ideal career path',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Rest of the content
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 40),
+                     Image.asset(
+                       'assets/images/assessment_start_logo.png',
+                       width: 120,
+                       height: 120,
+                       fit: BoxFit.contain,
+                     ),
+                     const SizedBox(height: 12),
+                     Text(
+                       'Let’s Get Started!',
+                       textAlign: TextAlign.center,
+                       style: GoogleFonts.inter(
+                         fontSize: 30,
+                         fontWeight: FontWeight.w800,
+                         color: const Color(0xFF1F3955),
+                       ),
+                     ),
+                     const SizedBox(height: 24),
+                     Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          _BulletPoint(
+                            text:
+                                'Your answers directly influence your career recommendations.',
+                          ),
+                          SizedBox(height: 12),
+                          _BulletPoint(
+                            text:
+                                'Please respond carefully and honestly to ensure accurate results.',
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    Consumer<AuthProvider>(
+                      builder: (context, auth, _) {
+                        final interests =
+                            (auth.user?['selectedInterests'] as List?) ?? [];
+                        final hasInterests = interests.isNotEmpty;
+
+                        return Column(
+                          children: [
+                            if (!hasInterests)
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                margin: const EdgeInsets.only(bottom: 16),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFEF3C7),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                      color: const Color(0xFFF59E0B)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.info_outline,
+                                        color: Color(0xFFB45309)),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        'Tip: Set your Career Interests in Profile to get specialized technical questions!',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 13,
+                                          color: const Color(0xFFB45309),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 50,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    PageRouteBuilder(
+                                      pageBuilder: (context, animation,
+                                              secondaryAnimation) =>
+                                          const AssessmentQuestion1(),
+                                      transitionsBuilder: (context, animation,
+                                          secondaryAnimation, child) {
+                                        const begin = Offset(1.0, 0.0);
+                                        const end = Offset.zero;
+                                        const curve = Curves.easeInOut;
+                                        var tween = Tween(
+                                                begin: begin, end: end)
+                                            .chain(CurveTween(curve: curve));
+                                        return SlideTransition(
+                                            position: animation.drive(tween),
+                                            child: child);
+                                      },
+                                      transitionDuration:
+                                          const Duration(milliseconds: 400),
+                                    ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFF5A100),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8)),
+                                  elevation: 0,
+                                ),
+                                child: Text(
+                                  'Start Assessment',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF001636),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 40),
+                  ],
                 ),
-              ],
+              ),
             ),
           ],
         ),
       ),
-      bottomNavigationBar: const BottomNavigation(selectedIndex: BottomNavIndex.assess),
+      bottomNavigationBar:
+          const BottomNavigation(selectedIndex: BottomNavIndex.assess),
     );
   }
 }
@@ -628,7 +655,7 @@ class _AssessmentQuestion1State extends State<AssessmentQuestion1> {
       }
 
       if (responseSuccess) {
-        Navigator.push(
+        Navigator.pushReplacement(
             context,
             MaterialPageRoute(
                 builder: (_) => AssessmentCompleteState(answers: _answers)));
@@ -645,59 +672,36 @@ class _AssessmentQuestion1State extends State<AssessmentQuestion1> {
     }
   }
 
-  void _previousPage() {
-    if (_currentPage > 0) {
-      _pageController.previousPage(
-          duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
-    } else {
-      Navigator.pop(context);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_isLoadingQuestions) {
       return Scaffold(
         backgroundColor: const Color(0xFFF9FAFB),
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF1D5572),
-          elevation: 0,
-          title: const Text('Assessment',
-              style: TextStyle(color: Colors.white, fontSize: 16)),
-          leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () => Navigator.pop(context)),
+        body: SafeArea(
+          child: Center(child: CircularProgressIndicator()),
         ),
-        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     if (_loadError != null) {
       return Scaffold(
         backgroundColor: const Color(0xFFF9FAFB),
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF1D5572),
-          elevation: 0,
-          title: const Text('Assessment',
-              style: TextStyle(color: Colors.white, fontSize: 16)),
-          leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () => Navigator.pop(context)),
-        ),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(_loadError!,
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
-                        fontSize: 14, color: const Color(0xFF6B7280))),
-                const SizedBox(height: 12),
-                ElevatedButton(
-                    onPressed: _loadQuestions, child: const Text('Retry')),
-              ],
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_loadError!,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                          fontSize: 14, color: const Color(0xFF6B7280))),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                      onPressed: _loadQuestions, child: const Text('Retry')),
+                ],
+              ),
             ),
           ),
         ),
@@ -706,101 +710,98 @@ class _AssessmentQuestion1State extends State<AssessmentQuestion1> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1D5572),
-        elevation: 0,
-        title: Text(_questions[_currentPage]['title'],
-            style: const TextStyle(color: Colors.white, fontSize: 16)),
-        leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: _previousPage),
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [
-                  const Icon(Icons.chevron_left,
-                      size: 18, color: Color(0xFF6B7280)),
-                  Text('Question ${_currentPage + 1} of ${_questions.length}',
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Progress header (back button removed)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    const Icon(Icons.chevron_left,
+                        size: 18, color: Color(0xFF6B7280)),
+                    Text('Question ${_currentPage + 1} of ${_questions.length}',
+                        style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF6B7280))),
+                  ]),
+                  const SizedBox(height: 4),
+                  Text(
+                      'Total questions are generated dynamically based on your profile.',
                       style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF6B7280))),
-                ]),
-                const SizedBox(height: 4),
-                Text(
-                    'Total questions are generated dynamically based on your profile.',
-                    style: GoogleFonts.inter(
-                        fontSize: 11, color: const Color(0xFF9CA3AF))),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(100),
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween<double>(
-                        begin: 0,
-                        end: _questions.isEmpty
-                            ? 0
-                            : (_currentPage + 1) / _questions.length),
-                    duration: const Duration(milliseconds: 400),
-                    curve: Curves.easeInOut,
-                    builder: (context, value, child) => LinearProgressIndicator(
-                      value: value,
-                      backgroundColor: const Color(0xFFE5E7EB),
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                          Color(0xFF1D5572)),
-                      minHeight: 6,
+                          fontSize: 11, color: const Color(0xFF9CA3AF))),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(100),
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween<double>(
+                          begin: 0,
+                          end: _questions.isEmpty
+                              ? 0
+                              : (_currentPage + 1) / _questions.length),
+                      duration: const Duration(milliseconds: 400),
+                      curve: Curves.easeInOut,
+                      builder: (context, value, child) =>
+                          LinearProgressIndicator(
+                        value: value,
+                        backgroundColor: const Color(0xFFE5E7EB),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                            Color(0xFF1D5572)),
+                        minHeight: 6,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: PageView.builder(
-              controller: _pageController,
-              physics: const NeverScrollableScrollPhysics(),
-              onPageChanged: (index) => setState(() => _currentPage = index),
-              itemCount: _questions.length,
-              itemBuilder: (context, index) =>
-                  _buildQuestionPage(_questions[index], index),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-            child: SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _isSubmitting ? null : _nextPage,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF5A100),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                ),
-                child: _isSubmitting
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : Text(
-                        _currentPage == _questions.length - 1
-                            ? 'Complete Assessment'
-                            : 'Next Question',
-                        style: GoogleFonts.inter(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF001636)),
-                      ),
+                ],
               ),
             ),
-          ),
-        ],
+            Expanded(
+              child: PageView.builder(
+                controller: _pageController,
+                physics: const NeverScrollableScrollPhysics(),
+                onPageChanged: (index) => setState(() => _currentPage = index),
+                itemCount: _questions.length,
+                itemBuilder: (context, index) =>
+                    _buildQuestionPage(_questions[index], index),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              child: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _isSubmitting ? null : _nextPage,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF5A100),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : Text(
+                          _currentPage == _questions.length - 1
+                              ? 'Complete Assessment'
+                              : 'Next Question',
+                          style: GoogleFonts.inter(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF001636)),
+                        ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-      bottomNavigationBar: const BottomNavigation(selectedIndex: BottomNavIndex.assess),
+      bottomNavigationBar:
+          const BottomNavigation(selectedIndex: BottomNavIndex.assess),
     );
   }
 
@@ -924,63 +925,60 @@ class AssessmentCompleteState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1D5572),
-        title: const Text('Assessment Complete',
-            style: TextStyle(color: Colors.white, fontSize: 16)),
-        leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.pop(context)),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            const SizedBox(height: 40),
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                  color: const Color(0xFFD1FAE5),
-                  borderRadius: BorderRadius.circular(40)),
-              child: const Icon(Icons.check_circle_outline,
-                  color: Color(0xFF1D5572), size: 50),
-            ),
-            const SizedBox(height: 20),
-            Text('Assessment Complete!',
-                style: GoogleFonts.inter(
-                    fontSize: 25,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF1F2937))),
-            const SizedBox(height: 8),
-            Text("We've identified your key strengths and skills",
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                    fontSize: 14, color: const Color(0xFF6B7280))),
-            const SizedBox(height: 30),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const CareerMatchesScreen())),
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFF5A100),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8))),
-                child: Text('View Career Matches',
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                      color: const Color(0xFFD1FAE5),
+                      borderRadius: BorderRadius.circular(40)),
+                  child: const Icon(Icons.check_circle_outline,
+                      color: Color(0xFF1D5572), size: 50),
+                ),
+                const SizedBox(height: 20),
+                Text('Assessment Complete!',
                     style: GoogleFonts.inter(
-                        fontSize: 18,
+                        fontSize: 25,
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFF001636))),
-              ),
+                        color: const Color(0xFF1F2937))),
+                const SizedBox(height: 8),
+                Text("We've identified your key strengths and skills",
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                        fontSize: 14, color: const Color(0xFF6B7280))),
+                const SizedBox(height: 30),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const CareerMatchesScreen())),
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFF5A100),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8))),
+                    child: Text('View Career Matches',
+                        style: GoogleFonts.inter(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF001636))),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
-      bottomNavigationBar: const BottomNavigation(selectedIndex: BottomNavIndex.assess),
+      bottomNavigationBar:
+          const BottomNavigation(selectedIndex: BottomNavIndex.assess),
     );
   }
 }
@@ -1106,40 +1104,66 @@ class _CareerMatchesScreenState extends State<CareerMatchesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1D5572),
-        title: const Text('Career Matches',
-            style: TextStyle(color: Colors.white, fontSize: 16)),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(child: Text(_error!))
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Career Matches',
-                          style: GoogleFonts.inter(
-                              fontSize: 25,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF1F2937))),
-                      const SizedBox(height: 4),
-                      Text('Recommendations based on your assessment result',
-                          style: GoogleFonts.inter(
-                              fontSize: 13, color: const Color(0xFF6B7280))),
-                      const SizedBox(height: 20),
-                      if (_suggestions.isEmpty)
-                        Text('No suggestions found yet.',
-                            style: GoogleFonts.inter(
-                                fontSize: 14, color: const Color(0xFF6B7280))),
-                      ..._suggestions.map(_buildCareerCard),
-                    ],
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header matching ChosenRoadmapScreen style
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.only(
+                  left: 16, right: 20, top: 40, bottom: 15),
+              decoration: const BoxDecoration(
+                color: Color(0xFF1D5572),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Career Matches',
+                    style: GoogleFonts.inter(
+                      fontSize: 27,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
-                ),
-      bottomNavigationBar: const BottomNavigation(selectedIndex: BottomNavIndex.assess),
+                  const SizedBox(height: 4),
+                  Text(
+                    ' recommendations based on your skills',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Content
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _error != null
+                      ? Center(child: Text(_error!))
+                      : SingleChildScrollView(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (_suggestions.isEmpty)
+                                Text('No suggestions found yet.',
+                                    style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        color: const Color(0xFF6B7280))),
+                              ..._suggestions.map(_buildCareerCard),
+                            ],
+                          ),
+                        ),
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar:
+          const BottomNavigation(selectedIndex: BottomNavIndex.assess),
     );
   }
 
@@ -1233,798 +1257,4 @@ class _CareerMatchesScreenState extends State<CareerMatchesScreen> {
       ),
     );
   }
-}
-
-// ===== LEARNING ROADMAP SCREEN (REDESIGNED) =====
-class LearningRoadmapScreen extends StatefulWidget {
-  final String? careerName;
-  final bool fromAssessment;
-
-  const LearningRoadmapScreen({
-    super.key,
-    this.careerName,
-    this.fromAssessment = false,
-  });
-
-  @override
-  State<LearningRoadmapScreen> createState() => _LearningRoadmapScreenState();
-}
-
-class _LearningRoadmapScreenState extends State<LearningRoadmapScreen> {
-  static const double _roadLeft = 31;
-  static const double _roadTop = 212;
-  static const double _roadWidth = 331;
-  static const double _roadHeight = 629;
-  static const double _roadLabelWidth = 124;
-  static const double _roadLabelHeight = 34;
-  static const double _roadLabelGap = 48;
-  static const double _roadCenterX = _roadLeft + (_roadWidth / 2);
-  static const double _roadLabelFontSize = 11;
-  static const double _roadLabelLineHeight = 1.2;
-  static const double _roadPinMarkerSize = 22;
-
-  bool _isLoading = true;
-  String? _error;
-  List<RoadmapStep> _steps = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadRoadmap();
-  }
-
-  String? _token() {
-    try {
-      return context.read<AuthProvider>().token;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Future<void> _loadRoadmap() async {
-    final token = _token();
-    if (token == null || token.isEmpty) {
-      _useDummySteps();
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      final response = await ApiService.get('/roadmap/my-roadmap', token);
-
-      if (response['success'] == true) {
-        final data = response['data'];
-        final List<dynamic> stepsRaw = data is Map
-            ? (data['steps'] ?? data['milestones'] ?? [])
-            : (data is List ? data : []);
-
-        if (stepsRaw.isNotEmpty) {
-          final parsed = <RoadmapStep>[];
-          for (var i = 0; i < stepsRaw.length; i++) {
-            final s = stepsRaw[i];
-            if (s is Map<String, dynamic>) {
-              final title =
-                  (s['title'] ?? s['name'] ?? s['label'] ?? 'Step ${i + 1}')
-                      .toString();
-              final completed = s['completed'] == true ||
-                  s['isCompleted'] == true ||
-                  s['status'] == 'completed';
-              parsed.add(RoadmapStep(
-                  number: i + 1, title: title, isCompleted: completed));
-            }
-          }
-          setState(() {
-            _steps = parsed;
-            _isLoading = false;
-          });
-          return;
-        }
-      }
-    } catch (_) {
-      // ignore, fall through to dummy
-    }
-
-    _useDummySteps();
-  }
-
-  void _useDummySteps() {
-    setState(() {
-      _steps = const [
-        RoadmapStep(
-            number: 1, title: 'HTML & CSS Fundamentals', isCompleted: true),
-        RoadmapStep(
-            number: 2, title: 'JavaScript Essentials', isCompleted: false),
-        RoadmapStep(number: 3, title: 'React Framework', isCompleted: false),
-        RoadmapStep(
-            number: 4, title: 'Backend with Node.js', isCompleted: false),
-        RoadmapStep(number: 5, title: 'Full Stack Project', isCompleted: false),
-        RoadmapStep(number: 6, title: 'Database Design', isCompleted: false),
-        RoadmapStep(number: 7, title: 'API Development', isCompleted: false),
-        RoadmapStep(
-            number: 8, title: 'Testing & Debugging', isCompleted: false),
-        RoadmapStep(number: 9, title: 'Deployment', isCompleted: false),
-        RoadmapStep(
-            number: 10, title: 'Interview Preparation', isCompleted: false),
-      ];
-      _isLoading = false;
-      _error = null;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(_error!,
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.inter(
-                              fontSize: 14, color: const Color(0xFF6B7280))),
-                      const SizedBox(height: 12),
-                      ElevatedButton(
-                          onPressed: _loadRoadmap, child: const Text('Retry')),
-                    ],
-                  ),
-                )
-              : SingleChildScrollView(
-                  child: FittedBox(
-                    alignment: Alignment.topCenter,
-                    fit: BoxFit.scaleDown,
-                    child: SizedBox(
-                      width: 393,
-                      height: 960,
-                      child: Stack(
-                        children: [
-                          // Background serpentine road (custom painted)
-                          Positioned(
-                            left: _roadLeft,
-                            top: _roadTop,
-                            child: SizedBox(
-                              width: _roadWidth,
-                              height: _roadHeight,
-                              child: CustomPaint(
-                                painter: SerpentineRoadPainter(),
-                              ),
-                            ),
-                          ),
-
-                          // Header Section
-                          Positioned(
-                            left: 0,
-                            top: 0,
-                            child: Container(
-                              width: 393,
-                              height: 132,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF1D5572),
-                              ),
-                              child: Stack(
-                                children: [
-                                  Positioned(
-                                    left: 31,
-                                    top: 71,
-                                    child: Text(
-                                      'Learning Roadmap',
-                                      style: GoogleFonts.inter(
-                                        color: Colors.white,
-                                        fontSize: 25,
-                                        fontWeight: FontWeight.bold,
-                                        height: 1.1,
-                                      ),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    left: 31,
-                                    top: 103,
-                                    child: Text(
-                                      widget.careerName != null
-                                          ? '${widget.careerName} - Your personalized path to success'
-                                          : 'Your personalized path to success',
-                                      style: GoogleFonts.inter(
-                                        color: Colors.white,
-                                        fontSize: 13,
-                                        height: 1.2,
-                                      ),
-                                    ),
-                                  ),
-                                  // Back button
-                                  Positioned(
-                                    left: 10,
-                                    top: 50,
-                                    child: IconButton(
-                                      icon: const Icon(Icons.arrow_back,
-                                          color: Colors.white),
-                                      onPressed: () => Navigator.pop(context),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          // Career Title
-                          Positioned(
-                            left: 71,
-                            top: 149,
-                            child: Text(
-                              widget.careerName ?? 'Full Stack Developer',
-                              style: GoogleFonts.inter(
-                                color: const Color(0xFF1F2937),
-                                fontSize: 25,
-                                fontWeight: FontWeight.bold,
-                                height: 1.1,
-                              ),
-                            ),
-                          ),
-
-                          // START Node
-                          Positioned(
-                            left: 19,
-                            top: 205,
-                            child: Container(
-                              width: 41,
-                              height: 41,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF5A100),
-                                borderRadius: BorderRadius.circular(21),
-                              ),
-                              child: Stack(
-                                children: [
-                                  Positioned(
-                                    left: 5,
-                                    top: 5,
-                                    child: Container(
-                                      width: 31,
-                                      height: 31,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFFCFCFC),
-                                        borderRadius: BorderRadius.circular(16),
-                                      ),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    left: 9,
-                                    top: 9,
-                                    child: Container(
-                                      width: 23,
-                                      height: 23,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF5A100),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      alignment: Alignment.center,
-                                      child: const Text(
-                                        'START',
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          color: Color(0xFFFCFCFC),
-                                          fontSize: 6,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          // Roadmap Steps
-                          ..._buildStepWidgets(),
-
-                          // END Node
-                          Positioned(
-                            left: 26,
-                            top: 833,
-                            child: Container(
-                              width: 41,
-                              height: 41,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF5A100),
-                                borderRadius: BorderRadius.circular(21),
-                              ),
-                              child: Stack(
-                                children: [
-                                  Positioned(
-                                    left: 5,
-                                    top: 5,
-                                    child: Container(
-                                      width: 31,
-                                      height: 31,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFFCFCFC),
-                                        borderRadius: BorderRadius.circular(16),
-                                      ),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    left: 9,
-                                    top: 9,
-                                    child: Container(
-                                      width: 23,
-                                      height: 23,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF5A100),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      alignment: Alignment.center,
-                                      child: const Text(
-                                        'END',
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          color: Color(0xFFFCFCFC),
-                                          fontSize: 7,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          // Choose This Roadmap Button
-                          Positioned(
-                            left: 26,
-                            top: 889,
-                            child: GestureDetector(
-                              onTap: widget.fromAssessment
-                                  ? () {
-                                      Navigator.popUntil(
-                                          context, (route) => route.isFirst);
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        const SnackBar(
-                                            content: Text(
-                                                'Roadmap selected! Start your learning journey.')),
-                                      );
-                                    }
-                                  : null,
-                              child: Container(
-                                width: 169,
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF1D5572),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    widget.fromAssessment
-                                        ? 'Choose This Roadmap'
-                                        : 'Continue Learning',
-                                    textAlign: TextAlign.center,
-                                    style: GoogleFonts.inter(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      height: 2,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          // Cancel Button
-                          Positioned(
-                            left: 199,
-                            top: 889,
-                            child: GestureDetector(
-                              onTap: () => Navigator.pop(context),
-                              child: Container(
-                                width: 169,
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFD9D9D9),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    'Cancel',
-                                    textAlign: TextAlign.center,
-                                    style: GoogleFonts.inter(
-                                      color: const Color(0xFF1D5572),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      height: 2,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-      bottomNavigationBar: const BottomNavigation(selectedIndex: BottomNavIndex.assess),
-    );
-  }
-
-  List<Widget> _buildStepWidgets() {
-    final List<Widget> widgets = [];
-
-    // Keep pins on the zigzag path, but anchor labels to the road center.
-    final List<Map<String, dynamic>> stepPositions = [
-      {
-        'number': 1,
-        'top': 190,
-        'left': 67,
-        'labelCenterX': _roadCenterX,
-        'labelTop': 190 - _roadLabelGap,
-        'labelOffsetY': 4.0,
-      },
-      {
-        'number': 2,
-        'top': 255,
-        'left': 300,
-        'labelCenterX': _roadCenterX,
-        'labelTop': 255 - _roadLabelGap,
-      },
-      {
-        'number': 3,
-        'top': 326,
-        'left': 67,
-        'labelCenterX': _roadCenterX,
-        'labelTop': 326 - _roadLabelGap,
-      },
-      {
-        'number': 4,
-        'top': 396,
-        'left': 300,
-        'labelCenterX': _roadCenterX,
-        'labelTop': 396 - _roadLabelGap,
-      },
-      {
-        'number': 5,
-        'top': 467,
-        'left': 67,
-        'labelCenterX': _roadCenterX,
-        'labelTop': 467 - _roadLabelGap,
-      },
-      {
-        'number': 6,
-        'top': 537,
-        'left': 300,
-        'labelCenterX': _roadCenterX,
-        'labelTop': 537 - _roadLabelGap,
-        'labelOffsetX': 4.0,
-      },
-      {
-        'number': 7,
-        'top': 603,
-        'left': 67,
-        'labelCenterX': _roadCenterX,
-        'labelTop': 603 - _roadLabelGap,
-      },
-      {
-        'number': 8,
-        'top': 673,
-        'left': 300,
-        'labelCenterX': _roadCenterX,
-        'labelTop': 673 - _roadLabelGap,
-        'labelOffsetX': 4.0,
-      },
-      {
-        'number': 9,
-        'top': 744,
-        'left': 67,
-        'labelCenterX': _roadCenterX,
-        'labelTop': 744 - _roadLabelGap,
-      },
-      {
-        'number': 10,
-        'top': 814,
-        'left': 300,
-        'labelCenterX': _roadCenterX,
-        'labelTop': 814 - _roadLabelGap,
-        'labelOffsetY': -2.0,
-      },
-    ];
-
-    for (int i = 0; i < _steps.length && i < stepPositions.length; i++) {
-      final step = _steps[i];
-      final Map<String, dynamic> pos = stepPositions[i];
-      final Color fillColor =
-          step.isCompleted ? const Color(0xFFF5A100) : const Color(0xFF1D5572);
-
-      // Extract values with proper type casting
-      final double top = (pos['top'] as num).toDouble();
-      final double left = (pos['left'] as num).toDouble();
-      final double labelCenterX =
-          ((pos['labelCenterX'] as num?)?.toDouble()) ?? _roadCenterX;
-      final double labelTop =
-          ((pos['labelTop'] as num?)?.toDouble()) ?? (top - _roadLabelGap);
-      final double labelOffsetX =
-          ((pos['labelOffsetX'] as num?)?.toDouble()) ?? 0;
-      final double labelOffsetY =
-          ((pos['labelOffsetY'] as num?)?.toDouble()) ?? 0;
-
-      // Add the pin
-      widgets.add(_buildStepPin(
-        number: step.number,
-        fillColor: fillColor,
-        top: top,
-        left: left,
-      ));
-
-      // Add the text label
-      widgets.add(_buildStepText(
-        title: step.title,
-        labelCenterX: labelCenterX,
-        labelTop: labelTop,
-        labelOffsetX: labelOffsetX,
-        labelOffsetY: labelOffsetY,
-      ));
-    }
-
-    return widgets;
-  }
-
-  Widget _buildStepPin({
-    required int number,
-    required Color fillColor,
-    required double top,
-    required double left,
-  }) {
-    return Positioned(
-      left: left + 1,
-      top: top + 2,
-      child: MapPinMarker(
-        number: number,
-        pinColor: fillColor,
-        size: _roadPinMarkerSize,
-      ),
-    );
-  }
-
-  Widget _buildStepText({
-    required String title,
-    required double labelCenterX,
-    required double labelTop,
-    double labelOffsetX = 0,
-    double labelOffsetY = 0,
-  }) {
-    return Positioned(
-      left: labelCenterX - (_roadLabelWidth / 2) + labelOffsetX,
-      top: labelTop + labelOffsetY,
-      child: SizedBox(
-        width: _roadLabelWidth,
-        height: _roadLabelHeight,
-        child: Align(
-          alignment: Alignment.bottomCenter,
-          child: Text(
-            title,
-            maxLines: 2,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              color: Colors.black,
-              fontSize: _roadLabelFontSize,
-              fontWeight: FontWeight.w600,
-              height: _roadLabelLineHeight,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class MapPinMarker extends StatelessWidget {
-  final int number;
-  final Color pinColor;
-  final double size;
-
-  const MapPinMarker({
-    super.key,
-    required this.number,
-    this.pinColor = const Color.fromARGB(255, 0, 0, 0),
-    this.size = 80,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      size: Size(size, size * 1.4),
-      painter: MapPinPainter(color: pinColor, number: number),
-    );
-  }
-}
-
-class MapPinPainter extends CustomPainter {
-  final Color color;
-  final int number;
-
-  const MapPinPainter({required this.color, required this.number});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color;
-    final strokePaint = Paint()
-      ..color = Colors.black.withOpacity(0.15)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-
-    final double circleRadius = size.width * 0.46;
-    final Offset circleCenter = Offset(size.width / 2, circleRadius);
-    final Path pinPath = Path();
-    final Offset tip = Offset(size.width / 2, size.height);
-    final double leftTangent = circleCenter.dx - circleRadius * 0.45;
-    final double rightTangent = circleCenter.dx + circleRadius * 0.45;
-    final double tangentY = circleCenter.dy + circleRadius * 0.75;
-
-    pinPath.moveTo(tip.dx, tip.dy);
-    pinPath.quadraticBezierTo(
-      leftTangent,
-      tangentY,
-      circleCenter.dx - circleRadius,
-      circleCenter.dy,
-    );
-    pinPath.arcTo(
-      Rect.fromCircle(center: circleCenter, radius: circleRadius),
-      pi,
-      -pi,
-      false,
-    );
-    pinPath.quadraticBezierTo(rightTangent, tangentY, tip.dx, tip.dy);
-    pinPath.close();
-
-    canvas.drawPath(pinPath, paint);
-    canvas.drawPath(pinPath, strokePaint);
-
-    final whitePaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = size.width * 0.08;
-    canvas.drawCircle(circleCenter, circleRadius * 0.72, whitePaint);
-
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: number.toString().padLeft(2, '0'),
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: size.width * 0.26,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    );
-
-    textPainter.layout();
-    textPainter.paint(
-      canvas,
-      Offset(
-        circleCenter.dx - textPainter.width / 2,
-        circleCenter.dy - textPainter.height / 2,
-      ),
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return oldDelegate is MapPinPainter &&
-        (oldDelegate.color != color || oldDelegate.number != number);
-  }
-}
-
-// ===== DATA MODEL =====
-class RoadmapStep {
-  final int number;
-  final String title;
-  final bool isCompleted;
-
-  const RoadmapStep({
-    required this.number,
-    required this.title,
-    this.isCompleted = false,
-  });
-}
-
-// ===== SERPENTINE ROAD PAINTER =====
-/// Paints a serpentine (snake-like) road with two alternating colors:
-/// orange (#F5A623) and dark teal (#2A5F7A), switching at the midpoint
-/// of each horizontal segment.
-class SerpentineRoadPainter extends CustomPainter {
-  static const Color kOrange = Color(0xFFF5A623);
-  static const Color kTeal = Color(0xFF2A5F7A);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final double w = size.width;
-    final double h = size.height;
-
-    // Stroke width (road thickness)
-    final double sw = w * 0.07;
-
-    // Horizontal extents
-    final double lx = sw * 0.5; // left endpoint x
-    final double rx = w - sw * 0.5; // right endpoint x
-    final double mid = midX(w); // color-switch x
-
-    // 7 horizontal rows, evenly spaced
-    const int rows = 7;
-    final double rowH = h / rows;
-    final List<double> ys = List.generate(rows, (i) => rowH * i + rowH / 2);
-
-    // Radius of each U-turn arc = half the vertical gap between rows
-    final double arcR = rowH / 2;
-
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = sw
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    // Per-row: left-half color, right-half color, arc color, arc side
-    final rowDefs = <_RowDef>[
-      _RowDef(lc: kOrange, rc: kTeal, arcColor: kTeal, arcRight: true),
-      _RowDef(lc: kOrange, rc: kTeal, arcColor: kOrange, arcRight: false),
-      _RowDef(lc: kTeal, rc: kOrange, arcColor: kTeal, arcRight: true),
-      _RowDef(lc: kTeal, rc: kOrange, arcColor: kOrange, arcRight: false),
-      _RowDef(lc: kOrange, rc: kTeal, arcColor: kTeal, arcRight: true),
-      _RowDef(lc: kOrange, rc: kTeal, arcColor: kOrange, arcRight: false),
-      _RowDef(lc: kTeal, rc: kOrange, arcColor: null, arcRight: false),
-    ];
-
-    for (int i = 0; i < rows; i++) {
-      final def = rowDefs[i];
-      final double y = ys[i];
-
-      // Left half of horizontal
-      paint.color = def.lc;
-      canvas.drawLine(Offset(lx, y), Offset(mid, y), paint);
-
-      // Right half of horizontal
-      paint.color = def.rc;
-      canvas.drawLine(Offset(mid, y), Offset(rx, y), paint);
-
-      // Arc connecting this row to the next
-      if (i < rows - 1 && def.arcColor != null) {
-        final double nextY = ys[i + 1];
-        final double cy = (y + nextY) / 2;
-        paint.color = def.arcColor!;
-
-        if (def.arcRight) {
-          // Right-side U-turn (opens left): center at (rx, cy)
-          final rect = Rect.fromCircle(center: Offset(rx, cy), radius: arcR);
-          canvas.drawArc(rect, -pi / 2, pi, false, paint);
-        } else {
-          // Left-side U-turn (opens right): center at (lx, cy)
-          final rect = Rect.fromCircle(center: Offset(lx, cy), radius: arcR);
-          canvas.drawArc(rect, pi / 2, pi, false, paint);
-        }
-      }
-    }
-  }
-
-  double midX(double w) => w / 2;
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _RowDef {
-  final Color lc;
-  final Color rc;
-  final Color? arcColor;
-  final bool arcRight;
-
-  const _RowDef({
-    required this.lc,
-    required this.rc,
-    required this.arcColor,
-    required this.arcRight,
-  });
 }

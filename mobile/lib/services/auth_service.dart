@@ -11,6 +11,7 @@ class AuthService {
     String? cvUrl,
     String? linkedinUrl,
     String? additionalInfo,
+    num? baseRate,
   }) async {
     final includeMentorFields = isMentorRole(role);
     return ApiService.post('/auth/signup', {
@@ -23,6 +24,7 @@ class AuthService {
         'cvUrl': cvUrl,
         'linkedinUrl': linkedinUrl,
         'additionalInfo': additionalInfo,
+        'baseRate': baseRate,
       },
     });
   }

@@ -13,7 +13,7 @@ class ApiService {
   // Runtime default when API_BASE_URL is not provided.
   // Physical device on local network: use the host machine's LAN IP.
   // To override, run with: flutter run --dart-define=API_BASE_URL=http://YOUR_IP:5000/api
-  static const String _lanIp = '192.168.1.4';
+  static String get _lanIp => '192.168.1.189';
 
   static String get baseUrl {
     if (_envBaseUrl.isNotEmpty) return _envBaseUrl;
@@ -26,8 +26,10 @@ class ApiService {
     Object body,
   ) async {
     try {
+      final url = '$baseUrl$endpoint';
+      print('DEBUG: Calling API -> $url');
       final response = await http.post(
-        Uri.parse('$baseUrl$endpoint'),
+        Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -36,6 +38,7 @@ class ApiService {
 
       return _handleResponse(response);
     } catch (e) {
+      print('DEBUG: API Error -> $e');
       return {'success': false, 'message': 'Network error: $e'};
     }
   }
@@ -57,6 +60,7 @@ class ApiService {
 
       return _handleResponse(response);
     } catch (e) {
+      print('DEBUG: API Error -> $e');
       return {'success': false, 'message': 'Network error: $e'};
     }
   }
@@ -78,6 +82,7 @@ class ApiService {
 
       return _handleResponse(response);
     } catch (e) {
+      print('DEBUG: API Error -> $e');
       return {'success': false, 'message': 'Network error: $e'};
     }
   }
@@ -99,6 +104,7 @@ class ApiService {
 
       return _handleResponse(response);
     } catch (e) {
+      print('DEBUG: API Error -> $e');
       return {'success': false, 'message': 'Network error: $e'};
     }
   }
@@ -117,6 +123,7 @@ class ApiService {
 
       return _handleResponse(response);
     } catch (e) {
+      print('DEBUG: API Error -> $e');
       return {'success': false, 'message': 'Network error: $e'};
     }
   }
@@ -129,6 +136,7 @@ class ApiService {
 
       return _handleResponse(response);
     } catch (e) {
+      print('DEBUG: API Error -> $e');
       return {'success': false, 'message': 'Network error: $e'};
     }
   }

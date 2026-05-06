@@ -268,27 +268,42 @@ const submitAssessment = async (userId, answers, forceOverwrite = false) => {
   const questions = await Question.find({ _id: { $in: questionIds } }).lean();
   const questionMap = new Map(questions.map((q) => [toObjectIdString(q._id), q]));
 
-  const answersWithQuestions = safeAnswers.map((a) => {
-    const question = questionMap.get(toObjectIdString(a.questionId));
+  const answersWithQuestions = (answers || []).map((a) => {
+  const question = questionMap.get(String(a.questionId));
 
-    if (!question) {
-      throw new Error(`Invalid questionId: ${a.questionId}`);
-    }
+  let selectedOptionIndex = a.selectedOptionIndex;
 
-    const optionIndex = Number(a.selectedOptionIndex);
-    if (Number.isNaN(optionIndex) || optionIndex < 0 || optionIndex >= question.options.length) {
-      throw new Error(
-        `Invalid selectedOptionIndex for question ${question.questionCode || question._id}`
-      );
-    }
+  if (
+    selectedOptionIndex === undefined &&
+    a.selectedOptionKey &&
+    question?.options?.length
+  ) {
+    selectedOptionIndex = question.options.findIndex(
+      (opt) => String(opt.key).toUpperCase() === String(a.selectedOptionKey).toUpperCase()
+    );
+  }
 
-    return {
-      questionId: a.questionId,
-      selectedOptionIndex: optionIndex,
-      question,
-      selectedOption: question.options[optionIndex],
-    };
-  });
+  selectedOptionIndex = Number(selectedOptionIndex);
+
+  return {
+    questionId: a.questionId,
+    selectedOptionIndex,
+    question,
+  };
+});
+
+const invalidAnswers = answersWithQuestions.filter((item) => {
+  return (
+    !item.question ||
+    Number.isNaN(item.selectedOptionIndex) ||
+    item.selectedOptionIndex < 0 ||
+    item.selectedOptionIndex >= item.question.options.length
+  );
+});
+
+if (invalidAnswers.length > 0) {
+  throw new Error('Invalid assessment answers format');
+}
 
   const selectedInterests = ensureArray(user.selectedInterests).map(cleanInterest);
 

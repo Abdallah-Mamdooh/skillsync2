@@ -13,7 +13,7 @@ class ApiService {
   // Runtime default when API_BASE_URL is not provided.
   // Physical device on local network: use the host machine's LAN IP.
   // To override, run with: flutter run --dart-define=API_BASE_URL=http://YOUR_IP:5000/api
-  static String get _lanIp => '192.168.1.189';
+  static String get _lanIp => '192.168.1.4';
 
   static String get baseUrl {
     if (_envBaseUrl.isNotEmpty) return _envBaseUrl;

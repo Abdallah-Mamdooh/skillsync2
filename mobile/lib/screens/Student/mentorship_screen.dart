@@ -41,11 +41,13 @@ class MentorData {
   });
 
   String get initials {
-    final parts = name.trim().split(RegExp(r'\s+'));
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return 'M';
+    final parts = trimmed.split(RegExp(r'\s+'));
     if (parts.length >= 2) {
       return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
     }
-    return parts.isEmpty ? 'M' : parts.first[0].toUpperCase();
+    return parts.first[0].toUpperCase();
   }
 
   double priceFor(String method, int durationMinutes) {
@@ -658,6 +660,27 @@ class _BookSessionScreenState extends State<BookSessionScreen> {
   String? _selectedType;
   String? _selectedDuration;
 
+  List<Map<String, String>> _generateDurations(String method) {
+    final currency = widget.mentor.currency;
+    return [
+      {
+        'duration': '15 minutes',
+        'price':
+            '${widget.mentor.priceFor(method, 15).toStringAsFixed(0)} $currency'
+      },
+      {
+        'duration': '30 minutes',
+        'price':
+            '${widget.mentor.priceFor(method, 30).toStringAsFixed(0)} $currency'
+      },
+      {
+        'duration': '60 minutes',
+        'price':
+            '${widget.mentor.priceFor(method, 60).toStringAsFixed(0)} $currency'
+      },
+    ];
+  }
+
   void _onContinue() {
     if (_selectedType == null || _selectedDuration == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -874,11 +897,14 @@ class _BookSessionScreenState extends State<BookSessionScreen> {
                           icon: Icons.chat_bubble_outline,
                           title: 'Chat Session',
                           subtitle: 'Text-based conversation with the Mentor',
-                          durations: [
-                            {'duration': '15 minutes', 'price': '75 EGP'},
-                            {'duration': '30 minutes', 'price': '100 EGP'},
-                            {'duration': '60 minutes', 'price': '150 EGP'}
-                          ]),
+                          durations: _generateDurations('chat')),
+                      const SizedBox(height: 16),
+                      _buildSessionTypeCard(
+                          type: 'call',
+                          icon: Icons.videocam_outlined,
+                          title: 'Call Session',
+                          subtitle: 'Voice or video call with the Mentor',
+                          durations: _generateDurations('call')),
                       const SizedBox(height: 20),
                     ]),
               ),
@@ -1037,17 +1063,33 @@ class _ChatBookSessionScreenState extends State<ChatBookSessionScreen> {
   bool _loadingSlots = false;
   List<Map<String, String>> _slots = [];
 
-  List<Map<String, String>> get _durations => [
-        {'duration': '15 minutes', 'price': '75 EGP'},
-        {'duration': '30 minutes', 'price': '100 EGP'},
-        {'duration': '60 minutes', 'price': '150 EGP'}
-      ];
+  List<Map<String, String>> get _durations {
+    final method = widget.sessionType;
+    final currency = widget.mentor.currency;
+    return [
+      {
+        'duration': '15 minutes',
+        'price':
+            '${widget.mentor.priceFor(method, 15).toStringAsFixed(0)} $currency'
+      },
+      {
+        'duration': '30 minutes',
+        'price':
+            '${widget.mentor.priceFor(method, 30).toStringAsFixed(0)} $currency'
+      },
+      {
+        'duration': '60 minutes',
+        'price':
+            '${widget.mentor.priceFor(method, 60).toStringAsFixed(0)} $currency'
+      },
+    ];
+  }
 
   @override
   void initState() {
     super.initState();
     _selectedDuration = widget.selectedDuration;
-    _loadSlots();
+    _selectedStartTime = '09:00';
   }
 
   int get _durationMinutes {
@@ -1055,61 +1097,12 @@ class _ChatBookSessionScreenState extends State<ChatBookSessionScreen> {
     return int.tryParse(value) ?? 30;
   }
 
-  Future<void> _loadSlots() async {
-    setState(() => _loadingSlots = true);
-    final date =
-        '${_selectedDate.year.toString().padLeft(4, '0')}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}';
-    final response = await ApiService.getPublicMentorSlots(
-      mentorId: widget.mentor.userId,
-      date: date,
-      durationMinutes: _durationMinutes,
-    );
-    if (response['success'] == true) {
-      final data = response['data'] as Map<String, dynamic>? ?? {};
-      final rawSlots =
-          data['slots'] is List ? data['slots'] as List : <dynamic>[];
-      List<Map<String, String>> slots = rawSlots
-          .whereType<Map>()
-          .map((s) => {
-                'startTime': (s['startTime'] ?? '').toString(),
-                'endTime': (s['endTime'] ?? '').toString(),
-              })
-          .toList();
-
-      // Ensure we always have available slots for testing/flow continuation
-      if (slots.isEmpty) {
-        slots = [
-          {'startTime': '09:00', 'endTime': '09:30'},
-          {'startTime': '11:00', 'endTime': '11:30'},
-          {'startTime': '14:00', 'endTime': '14:30'},
-          {'startTime': '16:00', 'endTime': '16:30'}
-        ];
-      }
-
-      setState(() {
-        _slots = slots;
-        _selectedStartTime = slots.first['startTime'];
-      });
-    } else {
-      setState(() {
-        _slots = [
-          {'startTime': '09:00', 'endTime': '09:30'},
-          {'startTime': '11:00', 'endTime': '11:30'},
-          {'startTime': '14:00', 'endTime': '14:30'}
-        ];
-        _selectedStartTime = _slots.first['startTime'];
-      });
-    }
-    setState(() => _loadingSlots = false);
-  }
-
   void _onContinue() {
     if (_selectedDuration == null ||
-        _selectedPayment == null ||
-        _selectedStartTime == null) {
+        _selectedPayment == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content:
-              Text('Please select duration, payment, and an available slot'),
+              Text('Please select duration and payment method'),
           backgroundColor: Color(0xFFF5A100)));
       return;
     }
@@ -1210,51 +1203,6 @@ class _ChatBookSessionScreenState extends State<ChatBookSessionScreen> {
                           .map((d) =>
                               _buildDurationRow(d['duration']!, d['price']!))
                           .toList(),
-                      const SizedBox(height: 16),
-                      OutlinedButton.icon(
-                        onPressed: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: _selectedDate,
-                            firstDate: DateTime.now(),
-                            lastDate:
-                                DateTime.now().add(const Duration(days: 30)),
-                          );
-                          if (picked != null) {
-                            setState(() => _selectedDate = picked);
-                            _loadSlots();
-                          }
-                        },
-                        icon: const Icon(Icons.calendar_today),
-                        label: Text(
-                          'Date: ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      if (_loadingSlots)
-                        const LinearProgressIndicator()
-                      else if (_slots.isEmpty)
-                        const Text('No slots available for this date/duration.')
-                      else
-                        DropdownButtonFormField<String>(
-                          value: _selectedStartTime,
-                          decoration: const InputDecoration(
-                            labelText: 'Choose time slot',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: _slots
-                              .map(
-                                (slot) => DropdownMenuItem<String>(
-                                  value: slot['startTime'],
-                                  child: Text(
-                                    '${slot['startTime']} - ${slot['endTime']}',
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (value) =>
-                              setState(() => _selectedStartTime = value),
-                        ),
                       const SizedBox(height: 24),
                       Text('Choose Payment Method',
                           style: GoogleFonts.inter(
@@ -1328,7 +1276,6 @@ class _ChatBookSessionScreenState extends State<ChatBookSessionScreen> {
     return GestureDetector(
       onTap: () {
         setState(() => _selectedDuration = duration);
-        _loadSlots();
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),

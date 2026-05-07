@@ -4,11 +4,11 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/mentor_service.dart';
 import '../../services/payout_service.dart';
+import '../../widgets/bottom_navigation.dart';
 import 'profile_screen.dart';
 import 'Earnings screen.dart';
 import 'Session requests screen.dart';
-import '../Student/chathistory.dart';
-import '../Student/Notifications screen.dart';
+import 'event_requests .dart';
 
 void main() {
   runApp(const MentorApp());
@@ -39,7 +39,6 @@ class MentorHomeScreen extends StatefulWidget {
 }
 
 class _MentorHomeScreenState extends State<MentorHomeScreen> {
-  int _selectedIndex = 0;
   bool _isOnline = true;
   bool _isLoading = true;
 
@@ -208,7 +207,9 @@ class _MentorHomeScreenState extends State<MentorHomeScreen> {
                 ),
               ],
             ),
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: const MentorBottomNavigation(
+        selectedIndex: MentorBottomNavIndex.home,
+      ),
     );
   }
 
@@ -362,7 +363,7 @@ class _MentorHomeScreenState extends State<MentorHomeScreen> {
 
   Widget _buildSessionRequestCard() {
     return GestureDetector(
-      onTap: () => _handleNavTap(4),
+      onTap: _navigateToSessionRequests,
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
@@ -432,7 +433,63 @@ class _MentorHomeScreenState extends State<MentorHomeScreen> {
         ),
         const SizedBox(height: 16),
         GestureDetector(
-          onTap: () => _handleNavTap(1),
+          onTap: _navigateToEventRequests,
+          child: Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: const Color(0xFF1D5572).withOpacity(0.6), width: 1.5),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(10),
+                    child: Image.asset(
+                      'assets/images/create event.png',
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Create Event',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1C3A52),
+                        ),
+                      ),
+                      SizedBox(height: 3),
+                      Text(
+                        'Set up and submit your event for review',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF5A7A8A),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        GestureDetector(
+          onTap: _navigateToWallet,
           child: Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
@@ -486,7 +543,7 @@ class _MentorHomeScreenState extends State<MentorHomeScreen> {
         ),
         const SizedBox(height: 14),
         GestureDetector(
-          onTap: () => setState(() => _selectedIndex = 5),
+          onTap: _navigateToProfile,
           child: Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
@@ -543,7 +600,7 @@ class _MentorHomeScreenState extends State<MentorHomeScreen> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: ElevatedButton(
-                    onPressed: () => setState(() => _selectedIndex = 5),
+                    onPressed: _navigateToProfile,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: accentOrange,
                       foregroundColor: Colors.white,
@@ -571,106 +628,17 @@ class _MentorHomeScreenState extends State<MentorHomeScreen> {
     );
   }
 
-  Widget _buildBottomNav() {
-    final items = [
-      {'icon': Icons.home_rounded, 'label': 'Home'},
-      {'icon': Icons.account_balance_wallet_outlined, 'label': 'Wallet'},
-      {'icon': Icons.send_rounded, 'label': 'Chat'},
-      {'icon': Icons.notifications_outlined, 'label': 'Notification'},
-      {'icon': Icons.person_search_outlined, 'label': 'Request'},
-      {'icon': Icons.person_outline_rounded, 'label': 'Profile'},
-    ];
-
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xff1D5572),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(items.length, (index) {
-              final isSelected = index == _selectedIndex;
-              return GestureDetector(
-                onTap: () => _handleNavTap(index),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      items[index]['icon'] as IconData,
-                      color: isSelected ? accentOrange : Colors.white60,
-                      size: 26,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      items[index]['label'] as String,
-                      style: TextStyle(
-                        color: isSelected ? accentOrange : Colors.white60,
-                        fontSize: 11,
-                        fontWeight:
-                            isSelected ? FontWeight.w600 : FontWeight.normal,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ),
-        ),
-      ),
+  void _navigateToEventRequests() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const EventRequestsScreen()),
     );
-  }
-
-  void _handleNavTap(int index) {
-    if (index == _selectedIndex) return;
-
-    setState(() => _selectedIndex = index);
-
-    switch (index) {
-      case 0: // Home
-        // Already on home
-        break;
-      case 1: // Wallet
-        _navigateToWallet();
-        break;
-      case 2: // Chat
-        _navigateToChat();
-        break;
-      case 3: // Notification
-        _navigateToNotifications();
-        break;
-      case 4: // Request
-        _navigateToSessionRequests();
-        break;
-      case 5: // Profile
-        _navigateToProfile();
-        break;
-    }
   }
 
   void _navigateToWallet() {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const EarningsScreen()),
-    );
-  }
-
-  void _navigateToChat() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const ChatsScreen()),
-    );
-  }
-
-  void _navigateToNotifications() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
     );
   }
 

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/chat_service.dart';
 import '../../widgets/bottom_navigation.dart';
+import '../../models/chat_models.dart';
 import 'chatscreen.dart';
 
 // ── Chats Screen ──────────────────────────────────────────────────────────────

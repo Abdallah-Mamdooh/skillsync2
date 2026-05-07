@@ -69,25 +69,13 @@ class _CVOptimizerScreenState extends State<CVOptimizerScreen> {
   }
 
   Future<void> _analyzeCV() async {
-    final text = _cvTextController.text;
+    final jobDescription = _cvTextController.text.trim();
 
-    if (_pickedFile == null && text.isEmpty) {
+    if (_pickedFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please upload a file or paste text first'),
+          content: Text('Please upload a PDF or DOCX file first'),
           backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    // If only text is provided (no file), show error since API needs file
-    if (_pickedFile == null && text.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-              'Please upload a PDF or DOCX file. Text-only analysis is not supported.'),
-          backgroundColor: Colors.orange,
         ),
       );
       return;
@@ -99,6 +87,7 @@ class _CVOptimizerScreenState extends State<CVOptimizerScreen> {
       // Call the API
       final analysis = await ResumeAnalyzerService.analyzeResume(
         filePath: _pickedFile!.path!,
+        jobDescription: jobDescription.isNotEmpty ? jobDescription : null,
       );
 
       if (!mounted) return;
@@ -323,9 +312,9 @@ class _CVOptimizerScreenState extends State<CVOptimizerScreen> {
                         ),
                         const SizedBox(height: 16),
 
-                        // Paste CV Text Label
+                        // Job Description Label
                         const Text(
-                          'Paste Your CV Text',
+                          'Job Description (Optional)',
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -341,7 +330,8 @@ class _CVOptimizerScreenState extends State<CVOptimizerScreen> {
                           minLines: 6,
                           maxLines: 6,
                           decoration: InputDecoration(
-                            hintText: 'Paste your resume content here...',
+                            hintText:
+                                'Paste a job description to see missing keywords...',
                             hintStyle: const TextStyle(
                               color: Color(0xFFD9D9D9),
                               fontSize: 14,
@@ -357,7 +347,7 @@ class _CVOptimizerScreenState extends State<CVOptimizerScreen> {
                         ),
                         const SizedBox(height: 8),
                         const Text(
-                          'Note: File upload is required for analysis',
+                          'Adding a job description enables keyword gap analysis',
                           style: TextStyle(
                             fontSize: 12,
                             color: Color(0xFF9DB0C8),
@@ -618,7 +608,7 @@ class CVResultsScreen extends StatelessWidget {
         ),
       ),
       bottomNavigationBar:
-          const BottomNavigation(selectedIndex: BottomNavIndex.assess),
+          const BottomNavigation(selectedIndex: BottomNavIndex.none),
     );
   }
 
@@ -1046,7 +1036,8 @@ class CVResultsScreen extends StatelessWidget {
   }
 
   Widget _buildKeywordsCard() {
-    final keywords = analysis.missingKeywords ?? [];
+    final foundKeywords = analysis.foundKeywords;
+    final missingKeywords = analysis.missingKeywords ?? [];
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -1079,25 +1070,11 @@ class CVResultsScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          if (keywords.isEmpty) ...[
+
+          // Found keywords — always shown
+          if (foundKeywords.isNotEmpty) ...[
             const Text(
-              'No missing keywords detected.',
-              style: TextStyle(
-                fontSize: 13,
-                color: Color(0xFF6B7280),
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'To see keyword gaps, paste a job description when analyzing.',
-              style: TextStyle(
-                fontSize: 11,
-                color: Color(0xFF9DB0C8),
-              ),
-            ),
-          ] else ...[
-            const Text(
-              'Missing Keywords:',
+              'Detected in your CV:',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -1108,17 +1085,46 @@ class CVResultsScreen extends StatelessWidget {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: keywords
+              children: foundKeywords
+                  .map((k) => _buildKeywordChip(k, isPresent: true))
+                  .toList(),
+            ),
+          ] else ...[
+            const Text(
+              'No keywords detected in your CV.',
+              style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+            ),
+          ],
+
+          // Missing keywords — only shown when JD was provided
+          if (missingKeywords.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            const Text(
+              'Missing from job description:',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1A2E2A),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: missingKeywords
                   .map((k) => _buildKeywordChip(k, isPresent: false))
                   .toList(),
             ),
             const SizedBox(height: 10),
             const Text(
               'Consider adding these keywords if relevant to your experience',
-              style: TextStyle(
-                fontSize: 11,
-                color: Color(0xFF1F2937),
-              ),
+              style: TextStyle(fontSize: 11, color: Color(0xFF1F2937)),
+            ),
+          ] else if (foundKeywords.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            const Text(
+              'Add a job description to see keyword gaps',
+              style: TextStyle(fontSize: 11, color: Color(0xFF9DB0C8)),
             ),
           ],
         ],

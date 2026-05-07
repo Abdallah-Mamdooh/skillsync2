@@ -23,8 +23,8 @@ class AuthService {
       if (includeMentorFields) ...{
         'cvUrl': cvUrl,
         'linkedinUrl': linkedinUrl,
-        'additionalInfo': additionalInfo,
-        'baseRate': baseRate,
+        'payoutAccountInfo': additionalInfo,
+        'proposedHourlyRate': baseRate,
       },
     });
   }

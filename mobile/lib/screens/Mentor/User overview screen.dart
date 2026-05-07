@@ -3,8 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/mentor_service.dart';
-import 'Mentor homescreen.dart';
-import '../Student/chatscreen.dart';
+import '../../models/chat_models.dart';
+import '../../widgets/bottom_navigation.dart';
+import 'mentor_chatscreen.dart';
 
 class UserOverviewScreen extends StatelessWidget {
   final String sessionId;
@@ -194,7 +195,7 @@ class UserOverviewScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ChatWithMentorScreen(
+                        builder: (_) => MentorChatScreen(
                           user: ChatUser(
                             sessionId: sessionId,
                             name: fullName,
@@ -226,7 +227,7 @@ class UserOverviewScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            _buildMentorBottomNav(context, 4),
+            const MentorBottomNavigation(selectedIndex: MentorBottomNavIndex.none),
             const SizedBox(height: 20),
           ],
             ),
@@ -293,94 +294,4 @@ class UserOverviewScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMentorBottomNav(BuildContext context, int selectedIndex) {
-    final items = [
-      {'icon': Icons.home_rounded, 'label': 'Home'},
-      {'icon': Icons.account_balance_wallet_outlined, 'label': 'Wallet'},
-      {'icon': Icons.send_rounded, 'label': 'Chat'},
-      {'icon': Icons.notifications_outlined, 'label': 'Notification'},
-      {'icon': Icons.person_search_outlined, 'label': 'Request'},
-      {'icon': Icons.person_outline_rounded, 'label': 'Profile'},
-    ];
-
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xff1D5572),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(items.length, (index) {
-              final isSelected = index == selectedIndex;
-              return GestureDetector(
-                onTap: () => _handleMentorNav(context, index),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      items[index]['icon'] as IconData,
-                      color:
-                          isSelected ? const Color(0xFFF5A623) : Colors.white60,
-                      size: 26,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      items[index]['label'] as String,
-                      style: TextStyle(
-                        color: isSelected
-                            ? const Color(0xFFF5A623)
-                            : Colors.white60,
-                        fontSize: 11,
-                        fontWeight:
-                            isSelected ? FontWeight.w600 : FontWeight.normal,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _handleMentorNav(BuildContext context, int index) {
-    switch (index) {
-      case 0: // Home
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const MentorHomeScreen()),
-          (route) => false,
-        );
-        break;
-      case 1: // Wallet
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Wallet screen - Coming soon')),
-        );
-        break;
-      case 2: // Chat
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Chat screen - Coming soon')),
-        );
-        break;
-      case 3: // Notification
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Notifications screen - Coming soon')),
-        );
-        break;
-      case 4: // Request
-        // Already on request overview flow
-        break;
-      case 5: // Profile
-        // Navigate to Profile
-        break;
-    }
-  }
 }

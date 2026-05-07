@@ -14,6 +14,18 @@ import 'assessment_flow.dart';
 import 'student_homescreen.dart';
 import 'report issue.dart';
 
+class _ProfileAchievement {
+  final IconData icon;
+  final String title;
+  final String date;
+
+  const _ProfileAchievement({
+    required this.icon,
+    required this.title,
+    required this.date,
+  });
+}
+
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -23,6 +35,138 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final ImagePicker _picker = ImagePicker();
+  List<_ProfileAchievement> _recentAchievements = [];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadRecentAchievements();
+      }
+    });
+  }
+
+  Future<void> _loadRecentAchievements() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final token = authProvider.token;
+    if (token == null || token.isEmpty) return;
+
+    final achievements = <_ProfileAchievement>[];
+
+    try {
+      final roadmapResponse =
+          await ApiService.get('/roadmap/my-roadmap', token);
+      if (roadmapResponse['success'] == true) {
+        final data = roadmapResponse['data'] as Map<String, dynamic>? ?? {};
+        final completionPercent =
+            (data['completionPercent'] as num?)?.toInt() ?? 0;
+        if (completionPercent >= 100) {
+          final careerRaw = data['career'] ?? data['chosenCareer'];
+          String careerName = '';
+          if (careerRaw is Map<String, dynamic>) {
+            careerName = careerRaw['name']?.toString() ??
+                careerRaw['title']?.toString() ??
+                '';
+          } else if (careerRaw != null) {
+            careerName = careerRaw.toString();
+          }
+
+          achievements.add(
+            _ProfileAchievement(
+              icon: Icons.emoji_events,
+              title: careerName.trim().isNotEmpty
+                  ? 'Completed $careerName Roadmap'
+                  : 'Completed Your Roadmap',
+              date: _formatAchievementDate(
+                data['updatedAt'] ??
+                    data['completedAt'] ??
+                    (data['roadmap'] as Map<String, dynamic>?)?['updatedAt'],
+              ),
+            ),
+          );
+        }
+      }
+    } catch (_) {}
+
+    try {
+      final sessionResponse =
+          await ApiService.get('/mentor-sessions/me', token);
+      if (sessionResponse['success'] == true) {
+        final rawSessions = sessionResponse['data'];
+        final sessions = rawSessions is List ? rawSessions : <dynamic>[];
+        if (sessions.isNotEmpty) {
+          dynamic firstDate;
+          for (final raw in sessions) {
+            if (raw is Map) {
+              final session = Map<String, dynamic>.from(raw);
+              firstDate ??= session['scheduledStartTime'] ??
+                  session['createdAt'] ??
+                  session['updatedAt'];
+            }
+          }
+          achievements.add(
+            _ProfileAchievement(
+              icon: Icons.people,
+              title: 'First Mentor Session',
+              date: _formatAchievementDate(firstDate),
+            ),
+          );
+        }
+      }
+    } catch (_) {}
+
+    try {
+      final assessmentResponse =
+          await ApiService.get('/assessment/result', token);
+      if (assessmentResponse['success'] == true) {
+        final data = assessmentResponse['data'] as Map<String, dynamic>? ?? {};
+        final suggestionsRaw = data['suggestions'];
+        final suggestions =
+            suggestionsRaw is List ? suggestionsRaw : <dynamic>[];
+        if (suggestions.isNotEmpty) {
+          achievements.add(
+            _ProfileAchievement(
+              icon: Icons.assignment_turned_in,
+              title: 'Skill Assessment Complete',
+              date: _formatAchievementDate(
+                data['updatedAt'] ?? data['createdAt'] ?? data['completedAt'],
+              ),
+            ),
+          );
+        }
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+    setState(() {
+      _recentAchievements = achievements;
+    });
+  }
+
+  String _formatAchievementDate(dynamic rawDate) {
+    if (rawDate == null) return 'Recently earned';
+    try {
+      final dt = DateTime.parse(rawDate.toString()).toLocal();
+      const months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
+      return '${months[dt.month - 1]} ${dt.year}';
+    } catch (_) {
+      return 'Recently earned';
+    }
+  }
 
   Widget _buildHeader() {
     return Container(
@@ -744,14 +888,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           _sectionTitle('Recent Achievements'),
                           const SizedBox(height: 12),
-                          _achievementRow(Icons.emoji_events,
-                              'Completed React Roadmap', 'Feb 2026'),
-                          const Divider(),
-                          _achievementRow(
-                              Icons.people, 'First Mentor Session', 'Feb 2026'),
-                          const Divider(),
-                          _achievementRow(Icons.assignment_turned_in,
-                              'Skill Assessment Complete', 'Jan 2026'),
+                          if (_recentAchievements.isEmpty)
+                            Text(
+                              'No achievements yet',
+                              style: GoogleFonts.inter(
+                                color: const Color(0xFF6B7280),
+                                fontSize: 14,
+                                height: 1.1,
+                              ),
+                            )
+                          else
+                            ...List.generate(_recentAchievements.length,
+                                (index) {
+                              final achievement = _recentAchievements[index];
+                              return Column(
+                                children: [
+                                  _achievementRow(
+                                    achievement.icon,
+                                    achievement.title,
+                                    achievement.date,
+                                  ),
+                                  if (index != _recentAchievements.length - 1)
+                                    const Divider(),
+                                ],
+                              );
+                            }),
                         ],
                       ),
                       const SizedBox(height: 16),

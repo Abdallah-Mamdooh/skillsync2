@@ -6,19 +6,18 @@ const jwtUtils = require('../../utils/jwt');
 const sendEmail = require('../../utils/sendEmail');
 const { encryptText } = require('../../utils/encryption');
 
-const signup = async (data) => {
+const signup = async (data, file) => {
   const {
-  fullName,
-  email,
-  phoneNumber,
-  password,
-  role,
-  cvUrl,
-  linkedinUrl,
-  additionalInfo,
-  proposedHourlyRate,
-  payoutAccountInfo,
-} = data;
+    fullName,
+    email,
+    phoneNumber,
+    password,
+    role,
+    linkedinUrl,
+    additionalInfo,
+    proposedHourlyRate,
+    payoutAccountInfo,
+  } = data;
 
   if (!fullName || !email || !password || !role) {
     throw new Error('fullName, email, password, and role are required');
@@ -28,33 +27,41 @@ const signup = async (data) => {
     throw new Error('Phone number is required');
   }
 
+  const cvUrl = file ? `/uploads/cvs/${file.filename}` : '';
+
+  if (role === 'mentor' && !file) {
+    throw new Error('Mentors must upload a CV');
+  }
+
   const orConditions = [{ email }];
+
   if (phoneNumber) {
     orConditions.push({ phoneNumber });
   }
 
   const existingUser = await User.findOne({ $or: orConditions });
+
   if (existingUser) {
     throw new Error('Email or phone number already in use');
   }
 
   if (role === 'mentor') {
-  if (!cvUrl || !linkedinUrl) {
-    throw new Error('Mentors must provide CV and LinkedIn profile');
-  }
+    if (!linkedinUrl) {
+      throw new Error('Mentors must provide LinkedIn profile');
+    }
 
-  if (
-    proposedHourlyRate === undefined ||
-    proposedHourlyRate === null ||
-    Number(proposedHourlyRate) <= 0
-  ) {
-    throw new Error('Mentors must provide a valid proposed hourly rate');
-  }
+    if (
+      proposedHourlyRate === undefined ||
+      proposedHourlyRate === null ||
+      Number(proposedHourlyRate) <= 0
+    ) {
+      throw new Error('Mentors must provide a valid proposed hourly rate');
+    }
 
-  if (!payoutAccountInfo || !payoutAccountInfo.trim()) {
-  throw new Error('Mentors must provide payout account information');
-}
-}
+    if (!payoutAccountInfo || !payoutAccountInfo.trim()) {
+      throw new Error('Mentors must provide payout account information');
+    }
+  }
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -65,15 +72,16 @@ const signup = async (data) => {
     password: hashedPassword,
     role,
     authProvider: 'local',
-    cvUrl: role === 'mentor' ? cvUrl : (cvUrl || ''),
-    mentorProfile: role === 'mentor'
-  ? {
-      linkedinUrl,
-      additionalInfo,
-      proposedHourlyRate: Number(proposedHourlyRate),
-      payoutAccountInfo: encryptText(payoutAccountInfo),
-    }
-  : undefined,
+    cvUrl,
+    mentorProfile:
+      role === 'mentor'
+        ? {
+            linkedinUrl,
+            additionalInfo,
+            proposedHourlyRate: Number(proposedHourlyRate),
+            payoutAccountInfo: encryptText(payoutAccountInfo),
+          }
+        : undefined,
   });
 
   const userObject = user.toObject();
@@ -90,6 +98,7 @@ const login = async (data) => {
   const { email, password } = data;
 
   const user = await User.findOne({ email }).select('+password');
+
   if (!user) {
     throw new Error('Invalid email or password');
   }
@@ -99,6 +108,7 @@ const login = async (data) => {
   }
 
   const isMatch = await bcrypt.compare(password, user.password);
+
   if (!isMatch) {
     throw new Error('Invalid email or password');
   }
@@ -120,6 +130,7 @@ const googleLogin = async (email) => {
   }
 
   const user = await User.findOne({ email });
+
   if (!user) {
     throw new Error('Account not found. Please sign up first.');
   }
@@ -186,14 +197,13 @@ If you did not request this, please ignore this email.
 };
 
 const resetPassword = async (token, newPassword) => {
-
   if (!token) {
-  throw new Error('Reset token is required');
-}
+    throw new Error('Reset token is required');
+  }
 
-if (!newPassword || newPassword.length < 8) {
-  throw new Error('Password must be at least 8 characters');
-}
+  if (!newPassword || newPassword.length < 8) {
+    throw new Error('Password must be at least 8 characters');
+  }
 
   const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
@@ -223,6 +233,7 @@ if (!newPassword || newPassword.length < 8) {
 
 const changePassword = async (userId, oldPassword, newPassword) => {
   const user = await User.findById(userId).select('+password');
+
   if (!user) {
     throw new Error('User not found');
   }
@@ -232,6 +243,7 @@ const changePassword = async (userId, oldPassword, newPassword) => {
   }
 
   const isMatch = await bcrypt.compare(oldPassword, user.password);
+
   if (!isMatch) {
     throw new Error('Old password incorrect');
   }

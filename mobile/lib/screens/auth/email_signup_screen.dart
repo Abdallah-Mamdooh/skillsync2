@@ -110,70 +110,55 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
           ),
           backgroundColor: Colors.white,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Spinner icon inside circle
                 Container(
-                  width: 64,
-                  height: 64,
+                  width: 96,
+                  height: 60,
                   decoration: const BoxDecoration(
-                    color: Color(0xFFE8F5E9),
+                    color: Color(0xFFF3F4F6),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.check_circle_outline,
-                    color: Color(0xFF2E7D32),
-                    size: 36,
+                  child: const Center(
+                    child: SizedBox(
+                      width: 36,
+                      height: 36,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3.5,
+                        backgroundColor: Color(0xFFE5E7EB),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Color(0xFF9CA3AF),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 20),
+                // Title
                 const Text(
-                  'Thank You for Applying!',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1D5572),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Your mentor application has been submitted.\n'
-                  'Once our team reviews and approves your profile,\n'
-                  'you will be able to log in.',
+                  'Thank You for Applying',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 19,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFF5A100),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Body
+                const Text(
+                  'We are reviewing your CV and experience. You will be notified by mail once your mentor account is approved.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12.6,
                     color: Color(0xFF555555),
-                    height: 1.5,
+                    height: 1.6,
                   ),
                 ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(dialogContext).pop();
-                      Navigator.of(context).popUntil((route) => route.isFirst);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1D5572),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Text(
-                      'Back to Login',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
+                const SizedBox(height: 8),
               ],
             ),
           ),
@@ -222,7 +207,6 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
     super.dispose();
   }
 
-  // ── Session Fare Button ──────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -538,19 +522,38 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                                     if (success && context.mounted) {
                                       if (roleStr == 'mentor') {
                                         final token = authProvider.token;
-                                        if (token != null) {
-                                          await ApiService.postWithAuth(
-                                            '/mentors/me',
-                                            {
-                                              'baseRate': parsedBaseRate ?? 0,
-                                              'linkedinUrl': linkedinUrl,
-                                            },
-                                            token,
-                                          );
+                                        if (token == null) {
+                                          _showSignupFailedDialog(context,
+                                              message:
+                                                  'Account created but login failed. Please try logging in manually.');
+                                          return;
                                         }
-                                        if (context.mounted) {
-                                          _showMentorPendingDialog(context);
+
+                                        // Create the MentorProfile document.
+                                        // POST /api/mentors/me requires
+                                        // auth + role='mentor'.
+                                        final profileResult =
+                                            await ApiService.postWithAuth(
+                                          '/mentors/me',
+                                          {
+                                            'baseRate': parsedBaseRate ?? 0,
+                                            'linkedinUrl': linkedinUrl,
+                                            'mentorCvUrl': cvUrl,
+                                          },
+                                          token,
+                                        );
+
+                                        if (!context.mounted) return;
+
+                                        if (profileResult['success'] != true) {
+                                          _showSignupFailedDialog(context,
+                                              message: profileResult[
+                                                      'message'] ??
+                                                  'Account created but mentor profile setup failed. Please contact support.');
+                                          return;
                                         }
+
+                                        _showMentorPendingDialog(context);
                                       } else {
                                         Navigator.of(context).pushReplacement(
                                           MaterialPageRoute(

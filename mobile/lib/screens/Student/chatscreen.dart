@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'dart:convert';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
@@ -9,165 +8,9 @@ import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 import '../../services/chat_service.dart';
 import '../../widgets/bottom_navigation.dart';
-import '../Mentor/Mentor homescreen.dart';
-import '../Mentor/profile_screen.dart';
+import '../../models/chat_models.dart';
 
-class ChatUser {
-  final String sessionId;
-  final String name;
-  final String avatarUrl;
-  final String lastMessage;
-  final String time;
-  final String date;
-  final int unread;
-  final String status;
-  final bool isOnline;
-  final String sessionDuration;
-
-  const ChatUser({
-    required this.sessionId,
-    required this.name,
-    this.avatarUrl = '',
-    this.lastMessage = '',
-    this.time = '',
-    this.date = '',
-    this.unread = 0,
-    this.status = '',
-    this.isOnline = false,
-    this.sessionDuration = '',
-  });
-
-  factory ChatUser.fromSession(Map<String, dynamic> s) {
-    final mentor = s['mentor'] is Map
-        ? s['mentor']
-        : (s['mentorId'] is Map ? s['mentorId'] : {});
-
-    String formattedTime = '';
-    String formattedDate = '';
-    if (s['updatedAt'] != null) {
-      try {
-        final dt = DateTime.parse(s['updatedAt']).toLocal();
-        formattedTime = "${dt.hour}:${dt.minute.toString().padLeft(2, '0')}";
-        formattedDate = "${dt.day}/${dt.month}";
-      } catch (_) {}
-    }
-
-    return ChatUser(
-      sessionId: s['id'] ?? s['_id'] ?? '',
-      // Normalized service includes id and _id.
-      // Keep fallback for older payloads.
-      name: mentor['fullName'] ?? 'Mentor',
-      avatarUrl: mentor['profileImageUrl'] ?? '',
-      lastMessage: s['lastMessage'] ?? '',
-      status: s['status'] ?? 'scheduled',
-      unread: s['unreadCount'] ?? 0,
-      time: formattedTime,
-      date: formattedDate,
-      isOnline: mentor['isAvailable'] ?? false,
-      sessionDuration: s['sessionDuration'] ?? '${s['durationMinutes'] ?? ''}',
-    );
-  }
-}
-
-class ChatAvatar extends StatelessWidget {
-  final String? url;
-  final String name;
-  final double radius;
-
-  const ChatAvatar({
-    super.key,
-    this.url,
-    required this.name,
-    this.radius = 20,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (url != null && url!.isNotEmpty) {
-      if (url!.startsWith('data:image')) {
-        try {
-          final base64Str = url!.split(',').last;
-          return CircleAvatar(
-            radius: radius,
-            backgroundImage: MemoryImage(base64Decode(base64Str)),
-          );
-        } catch (_) {}
-      } else if (url!.startsWith('http')) {
-        return CircleAvatar(
-          radius: radius,
-          backgroundImage: NetworkImage(url!),
-        );
-      }
-    }
-
-    String initials = '';
-    final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.length >= 2) {
-      initials = parts[0][0] + parts[parts.length - 1][0];
-    } else if (parts.isNotEmpty && parts[0].isNotEmpty) {
-      initials = parts[0][0];
-    }
-
-    return CircleAvatar(
-      radius: radius,
-      backgroundColor: const Color(0xFFD8DCF0),
-      child: Text(
-        initials.toUpperCase(),
-        style: TextStyle(
-          color: const Color(0xFF1B2B4B),
-          fontSize: radius * 0.75,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-}
-
-class ChatBadge extends StatelessWidget {
-  final int count;
-  const ChatBadge({super.key, required this.count});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(6),
-      decoration: const BoxDecoration(
-        color: Color(0xFFF5A623),
-        shape: BoxShape.circle,
-      ),
-      child: Text(
-        count.toString(),
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-}
-
-enum ChatAttachmentType { none, image, file }
-
-class ChatMessage {
-  final String text;
-  final bool isMe;
-  final String time;
-  final bool isRead;
-  final String? filePath;       // local path for display
-  final String? fileName;       // original file name
-  final ChatAttachmentType attachmentType;
-
-  const ChatMessage({
-    required this.text,
-    required this.isMe,
-    required this.time,
-    this.isRead = false,
-    this.filePath,
-    this.fileName,
-    this.attachmentType = ChatAttachmentType.none,
-  });
-}
+export '../../models/chat_models.dart';
 
 class ChatWithMentorScreen extends StatefulWidget {
   final ChatUser user;
@@ -316,7 +159,6 @@ class _ChatWithMentorScreenState extends State<ChatWithMentorScreen> {
       final now = DateTime.now();
       setState(() => _isUploading = true);
 
-      // Add optimistic message with local path
       setState(() {
         _messages.add(ChatMessage(
           text: '',
@@ -330,7 +172,6 @@ class _ChatWithMentorScreenState extends State<ChatWithMentorScreen> {
       });
       _scrollToBottom();
 
-      // Upload to backend if session is real
       if (widget.user.sessionId.isNotEmpty &&
           !widget.user.sessionId.startsWith('temp')) {
         try {
@@ -345,7 +186,7 @@ class _ChatWithMentorScreenState extends State<ChatWithMentorScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Image error: \$e')));
+            .showSnackBar(SnackBar(content: Text('Image error: $e')));
       }
     } finally {
       if (mounted) setState(() => _isUploading = false);
@@ -397,7 +238,7 @@ class _ChatWithMentorScreenState extends State<ChatWithMentorScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('File error: \$e')));
+            .showSnackBar(SnackBar(content: Text('File error: $e')));
       }
     } finally {
       if (mounted) setState(() => _isUploading = false);
@@ -406,10 +247,6 @@ class _ChatWithMentorScreenState extends State<ChatWithMentorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = Provider.of<AuthProvider>(context);
-    final isMentor =
-        auth.user?['role']?.toString().toLowerCase() == 'mentor';
-
     return Scaffold(
       backgroundColor: const Color(0xFFF0F2F5),
       body: Column(
@@ -431,17 +268,12 @@ class _ChatWithMentorScreenState extends State<ChatWithMentorScreen> {
             ),
           ),
           _buildInputBar(),
-          if (!isMentor)
-            const BottomNavigation(selectedIndex: BottomNavIndex.chat)
-          else
-            _buildMentorBottomNav(context, 2),
+          const BottomNavigation(selectedIndex: BottomNavIndex.chat),
         ],
       ),
     );
   }
 
-  /// ─── HEADER ──────────────────────────────────────────────────────────────
-  /// [back] | Expanded col: [name ── avatar] / [full-width pill]
   Widget _buildHeader() {
     final duration = widget.user.sessionDuration.isNotEmpty
         ? widget.user.sessionDuration
@@ -458,7 +290,6 @@ class _ChatWithMentorScreenState extends State<ChatWithMentorScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Back button
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: IconButton(
@@ -467,14 +298,11 @@ class _ChatWithMentorScreenState extends State<ChatWithMentorScreen> {
               onPressed: () => Navigator.pop(context),
             ),
           ),
-
-          // Expanded column owns BOTH the name+avatar row and the pill
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Name and avatar on the same vertical level
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -496,10 +324,7 @@ class _ChatWithMentorScreenState extends State<ChatWithMentorScreen> {
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 8),
-
-                // Pill stretches full width of this Expanded column
                 _buildCombinedStatusPill(duration),
               ],
             ),
@@ -509,7 +334,6 @@ class _ChatWithMentorScreenState extends State<ChatWithMentorScreen> {
     );
   }
 
-  /// One full-width pill: ⏱ duration on the left, ● Online/Offline on the right
   Widget _buildCombinedStatusPill(String duration) {
     return Container(
       width: double.infinity,
@@ -521,7 +345,6 @@ class _ChatWithMentorScreenState extends State<ChatWithMentorScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Left: clock + duration
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -538,7 +361,6 @@ class _ChatWithMentorScreenState extends State<ChatWithMentorScreen> {
               ),
             ],
           ),
-          // Right: dot + Online/Offline
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -570,7 +392,6 @@ class _ChatWithMentorScreenState extends State<ChatWithMentorScreen> {
     );
   }
 
-  /// ─── DATE CHIP ───────────────────────────────────────────────────────────
   Widget _buildDateChip(String label) {
     return Center(
       child: Container(
@@ -599,8 +420,6 @@ class _ChatWithMentorScreenState extends State<ChatWithMentorScreen> {
     );
   }
 
-  /// ─── MESSAGE BUBBLE ──────────────────────────────────────────────────────
-  /// Time + read ticks are placed INSIDE the bubble, bottom-right aligned.
   Widget _buildMessageBubble(ChatMessage msg) {
     final isMe = msg.isMe;
 
@@ -649,7 +468,6 @@ class _ChatWithMentorScreenState extends State<ChatWithMentorScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  // ── Image attachment ──
                   if (msg.attachmentType == ChatAttachmentType.image &&
                       msg.filePath != null)
                     ClipRRect(
@@ -660,8 +478,6 @@ class _ChatWithMentorScreenState extends State<ChatWithMentorScreen> {
                         fit: BoxFit.cover,
                       ),
                     ),
-
-                  // ── File attachment ──
                   if (msg.attachmentType == ChatAttachmentType.file &&
                       msg.filePath != null)
                     Row(
@@ -686,8 +502,6 @@ class _ChatWithMentorScreenState extends State<ChatWithMentorScreen> {
                         ),
                       ],
                     ),
-
-                  // ── Text (if any) ──
                   if (msg.text.isNotEmpty) ...[
                     if (msg.attachmentType != ChatAttachmentType.none)
                       const SizedBox(height: 6),
@@ -705,9 +519,7 @@ class _ChatWithMentorScreenState extends State<ChatWithMentorScreen> {
                       ),
                     ),
                   ],
-
                   const SizedBox(height: 5),
-                  // Time + ticks row, right-aligned inside bubble
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -741,7 +553,6 @@ class _ChatWithMentorScreenState extends State<ChatWithMentorScreen> {
     );
   }
 
-  /// ─── INPUT BAR ───────────────────────────────────────────────────────────
   Widget _buildInputBar() {
     return Container(
       color: Colors.white,
@@ -800,86 +611,5 @@ class _ChatWithMentorScreenState extends State<ChatWithMentorScreen> {
         ],
       ),
     );
-  }
-
-  /// ─── MENTOR BOTTOM NAV ───────────────────────────────────────────────────
-  Widget _buildMentorBottomNav(BuildContext context, int selectedIndex) {
-    final items = [
-      {'icon': Icons.home_rounded, 'label': 'Home'},
-      {'icon': Icons.account_balance_wallet_outlined, 'label': 'Wallet'},
-      {'icon': Icons.send_rounded, 'label': 'Chat'},
-      {'icon': Icons.notifications_outlined, 'label': 'Notification'},
-      {'icon': Icons.person_search_outlined, 'label': 'Request'},
-      {'icon': Icons.person_outline_rounded, 'label': 'Profile'},
-    ];
-
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xff1D5572),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(items.length, (index) {
-              final isSelected = index == selectedIndex;
-              return GestureDetector(
-                onTap: () => _handleMentorNav(context, index),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      items[index]['icon'] as IconData,
-                      color: isSelected
-                          ? const Color(0xFFF5A623)
-                          : Colors.white60,
-                      size: 22,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      items[index]['label'] as String,
-                      style: TextStyle(
-                        color: isSelected
-                            ? const Color(0xFFF5A623)
-                            : Colors.white60,
-                        fontSize: 10,
-                        fontWeight: isSelected
-                            ? FontWeight.w600
-                            : FontWeight.normal,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _handleMentorNav(BuildContext context, int index) {
-    if (index == 2) return;
-    switch (index) {
-      case 0:
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const MentorHomeScreen()),
-              (route) => false,
-        );
-        break;
-      case 5:
-        Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const ProfileScreen()));
-        break;
-      default:
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Coming soon')));
-    }
   }
 }

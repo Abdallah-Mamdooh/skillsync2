@@ -41,6 +41,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   String _walletCurrency = 'EGP';
   bool _loadingWallet = true;
   bool _submitting = false;
+  bool? _mentorVerified;
 
   int get _durationMinutes =>
       int.tryParse(widget.sessionDuration.split(' ').first) ?? 30;
@@ -49,6 +50,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   void initState() {
     super.initState();
     _loadWallet();
+    _loadMentorVerification();
   }
 
   Future<void> _loadWallet() async {
@@ -63,10 +65,67 @@ class _PaymentScreenState extends State<PaymentScreen> {
     if (mounted) setState(() => _loadingWallet = false);
   }
 
+  Future<void> _loadMentorVerification() async {
+    final response =
+        await ApiService.getPublic('/mentors/public/${widget.mentorId}');
+    final data = response['data'];
+    if (mounted) {
+      setState(() {
+        _mentorVerified = data?['isVerified'] == true;
+      });
+    }
+  }
+
   Future<void> _confirmBooking() async {
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
     setState(() => _submitting = true);
+
+    if (_mentorVerified == false) {
+      setState(() => _submitting = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'This mentor is not yet verified. Please choose a different mentor.'),
+          backgroundColor: Color(0xFFD32F2F),
+          duration: Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
+    if (widget.sessionPrice <= 0) {
+      setState(() => _submitting = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'This mentor has not set a valid session rate. Please choose a different mentor.'),
+          backgroundColor: Color(0xFFD32F2F),
+          duration: Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
+    if (_walletBalance < widget.sessionPrice) {
+      setState(() => _submitting = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Insufficient wallet balance. '
+            'Required: ${widget.sessionPrice.toStringAsFixed(0)} $_walletCurrency, '
+            'Available: ${_walletBalance.toStringAsFixed(0)} $_walletCurrency.',
+          ),
+          backgroundColor: const Color(0xFFD32F2F),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
     final payload = {
       'mentorProfileId': widget.mentorId,
       'method': widget.sessionType,
@@ -76,39 +135,24 @@ class _PaymentScreenState extends State<PaymentScreen> {
       'timezone': widget.timezone,
     };
 
-    Map<String, dynamic> bookingResponse;
-    String? sessionId;
-    String? transactionId;
-
-    if (widget.paymentMethod == 'fawry') {
-      bookingResponse = await ApiService.createSessionFawryCheckout(
-        token: token,
-        payload: payload,
+    if (widget.paymentMethod != 'wallet') {
+      setState(() => _submitting = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Fawry payment is not available. Please select SkillSync Wallet.'),
+          backgroundColor: Color(0xFFF5A100),
+        ),
       );
-      sessionId = bookingResponse['data']?['sessionId']?.toString();
-      transactionId =
-          bookingResponse['data']?['checkout']?['transactionId']?.toString();
-
-      if (bookingResponse['success'] == true && transactionId != null) {
-        for (var i = 0; i < 6; i++) {
-          await Future.delayed(const Duration(seconds: 2));
-          final status = await ApiService.getPaymentStatus(
-            token: token,
-            transactionId: transactionId,
-          );
-          if (status['success'] == true &&
-              status['data']?['isPaymentConfirmed'] == true) {
-            break;
-          }
-        }
-      }
-    } else {
-      bookingResponse = await ApiService.createSessionBooking(
-        token: token,
-        payload: payload,
-      );
-      sessionId = bookingResponse['data']?['sessionId']?.toString();
+      return;
     }
+
+    final bookingResponse = await ApiService.createSessionBooking(
+      token: token,
+      payload: payload,
+    );
+    final sessionId = bookingResponse['data']?['sessionId']?.toString();
 
     if (!mounted) return;
     setState(() => _submitting = false);
@@ -189,6 +233,60 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (_mentorVerified == false) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFEBEB),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFD32F2F)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.warning_amber_rounded,
+                                  color: Color(0xFFD32F2F), size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'This mentor is not yet verified by SkillSync. Booking is not available.',
+                                  style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      color: const Color(0xFFD32F2F)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (widget.sessionPrice <= 0) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFEBEB),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFD32F2F)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.warning_amber_rounded,
+                                  color: Color(0xFFD32F2F), size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'This mentor has not set a valid session rate.',
+                                  style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      color: const Color(0xFFD32F2F)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
                       const SizedBox(height: 16),
                       // ── Wallet Balance Card ──
                     Container(

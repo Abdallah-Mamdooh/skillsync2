@@ -71,16 +71,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     "SkillSync's intelligent assessment evaluates your skills, "
                     "interests, and experience to recommend career paths that "
                     "fit who you are and where the market is going.",
+                imagePath: 'assets/images/page2.png',
               ),
               _OnboardingPageWithBg(
                 title: 'LEARN FROM EXPERTS WHO\u2019VE BEEN IN YOUR PLACE',
                 description:
                     'Career growth is faster when you learn from someone experienced. SkillSync connects you with verified mentors who understand your challenges and guide you step by step toward your goals.',
+                imagePath: 'assets/images/page3,4.png',
               ),
               _OnboardingPageWithBg(
                 title: 'TURN YOUR CV INTO \nA CAREER MAGNET',
                 description:
                     'Your CV shouldn\u2019t just list your experience \u2014 it should tell your story the right way. SkillSync uses advanced AI to deeply analyze your resume, detect missing skills, improve wording, and optimize it for modern recruiters and ATS systems.',
+                imagePath: 'assets/images/page3,4.png',
               ),
             ],
           ),
@@ -158,10 +161,11 @@ class _OnboardingPageOne extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         // Background
-        Container(
+        Image.asset(
+          'assets/images/onboarding_bg.png',
           width: double.infinity,
           height: double.infinity,
-          color: const Color(0xFF1D5572),
+          fit: BoxFit.cover,
         ),
 
         // Content
@@ -171,7 +175,7 @@ class _OnboardingPageOne extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Spacer(flex: 2),
+                const Spacer(flex: 1),
 
                 // Logo
                 Image.asset(
@@ -182,7 +186,7 @@ class _OnboardingPageOne extends StatelessWidget {
                   height: size.height * 0.35,
                 ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 4),
 
                 // App name
                 const Text(
@@ -193,30 +197,21 @@ class _OnboardingPageOne extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     letterSpacing: 2.5,
                     fontFamily: 'Inter',
-                    fontFamilyFallback: ['Roboto', 'sans-serif'], // optional fallback
+                    fontFamilyFallback: [
+                      'Roboto',
+                      'sans-serif'
+                    ], // optional fallback
                   ),
                 ),
 
-                const SizedBox(height: 6),
-
-                // Tagline
-                const Text(
-                  'Closer Than You Think',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.accentOrange,
-                  ),
-                ),
-
-                const Spacer(flex: 2),
+                const SizedBox(height: 8),
 
                 // Subtitle description
                 const Text(
                   'AI-powered career guidance to help you\ndiscover your perfect path',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.white,
+                    color: const Color(0xFF1D5572),
                     fontSize: 15,
                     height: 1.5,
                     fontWeight: FontWeight.w400,
@@ -232,8 +227,8 @@ class _OnboardingPageOne extends StatelessWidget {
                   child: ElevatedButton(
                     onPressed: onGetStarted,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: const Color(0xFF1D5572),
+                      backgroundColor: const Color(0xFF1D5572),
+                      foregroundColor: const Color(0xFFF5A100),
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
@@ -258,7 +253,7 @@ class _OnboardingPageOne extends StatelessWidget {
                     const Text(
                       'Already have an account? ',
                       style: TextStyle(
-                        color: Colors.white70,
+                        color: const Color(0xFF1D5572),
                         fontSize: 14,
                       ),
                     ),
@@ -267,7 +262,7 @@ class _OnboardingPageOne extends StatelessWidget {
                       child: const Text(
                         'Login',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: const Color(0xFF1D5572),
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                           decoration: TextDecoration.underline,
@@ -294,10 +289,12 @@ class _OnboardingPageWithBg extends StatelessWidget {
   const _OnboardingPageWithBg({
     required this.title,
     required this.description,
+    required this.imagePath,
   });
 
   final String title;
   final String description;
+  final String imagePath;
 
   @override
   Widget build(BuildContext context) {
@@ -334,7 +331,7 @@ class _OnboardingPageWithBg extends StatelessWidget {
             child: ClipPath(
               clipper: _BottomHalfCircleClipper(),
               child: Image.asset(
-                'assets/images/page2.png',
+                imagePath,
                 fit: BoxFit.fill,
               ),
             ),

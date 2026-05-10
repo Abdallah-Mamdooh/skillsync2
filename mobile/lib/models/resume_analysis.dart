@@ -12,6 +12,7 @@ class ResumeAnalysis {
   final List<String> atsIssues;
   final List<String> writingIssues;
   final List<String> improvements;
+  final List<String> foundKeywords;
   final int? jdMatchScore;
   final List<String>? missingKeywords;
 
@@ -27,6 +28,7 @@ class ResumeAnalysis {
     required this.atsIssues,
     required this.writingIssues,
     required this.improvements,
+    this.foundKeywords = const [],
     this.jdMatchScore,
     this.missingKeywords,
   });
@@ -44,6 +46,7 @@ class ResumeAnalysis {
       atsIssues: _stringList(json['ats_issues']),
       writingIssues: _stringList(json['writing_issues']),
       improvements: _stringList(json['improvements']),
+      foundKeywords: _stringList(json['keywords']),
       jdMatchScore: (json['jd_match_score'] as num?)?.toInt(),
       missingKeywords: json['missing_keywords'] != null
           ? _stringList(json['missing_keywords'])

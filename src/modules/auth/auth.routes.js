@@ -3,8 +3,9 @@ const authController = require('./auth.controller');
 const router = express.Router();
 const authMiddleware = require('../../middlewares/auth.middleware');
 const roleMiddleware = require('../../middlewares/role.middleware');
+const { cvUpload } = require('../../middlewares/upload.middleware');
 
-router.post('/signup', authController.signup);
+router.post('/signup', cvUpload.single('cv'), authController.signup);
 router.post('/login', authController.login);
 router.post('/google-login', authController.googleLogin);
 router.post('/forgot-password', authController.forgotPassword);

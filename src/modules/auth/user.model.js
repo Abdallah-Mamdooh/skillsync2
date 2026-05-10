@@ -86,8 +86,12 @@ const userSchema = new mongoose.Schema(
     },
 
     cvUrl: {
-      type: String,
-      default: '',
+    type: String,
+    trim: true,
+    default: '',
+    required: function () {
+    return this.role === 'mentor';
+    },
     },
 
     assessmentCompleted: {

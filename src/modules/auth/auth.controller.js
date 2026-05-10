@@ -2,7 +2,7 @@ const asyncHandler = require('../../middlewares/async.middleware');
 const authService = require('./auth.service');
 
 const signup = asyncHandler(async (req, res) => {
-  const response = await authService.signup(req.body);
+  const response = await authService.signup(req.body, req.file);
   res.status(201).json(response);
 });
 
@@ -37,11 +37,12 @@ const googleLogin = asyncHandler(async (req, res) => {
   const response = await authService.googleLogin(req.body.email);
   res.status(200).json(response);
 });
+
 module.exports = {
   signup,
   login,
   forgotPassword,
   resetPassword,
   changePassword,
-  googleLogin
+  googleLogin,
 };

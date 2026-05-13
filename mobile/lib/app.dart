@@ -5,6 +5,8 @@ import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/Student/student_homescreen.dart';
 import 'screens/Mentor/Mentor homescreen.dart';
 import 'providers/auth_provider.dart';
+import 'providers/notification_provider.dart';
+import 'providers/theme_provider.dart';
 import 'screens/auth/reset_password_screen.dart';
 import 'services/deep_link_service.dart';
 import 'utils/role_utils.dart';
@@ -46,23 +48,29 @@ class _SkillSyncAppState extends State<SkillSyncApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'SkillSync',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.theme,
-      navigatorKey: _navigatorKey,
-      home: Consumer<AuthProvider>(
-        builder: (context, auth, _) {
-          if (auth.isLoggedIn) {
-            final role = auth.user?['role'];
-            if (isMentorRole(role)) {
-              return const MentorHomeScreen();
-            }
-            return const StudentHomeScreen();
-          }
-          return const OnboardingScreen();
-        },
-      ),
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, _) {
+        return MaterialApp(
+          title: 'SkillSync',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: themeProvider.themeMode,
+          navigatorKey: _navigatorKey,
+          home: Consumer<AuthProvider>(
+            builder: (context, auth, _) {
+              if (auth.isLoggedIn) {
+                final role = auth.user?['role'];
+                if (isMentorRole(role)) {
+                  return const MentorHomeScreen();
+                }
+                return const StudentHomeScreen();
+              }
+              return const OnboardingScreen();
+            },
+          ),
+        );
+      },
     );
   }
 }

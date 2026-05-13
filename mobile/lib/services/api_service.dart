@@ -13,12 +13,30 @@ class ApiService {
   // Runtime default when API_BASE_URL is not provided.
   // Physical device on local network: use the host machine's LAN IP.
   // To override, run with: flutter run --dart-define=API_BASE_URL=http://YOUR_IP:5000/api
-  static String get _lanIp => '192.168.1.4';
+  static String get _lanIp => '192.168.110.79';
 
   static String get baseUrl {
     if (_envBaseUrl.isNotEmpty) return _envBaseUrl;
     if (kIsWeb) return 'http://localhost:5000/api';
     return 'http://$_lanIp:5000/api';
+  }
+
+  static Uri _buildUri(String endpoint, {bool disableCache = false}) {
+    final uri = Uri.parse('$baseUrl$endpoint');
+    if (!disableCache) return uri;
+
+    final queryParameters = Map<String, String>.from(uri.queryParameters);
+    queryParameters['_ts'] = DateTime.now().millisecondsSinceEpoch.toString();
+    return uri.replace(queryParameters: queryParameters);
+  }
+
+  static Map<String, String> _defaultHeaders({String? token, bool disableCache = false}) {
+    return {
+      if (token != null) 'Authorization': 'Bearer $token',
+      if (disableCache) 'Cache-Control': 'no-cache, no-store, must-revalidate',
+      if (disableCache) 'Pragma': 'no-cache',
+      if (disableCache) 'Expires': '0',
+    };
   }
 
   static Future<Map<String, dynamic>> post(
@@ -114,11 +132,10 @@ class ApiService {
     String token,
   ) async {
     try {
+      final disableCache = kIsWeb;
       final response = await http.get(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
+        _buildUri(endpoint, disableCache: disableCache),
+        headers: _defaultHeaders(token: token, disableCache: disableCache),
       );
 
       return _handleResponse(response);
@@ -130,8 +147,10 @@ class ApiService {
 
   static Future<Map<String, dynamic>> getPublic(String endpoint) async {
     try {
+      final disableCache = kIsWeb;
       final response = await http.get(
-        Uri.parse('$baseUrl$endpoint'),
+        _buildUri(endpoint, disableCache: disableCache),
+        headers: _defaultHeaders(disableCache: disableCache),
       );
 
       return _handleResponse(response);
@@ -200,5 +219,26 @@ class ApiService {
     required String sessionId,
   }) async {
     return get('/mentor-sessions/$sessionId/timer', token);
+  }
+
+  static Future<Map<String, dynamic>> joinSession({
+    required String token,
+    required String sessionId,
+  }) async {
+    return postWithAuth('/mentor-sessions/$sessionId/join', {}, token);
+  }
+
+  static Future<Map<String, dynamic>> submitSessionFeedback({
+    required String token,
+    required Map<String, dynamic> payload,
+  }) async {
+    return postWithAuth('/session-feedback', payload, token);
+  }
+
+  static Future<Map<String, dynamic>> getSessionFeedback({
+    required String token,
+    required String sessionId,
+  }) async {
+    return get('/session-feedback/session/$sessionId', token);
   }
 }

@@ -375,13 +375,15 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
                       const SizedBox(height: 14),
                     ],
 
-                    // ── CV URL ────────────────────────────────────────────
+                    // ── CV file link ─────────────────────────────────────
                     _buildLabel(
-                      _selectedRole == UserRole.mentor ? 'CV url *' : 'CV url',
+                      _selectedRole == UserRole.mentor
+                          ? 'CV file link *'
+                          : 'CV file link',
                     ),
                     _buildTextField(
                       controller: _cvUrlController,
-                      hint: '.....',
+                      hint: 'Direct PDF or DOCX link',
                       keyboardType: TextInputType.url,
                     ),
                     const SizedBox(height: 14),

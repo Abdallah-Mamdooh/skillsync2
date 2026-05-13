@@ -7,9 +7,16 @@ import '../../models/chat_models.dart';
 import '../../widgets/bottom_navigation.dart';
 import 'mentor_chatscreen.dart';
 
-class UserOverviewScreen extends StatelessWidget {
+class UserOverviewScreen extends StatefulWidget {
   final String sessionId;
   const UserOverviewScreen({super.key, required this.sessionId});
+
+  @override
+  State<UserOverviewScreen> createState() => _UserOverviewScreenState();
+}
+
+class _UserOverviewScreenState extends State<UserOverviewScreen> {
+  bool _starting = false;
 
   String getInitials(String name) {
     if (name.isEmpty) return '??';
@@ -22,13 +29,55 @@ class UserOverviewScreen extends StatelessWidget {
     return '??';
   }
 
+  Future<void> _goToSession(String fullName, String status, String sessionDuration) async {
+    if (_starting) return;
+    setState(() => _starting = true);
+
+    final auth = context.read<AuthProvider>();
+    final token = auth.token;
+    if (token == null) { setState(() => _starting = false); return; }
+
+    try {
+      // Start the session first so the timer begins
+      final response = await MentorService.startSession(token, widget.sessionId);
+      if (response['success'] != true && mounted) {
+        // Session might already be started — continue to chat anyway
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(response['message']?.toString() ?? 'Session already started')),
+        );
+      }
+    } catch (_) {
+      // Continue even if start fails (session might already be started)
+    }
+
+    if (!mounted) return;
+    setState(() => _starting = false);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MentorChatScreen(
+          user: ChatUser(
+            sessionId: widget.sessionId,
+            name: fullName,
+            isOnline: true,
+            status: 'started', // Session is now started — timer will begin polling
+              sessionDuration: sessionDuration,
+              openedFromHistory: false,
+              shouldAutoKickoff: true,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final token = context.read<AuthProvider>().token;
     return FutureBuilder<Map<String, dynamic>>(
       future: token == null
           ? Future.value({'success': false, 'message': 'Not authenticated'})
-          : MentorService.getSessionById(token, sessionId),
+          : MentorService.getSessionById(token, widget.sessionId),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Scaffold(
@@ -39,9 +88,11 @@ class UserOverviewScreen extends StatelessWidget {
         final data = response['data'] is Map<String, dynamic>
             ? response['data'] as Map<String, dynamic>
             : <String, dynamic>{};
-        final user = data['user'] is Map<String, dynamic>
-            ? data['user'] as Map<String, dynamic>
-            : <String, dynamic>{};
+        final user = data['requester'] is Map<String, dynamic>
+            ? data['requester'] as Map<String, dynamic>
+            : (data['user'] is Map<String, dynamic>
+                ? data['user'] as Map<String, dynamic>
+                : <String, dynamic>{});
         final fullName = (user['fullName'] ?? 'Student').toString();
         final role = (user['role'] ?? 'Learner').toString();
         final email = (user['email'] ?? 'N/A').toString();
@@ -191,23 +242,13 @@ class UserOverviewScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => MentorChatScreen(
-                          user: ChatUser(
-                            sessionId: sessionId,
-                            name: fullName,
-                            isOnline: true,
-                            status: (data['status'] ?? 'started').toString(),
-                            sessionDuration:
-                                '${(data['durationMinutes'] ?? 0).toString()} min',
+                  onPressed: _starting
+                      ? null
+                      : () => _goToSession(
+                            fullName,
+                            (data['status'] ?? 'scheduled').toString(),
+                            '${(data['durationMinutes'] ?? 0).toString()} min',
                           ),
-                        ),
-                      ),
-                    );
-                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1D5572),
                     foregroundColor: Colors.white,
@@ -216,13 +257,18 @@ class UserOverviewScreen extends StatelessWidget {
                     ),
                     elevation: 2,
                   ),
-                  child: Text(
-                    'Go To Session',
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: _starting
+                      ? const SizedBox(
+                          width: 20, height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : Text(
+                          'Go To Session',
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                 ),
               ),
             ),

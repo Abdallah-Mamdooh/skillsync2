@@ -41,6 +41,7 @@ class MentorHomeScreen extends StatefulWidget {
 class _MentorHomeScreenState extends State<MentorHomeScreen> {
   bool _isOnline = true;
   bool _isLoading = true;
+  bool _isUpdatingStatus = false;
 
   // Mentor profile data
   Map<String, dynamic>? _mentorProfile;
@@ -61,6 +62,23 @@ class _MentorHomeScreenState extends State<MentorHomeScreen> {
     _loadMentorData();
   }
 
+  bool _toBool(dynamic value, {bool fallback = true}) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      if (normalized == 'true' || normalized == 'online' || normalized == '1') {
+        return true;
+      }
+      if (normalized == 'false' ||
+          normalized == 'offline' ||
+          normalized == '0') {
+        return false;
+      }
+    }
+    return fallback;
+  }
+
   Future<void> _loadMentorData() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final token = authProvider.token;
@@ -73,9 +91,12 @@ class _MentorHomeScreenState extends State<MentorHomeScreen> {
       // Fetch mentor profile
       final profileResponse = await MentorService.getMyProfile(token);
       if (profileResponse['success'] == true) {
+        final profileData = profileResponse['data'] is Map<String, dynamic>
+            ? Map<String, dynamic>.from(profileResponse['data'])
+            : <String, dynamic>{};
         setState(() {
-          _mentorProfile = profileResponse['data'];
-          _isOnline = _mentorProfile?['isAvailable'] ?? true;
+          _mentorProfile = profileData;
+          _isOnline = _toBool(profileData['isAvailable']);
         });
       }
 
@@ -118,28 +139,60 @@ class _MentorHomeScreenState extends State<MentorHomeScreen> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final token = authProvider.token;
 
-    if (token == null) return;
+    if (token == null || _isUpdatingStatus) return;
 
     final newStatus = !_isOnline;
 
     // Optimistic UI update
-    setState(() => _isOnline = newStatus);
+    setState(() {
+      _isUpdatingStatus = true;
+      _isOnline = newStatus;
+      _mentorProfile = {
+        ...?_mentorProfile,
+        'isAvailable': newStatus,
+      };
+    });
 
     try {
       final response = await MentorService.updateAvailability(token, newStatus);
       if (response['success'] == true) {
+        final responseData = response['data'] is Map<String, dynamic>
+            ? Map<String, dynamic>.from(response['data'])
+            : <String, dynamic>{};
+        final confirmedStatus = _toBool(
+          responseData['isAvailable'],
+          fallback: newStatus,
+        );
+        if (mounted) {
+          setState(() {
+            _isOnline = confirmedStatus;
+            _isUpdatingStatus = false;
+            _mentorProfile = {
+              ...?_mentorProfile,
+              ...responseData,
+              'isAvailable': confirmedStatus,
+            };
+          });
+        }
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                  newStatus ? 'You are now online' : 'You are now offline'),
+                  confirmedStatus ? 'You are now online' : 'You are now offline'),
               duration: const Duration(seconds: 1),
             ),
           );
         }
       } else {
         // Revert on failure
-        setState(() => _isOnline = !newStatus);
+        setState(() {
+          _isUpdatingStatus = false;
+          _isOnline = !newStatus;
+          _mentorProfile = {
+            ...?_mentorProfile,
+            'isAvailable': !newStatus,
+          };
+        });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -150,7 +203,14 @@ class _MentorHomeScreenState extends State<MentorHomeScreen> {
       }
     } catch (e) {
       // Revert on error
-      setState(() => _isOnline = !newStatus);
+      setState(() {
+        _isUpdatingStatus = false;
+        _isOnline = !newStatus;
+        _mentorProfile = {
+          ...?_mentorProfile,
+          'isAvailable': !newStatus,
+        };
+      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to update status: $e')),
@@ -259,7 +319,7 @@ class _MentorHomeScreenState extends State<MentorHomeScreen> {
                     ],
                   ),
                   GestureDetector(
-                    onTap: _toggleOnlineStatus,
+                    onTap: _isUpdatingStatus ? null : _toggleOnlineStatus,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 10),
@@ -271,13 +331,17 @@ class _MentorHomeScreenState extends State<MentorHomeScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            Icons.power_settings_new,
+                            _isUpdatingStatus
+                                ? Icons.sync
+                                : Icons.power_settings_new,
                             size: 18,
                             color: _isOnline ? Colors.green : Colors.grey,
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            _isOnline ? 'Online' : 'Offline',
+                            _isUpdatingStatus
+                                ? 'Updating...'
+                                : (_isOnline ? 'Online' : 'Offline'),
                             style: GoogleFonts.inter(
                               color: _isOnline
                                   ? const Color(0xFF1C3A52)

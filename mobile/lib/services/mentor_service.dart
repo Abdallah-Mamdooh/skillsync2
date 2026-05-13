@@ -25,7 +25,17 @@ class MentorService {
   /// Fetches all sessions for the mentor
   /// Backend: GET /api/mentor-sessions/me
   static Future<Map<String, dynamic>> getMySessions(String token) async {
-    return ApiService.get('/mentor-sessions/me', token);
+    final response = await ApiService.get('/mentor-sessions/me', token);
+    if (response['success'] != true) return response;
+    final raw = response['data'];
+    final sessions = raw is List ? raw : <dynamic>[];
+    return {
+      ...response,
+      'data': sessions
+          .whereType<Map>()
+          .map((s) => normalizeSession(Map<String, dynamic>.from(s)))
+          .toList(),
+    };
   }
 
   /// Starts a session
@@ -75,18 +85,33 @@ class MentorService {
     final user = session['user'] is Map<String, dynamic>
         ? Map<String, dynamic>.from(session['user'])
         : <String, dynamic>{};
+    final requester = session['requester'] is Map<String, dynamic>
+        ? Map<String, dynamic>.from(session['requester'])
+        : <String, dynamic>{};
 
     return {
       ...session,
       'id': session['id'] ?? session['_id'] ?? '',
       'mentor': mentor,
       'user': user,
+      'requester': requester,
       'method': session['method'] ?? 'chat',
       'status': session['status'] ?? 'scheduled',
       'durationMinutes': session['durationMinutes'] ?? 0,
+      'sessionDuration':
+          session['sessionDuration'] ?? '${session['durationMinutes'] ?? 0} min',
       'scheduledStartTime': session['scheduledStartTime'] ?? '',
       'scheduledEndTime': session['scheduledEndTime'] ?? '',
-      'pricing': session['pricing'] ?? <String, dynamic>{},
+      'updatedAt': session['updatedAt'] ??
+          session['endedAt'] ??
+          session['startedAt'] ??
+          session['requestedAt'] ??
+          session['scheduledStartTime'] ??
+          '',
+      'pricing': session['pricing'] ?? <String, dynamic>{
+        'total': session['totalAmount'] ?? 0,
+        'totalAmount': session['totalAmount'] ?? 0,
+      },
     };
   }
 }

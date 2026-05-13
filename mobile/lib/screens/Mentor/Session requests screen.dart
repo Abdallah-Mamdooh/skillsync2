@@ -2,29 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/mentor_service.dart';
+import '../../widgets/bottom_navigation.dart';
 import 'User overview screen.dart';
-
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Session Requests',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1F5F7A)),
-        useMaterial3: true,
-        fontFamily: 'Roboto',
-      ),
-      home: const SessionRequestsScreen(),
-    );
-  }
-}
 
 // ── Data Model ──────────────────────────────────────────────────────────────
 
@@ -37,6 +16,7 @@ class SessionRequest {
   final String sessionType;
   final String timeFrom;
   final String timeTo;
+  final String status;
 
   const SessionRequest({
     required this.sessionId,
@@ -47,6 +27,7 @@ class SessionRequest {
     required this.sessionType,
     required this.timeFrom,
     required this.timeTo,
+    this.status = 'scheduled',
   });
 }
 
@@ -60,7 +41,6 @@ class SessionRequestsScreen extends StatefulWidget {
 }
 
 class _SessionRequestsScreenState extends State<SessionRequestsScreen> {
-  int _selectedNavIndex = 0;
   bool _isLoading = true;
   List<SessionRequest> _requests = [];
 
@@ -78,13 +58,13 @@ class _SessionRequestsScreenState extends State<SessionRequestsScreen> {
       final list = response['data'] is List ? response['data'] as List : <dynamic>[];
       _requests = list.whereType<Map>().map((raw) {
         final session = MentorService.normalizeSession(Map<String, dynamic>.from(raw));
-        final user = session['user'] is Map<String, dynamic>
-            ? session['user'] as Map<String, dynamic>
+        final requester = session['requester'] is Map<String, dynamic>
+            ? session['requester'] as Map<String, dynamic>
             : <String, dynamic>{};
         final pricing = session['pricing'] is Map<String, dynamic>
             ? session['pricing'] as Map<String, dynamic>
             : <String, dynamic>{};
-        final fullName = (user['fullName'] ?? 'Student').toString();
+        final fullName = (requester['fullName'] ?? 'Student').toString();
         final nameParts = fullName.split(' ');
         final initials = nameParts.length > 1
             ? '${nameParts[0][0]}${nameParts[1][0]}'.toUpperCase()
@@ -94,10 +74,11 @@ class _SessionRequestsScreenState extends State<SessionRequestsScreen> {
           studentName: fullName,
           initials: initials,
           durationMinutes: ((session['durationMinutes'] ?? 0) as num).toInt(),
-          priceEGP: ((pricing['total'] ?? 0) as num).toDouble(),
+          priceEGP: ((pricing['total'] ?? pricing['totalAmount'] ?? session['totalAmount'] ?? 0) as num).toDouble(),
           sessionType: (session['method'] ?? 'chat').toString(),
           timeFrom: (session['scheduledStartTime'] ?? '').toString(),
           timeTo: (session['scheduledEndTime'] ?? '').toString(),
+          status: (session['status'] ?? 'scheduled').toString(),
         );
       }).toList();
     }
@@ -117,21 +98,53 @@ class _SessionRequestsScreenState extends State<SessionRequestsScreen> {
       }
       return;
     }
+    // Remove from list immediately
+    setState(() {
+      _requests.removeAt(index);
+    });
     if (!mounted) return;
-    Navigator.push(
+    // Navigate to UserOverview and refresh list when returning
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => UserOverviewScreen(sessionId: selected.sessionId),
       ),
     );
+    // Refresh the full list when coming back
+    _loadIncoming();
   }
 
-  void _onCancel(int index) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Cancellation is disabled in booking-first flow.'),
+  Future<void> _onCancel(int index) async {
+    // Confirm before declining
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Decline Request'),
+        content: Text('Are you sure you want to decline the session request from ${_requests[index].studentName}?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Yes', style: TextStyle(color: Colors.red)),
+          ),
+        ],
       ),
     );
+    if (confirmed != true) return;
+
+    // Remove from local list immediately
+    // Note: Backend doesn't have a mentor reject endpoint,
+    // so we remove it locally. The session will still exist
+    // in the backend but won't show in the mentor's list.
+    setState(() {
+      _requests.removeAt(index);
+    });
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Session request declined.')),
+      );
+    }
   }
 
   @override
@@ -162,7 +175,8 @@ class _SessionRequestsScreenState extends State<SessionRequestsScreen> {
       ),
 
       // ── Bottom Nav ──
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: const MentorBottomNavigation(
+          selectedIndex: MentorBottomNavIndex.requests),
     );
   }
 
@@ -189,71 +203,13 @@ class _SessionRequestsScreenState extends State<SessionRequestsScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            '${_requests.length} pending requests',
+            '${_requests.where((r) => r.status == 'scheduled').length} pending request${_requests.where((r) => r.status == 'scheduled').length == 1 ? '' : 's'}',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 14,
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildBottomNav() {
-    const items = [
-      _NavItem(icon: Icons.home_rounded, label: 'Home'),
-      _NavItem(icon: Icons.account_balance_wallet_outlined, label: 'Wallet'),
-      _NavItem(icon: Icons.send_outlined, label: 'Chat'),
-      _NavItem(icon: Icons.notifications_outlined, label: 'Notification'),
-      _NavItem(icon: Icons.assignment_outlined, label: 'Request'),
-      _NavItem(icon: Icons.person_outline, label: 'Profile'),
-    ];
-
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF1F3A4F),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(items.length, (index) {
-              final isSelected = index == _selectedNavIndex;
-              return GestureDetector(
-                onTap: () => setState(() => _selectedNavIndex = index),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      items[index].icon,
-                      color:
-                          isSelected ? const Color(0xFFF5A623) : Colors.white54,
-                      size: 24,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      items[index].label,
-                      style: TextStyle(
-                        color: isSelected
-                            ? const Color(0xFFF5A623)
-                            : Colors.white54,
-                        fontSize: 10,
-                        fontWeight:
-                            isSelected ? FontWeight.w600 : FontWeight.normal,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ),
-        ),
       ),
     );
   }
@@ -292,7 +248,7 @@ class _SessionRequestCard extends StatelessWidget {
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -409,7 +365,7 @@ class _SessionRequestCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _ActionButton(
-                  label: 'Cancel',
+                  label: 'Decline',
                   icon: Icons.close,
                   onTap: onCancel,
                   isAccept: false,
@@ -449,25 +405,31 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bgColor = isAccept
+        ? const Color(0xFF1D5572)
+        : Colors.grey.shade200;
+    final fgColor = isAccept
+        ? Colors.white
+        : Colors.black87;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.grey.shade200,
+          color: bgColor,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 16, color: Colors.black87),
+            Icon(icon, size: 16, color: fgColor),
             const SizedBox(width: 6),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: Colors.black87,
+                color: fgColor,
               ),
             ),
           ],
@@ -475,12 +437,4 @@ class _ActionButton extends StatelessWidget {
       ),
     );
   }
-}
-
-// ── Nav Item Helper ──────────────────────────────────────────────────────────
-
-class _NavItem {
-  final IconData icon;
-  final String label;
-  const _NavItem({required this.icon, required this.label});
 }

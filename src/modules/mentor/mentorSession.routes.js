@@ -35,6 +35,20 @@ router.post(
   controller.createSessionFawryCheckout
 );
 
+router.post(
+  '/paymob-checkout',
+  authMiddleware,
+  roleMiddleware('user'),
+  validate([
+    'mentorProfileId',
+    'method',
+    'durationMinutes',
+    'scheduledDate',
+    'scheduledStartTime',
+  ]),
+  controller.createSessionPaymobCheckout
+);
+
 router.get('/me', authMiddleware, controller.getMySessions);
 router.post('/:sessionId/join', authMiddleware, roleMiddleware('user'), controller.joinSession);
 router.post('/:sessionId/cancel', authMiddleware, roleMiddleware('user'), controller.cancelSession);

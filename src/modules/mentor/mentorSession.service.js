@@ -440,6 +440,73 @@ async function createSessionFawryCheckout(userId, payload) {
     checkout,
   };
 }
+async function createSessionPaymobCheckout(userId, payload) {
+  const booking = await buildValidatedBooking(userId, payload);
+
+  const session = await createScheduledSessionFromBooking(userId, booking);
+
+  const user = await User.findById(userId).select(
+    'fullName email phoneNumber'
+  );
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  const checkout = await paymentService.createPaymobCheckout({
+    user: {
+      _id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+    },
+    amount: booking.pricing.totalAmount,
+    purpose: 'hold',
+    entityType: 'mentor_session',
+    entityId: session._id,
+    description: `Mentor session payment - ${booking.method} - ${booking.durationMinutes} minutes`,
+    paymentMethods: payload.paymentMethods || [],
+    sessionId: session._id,
+  });
+
+  await notificationService.createNotification({
+    userId: booking.mentorProfile.userId._id,
+    type: 'mentor_session_booked',
+    title: 'New booked session',
+    message: `A new ${booking.method} session was booked for ${booking.scheduledDate} at ${booking.scheduledStartTime}.`,
+    data: {
+      sessionId: session._id,
+      mentorProfileId: booking.mentorProfile._id,
+      method: booking.method,
+      durationMinutes: booking.durationMinutes,
+      scheduledDate: booking.scheduledDate,
+      scheduledStartTime: booking.scheduledStartTime,
+      scheduledEndTime: booking.scheduledEndTime,
+      totalAmount: booking.pricing.totalAmount,
+      currency: booking.pricing.currency,
+    },
+  });
+
+  return {
+    sessionId: session._id,
+    mentor: {
+      id: booking.mentorProfile._id,
+      userId: booking.mentorProfile.userId._id,
+      fullName: booking.mentorProfile.userId.fullName,
+      email: booking.mentorProfile.userId.email,
+    },
+    method: session.method,
+    durationMinutes: session.durationMinutes,
+    scheduledDate: session.scheduledDate,
+    scheduledStartTime: session.scheduledStartTime,
+    scheduledEndTime: session.scheduledEndTime,
+    timezone: session.timezone,
+    pricing: booking.pricing,
+    status: session.status,
+    paymentStatus: session.paymentStatus,
+    checkout,
+  };
+}
 
 async function getMySessions(userId) {
   const sessions = await MentorSession.find({ userId })
@@ -932,6 +999,7 @@ module.exports = {
   startSession,
   expirePendingSessions,
   createSessionFawryCheckout,
+  createSessionPaymobCheckout,
   joinSession,
   cancelSession,
   getSessionTimer,

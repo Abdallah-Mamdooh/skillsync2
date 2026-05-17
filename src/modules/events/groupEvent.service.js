@@ -708,6 +708,112 @@ if (availability.registrationState !== 'open') {
   }
 };
 
+const registerForEventWithPaymob = async (userId, eventId, payload = {}) => {
+  const event = await GroupEvent.findById(eventId);
+
+  if (!event) {
+    throw new Error('Event not found');
+  }
+
+  canRegisterForEvent(event);
+
+  const availability = buildEventAvailability(event);
+
+  if (availability.registrationState !== 'open') {
+    throw new Error(
+      availability.isFull
+        ? 'Event is full and no longer accepts registrations'
+        : 'Event registration is closed'
+    );
+  }
+
+  const existing = await EventRegistration.findOne({ eventId, userId });
+
+  if (existing) {
+    throw new Error('You are already registered for this event');
+  }
+
+  const registration = await EventRegistration.create({
+    eventId,
+    userId,
+    registrationStatus: 'reserved',
+    paymentStatus: Number(event.fee || 0) > 0 ? 'unpaid' : 'captured',
+    amountPaid: event.fee,
+    currency: event.currency,
+    attended: false,
+    checkedInAt: null,
+  });
+
+  if (Number(event.fee || 0) <= 0) {
+    await incrementEventSeatCount(event._id);
+
+    await notificationService.createNotification({
+      userId,
+      type: 'event_registered',
+      title: 'Event registration confirmed',
+      message: `You registered for "${event.title}".`,
+      data: {
+        eventId: event._id,
+        registrationId: registration._id,
+        amount: 0,
+        currency: event.currency,
+        paymentStatus: registration.paymentStatus,
+      },
+    });
+
+    return {
+      registrationId: registration._id,
+      event: {
+        id: event._id,
+        title: event.title,
+        fee: event.fee,
+        currency: event.currency,
+        scheduledAt: event.scheduledAt,
+      },
+      paymentStatus: registration.paymentStatus,
+      checkout: null,
+    };
+  }
+
+  const user = await User.findById(userId).select(
+    'fullName email phoneNumber'
+  );
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  const checkout = await paymentService.createPaymobCheckout({
+    user: {
+      _id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+    },
+    amount: event.fee,
+    purpose: 'hold',
+    entityType: 'group_event',
+    entityId: registration._id,
+    description: `Event registration payment - ${event.title}`,
+    paymentMethods: payload.paymentMethods || [],
+    sessionId: null,
+    eventRegistrationId: registration._id,
+  });
+
+  return {
+    registrationId: registration._id,
+    event: {
+      id: event._id,
+      title: event.title,
+      fee: event.fee,
+      currency: event.currency,
+      scheduledAt: event.scheduledAt,
+    },
+    paymentStatus: registration.paymentStatus,
+    checkout,
+  };
+};
+
 const getMyEventRegistrations = async (userId) => {
   return EventRegistration.find({ userId })
     .populate('eventId')
@@ -1051,4 +1157,5 @@ module.exports = {
   completeEvent,
   registerForEventWithFawry,
   cancelEvent,
+  registerForEventWithPaymob,
 };

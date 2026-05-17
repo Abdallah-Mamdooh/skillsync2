@@ -71,6 +71,18 @@ class _MentorshipScreenState extends State<MentorshipScreen> {
   bool _isLoading = true;
   String? _error;
 
+  MentorData? get _featuredMentor {
+    if (_allMentors.isEmpty) return null;
+
+    for (final mentor in _allMentors) {
+      if (mentor.name.toLowerCase() == 'sarah johnson') {
+        return mentor;
+      }
+    }
+
+    return _allMentors.first;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -143,6 +155,25 @@ class _MentorshipScreenState extends State<MentorshipScreen> {
       _isLoading = false;
       _error = null;
     });
+  }
+
+  void _openBookSession(BuildContext context, MentorData? mentor) {
+    if (mentor == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Mentor details are still loading. Please try again.'),
+          backgroundColor: Color(0xFFF5A100),
+        ),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BookSessionScreen(mentor: mentor),
+      ),
+    );
   }
 
   Widget _buildHeader() {
@@ -276,7 +307,10 @@ class _MentorshipScreenState extends State<MentorshipScreen> {
                                     SizedBox(
                                       width: double.infinity,
                                       child: ElevatedButton.icon(
-                                        onPressed: () {},
+                                        onPressed: () => _openBookSession(
+                                          context,
+                                          _featuredMentor,
+                                        ),
                                         icon: const Icon(
                                             Icons.calendar_today_outlined,
                                             size: 16,
@@ -614,14 +648,7 @@ class _MentorshipScreenState extends State<MentorshipScreen> {
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => BookSessionScreen(
-                        mentor: mentorData,
-                      ),
-                    ),
-                  ),
+                  onPressed: () => _openBookSession(context, mentorData),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1D5572),
                     padding:

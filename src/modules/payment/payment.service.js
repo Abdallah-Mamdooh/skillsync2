@@ -6,10 +6,10 @@ const MentorSession = require('../mentor/mentorSession.model');
 const EventRegistration = require('../events/eventRegistration.model');
 const GroupEvent = require('../events/groupEvent.model');
 const {
-  getFawryConfig,
-  generateMerchantRef,
-  buildHostedCheckoutPayload,
-} = require('./providers/fawry.provider');
+  getPaymobConfig,
+  buildPaymobIntentionPayload,
+  buildUnifiedCheckoutUrl,
+} = require('./providers/paymob.provider');
 function round2(n) {
   return Math.round((Number(n) || 0) * 100) / 100;
 }
@@ -375,6 +375,257 @@ async function createFawryCheckout({
     raw: data,
   };
 }
+
+function generatePaymobMerchantOrderId(prefix = 'txn') {
+  return `paymob_${prefix}_${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
+}
+
+function getPaymobPaymentMethods(paymentMethods = []) {
+  const methods = paymentMethods.length
+    ? paymentMethods
+    : [
+        process.env.PAYMOB_CARD_INTEGRATION_ID,
+        process.env.PAYMOB_WALLET_INTEGRATION_ID,
+        process.env.PAYMOB_KIOSK_INTEGRATION_ID,
+      ];
+
+  return methods.filter(Boolean);
+}
+
+async function createPaymobCheckout({
+  user,
+  amount,
+  purpose,
+  entityType,
+  entityId = null,
+  description,
+  paymentMethods = [],
+  sessionId = null,
+  eventRegistrationId = null,
+}) {
+  const amt = round2(amount);
+
+  if (amt <= 0) {
+    throw new Error('Amount must be greater than 0');
+  }
+
+  if (!user || !user._id) {
+    throw new Error('Valid user is required');
+  }
+
+  const { baseUrl, secretKey } = getPaymobConfig();
+
+  const selectedPaymentMethods = getPaymobPaymentMethods(paymentMethods);
+
+  if (!selectedPaymentMethods.length) {
+    throw new Error('No Paymob payment methods configured');
+  }
+
+  const merchantOrderId = generatePaymobMerchantOrderId(
+    entityType ? `${entityType}` : 'txn'
+  );
+
+  const transaction = await Transaction.create({
+    userId: user._id,
+    relatedUserId: null,
+    sessionId,
+    eventRegistrationId,
+    type: purpose || 'deposit',
+    amount: amt,
+    currency: 'EGP',
+    status: 'pending',
+    paymentMethodId: null,
+    provider: 'paymob',
+    providerReference: merchantOrderId,
+    providerStatus: 'INITIATED',
+    entityType: entityType || 'other',
+    entityId: entityId || null,
+    checkoutUrl: '',
+    paymentChannel: selectedPaymentMethods.join(','),
+    reference: merchantOrderId,
+    notes: description || 'Paymob checkout initiated',
+    rawProviderResponse: null,
+  });
+
+  const payload = buildPaymobIntentionPayload({
+    amount: amt,
+    currency: 'EGP',
+    paymentMethods: selectedPaymentMethods,
+    merchantOrderId,
+    customer: {
+      name: user.fullName || 'SkillSync User',
+      email: user.email || '',
+      phoneNumber: user.phoneNumber || '',
+    },
+    items: [
+      {
+        name: description || 'SkillSync payment',
+        amount: Math.round(amt * 100),
+        description: description || 'SkillSync payment',
+        quantity: 1,
+      },
+    ],
+    extras: {
+      transactionId: String(transaction._id),
+      entityType: entityType || 'other',
+      entityId: entityId ? String(entityId) : '',
+    },
+  });
+
+  const response = await fetch(`${baseUrl}/v1/intention/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Token ${secretKey}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    transaction.status = 'failed';
+    transaction.providerStatus =
+      data?.message ||
+      data?.detail ||
+      data?.error ||
+      'FAILED';
+    transaction.rawProviderResponse = data;
+    await transaction.save();
+
+    throw new Error(
+      data?.message || data?.detail || data?.error || 'Paymob checkout failed'
+    );
+  }
+
+  const clientSecret =
+    data?.client_secret ||
+    data?.clientSecret ||
+    data?.payment_keys?.[0]?.key ||
+    '';
+
+  transaction.providerStatus = 'PENDING';
+  transaction.checkoutUrl = clientSecret
+    ? buildUnifiedCheckoutUrl(clientSecret)
+    : '';
+
+  transaction.rawProviderResponse = data;
+  await transaction.save();
+
+  return {
+    transactionId: transaction._id,
+    merchantOrderId,
+    provider: 'paymob',
+    providerStatus: transaction.providerStatus,
+    clientSecret,
+    redirectUrl: transaction.checkoutUrl || null,
+    raw: data,
+  };
+}
+
+function extractPaymobMerchantOrderId(payload = {}) {
+  return (
+    payload?.merchant_order_id ||
+    payload?.merchantOrderId ||
+    payload?.order_id ||
+    payload?.obj?.order?.merchant_order_id ||
+    payload?.obj?.order?.merchantOrderId ||
+    payload?.obj?.merchant_order_id ||
+    payload?.data?.merchant_order_id ||
+    payload?.extras?.merchantOrderId ||
+    ''
+  );
+}
+
+function normalizePaymobWebhookStatus(payload = {}) {
+  const success =
+    payload?.success ??
+    payload?.is_success ??
+    payload?.obj?.success ??
+    payload?.obj?.is_success;
+
+  if (success === true) {
+    return 'SUCCESS';
+  }
+
+  if (success === false) {
+    return 'FAILED';
+  }
+
+  return String(
+    payload?.payment_status ||
+      payload?.status ||
+      payload?.obj?.payment_status ||
+      payload?.obj?.status ||
+      'PENDING'
+  ).toUpperCase();
+}
+
+async function handlePaymobWebhook(payload = {}) {
+  const merchantOrderId = extractPaymobMerchantOrderId(payload);
+  const normalizedStatus = normalizePaymobWebhookStatus(payload);
+
+  if (!merchantOrderId) {
+    throw new Error('Paymob merchant order id is missing');
+  }
+
+  const transaction = await Transaction.findOne({
+    $or: [
+      { providerReference: merchantOrderId },
+      { reference: merchantOrderId },
+    ],
+    provider: 'paymob',
+  });
+
+  if (!transaction) {
+    throw new Error('Paymob transaction not found');
+  }
+
+  transaction.providerStatus = normalizedStatus;
+  transaction.rawProviderResponse = payload;
+
+  const providerTransactionId =
+    payload?.transaction_id ||
+    payload?.id ||
+    payload?.obj?.id ||
+    payload?.data?.id ||
+    '';
+
+  if (providerTransactionId) {
+    transaction.notes = `${transaction.notes || 'Paymob webhook received'} | Paymob transaction: ${providerTransactionId}`;
+  }
+
+  if (['SUCCESS', 'PAID', 'COMPLETED'].includes(normalizedStatus)) {
+    await transaction.save();
+    await applySuccessfulFawryTransaction(transaction);
+
+    return {
+      transaction,
+      status: normalizedStatus,
+      applied: true,
+    };
+  }
+
+  if (['FAILED', 'CANCELLED', 'EXPIRED', 'DECLINED'].includes(normalizedStatus)) {
+    await transaction.save();
+    await applyFailedFawryTransaction(transaction);
+
+    return {
+      transaction,
+      status: normalizedStatus,
+      applied: true,
+    };
+  }
+
+  transaction.status = 'pending';
+  await transaction.save();
+
+  return {
+    transaction,
+    status: normalizedStatus,
+    applied: false,
+  };
+}
 async function applySuccessfulFawryTopup(transaction) {
   if (!transaction) {
     throw new Error('Transaction is required');
@@ -442,9 +693,9 @@ async function applySuccessfulFawryTransaction(transaction) {
     throw new Error('Transaction is required');
   }
 
-  if (transaction.provider !== 'fawry') {
-    return transaction;
-  }
+  if (!['fawry', 'paymob'].includes(transaction.provider)) {
+  return transaction;
+}
 
   // prevent double processing
   if (transaction.providerStatus === 'APPLIED_SUCCESS') {
@@ -640,9 +891,9 @@ async function applyFailedFawryTransaction(transaction) {
     throw new Error('Transaction is required');
   }
 
-  if (transaction.provider !== 'fawry') {
-    return transaction;
-  }
+ if (!['fawry', 'paymob'].includes(transaction.provider)) {
+  return transaction;
+}
 
   const entityType = transaction.entityType;
 
@@ -1315,4 +1566,6 @@ module.exports = {
   refundMentorSessionPayment,
   refundEventRegistrationPayment,
   getMentorEarningsSummary,
+  createPaymobCheckout,
+  handlePaymobWebhook,
 };

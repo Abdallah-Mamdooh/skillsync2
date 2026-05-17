@@ -66,7 +66,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     if (hasRoadmap) {
       final data = response['data'];
       final raw =
-          data is Map<String, dynamic> ? data['completionPercent'] : null;
+      data is Map<String, dynamic> ? data['completionPercent'] : null;
       if (raw is num) {
         percent = raw.round();
       } else {
@@ -159,7 +159,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               decoration: const BoxDecoration(
                 color: Color(0xFF1D5572),
                 borderRadius:
-                    BorderRadius.vertical(bottom: Radius.circular(32)),
+                BorderRadius.vertical(bottom: Radius.circular(32)),
               ),
               padding: const EdgeInsets.only(
                   left: 20, right: 20, top: 53, bottom: 24),
@@ -219,7 +219,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                             context,
                             MaterialPageRoute(
                                 builder: (context) =>
-                                    const NotificationsScreen()),
+                                const NotificationsScreen()),
                           );
                         },
                         icon: SvgPicture.asset(
@@ -269,21 +269,21 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                           top: 42,
                           child: _isWalletLoading
                               ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Color(0xFF1D5572),
-                                  ),
-                                )
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Color(0xFF1D5572),
+                            ),
+                          )
                               : Text(
-                                  '${_walletBalance.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')} $_walletCurrency',
-                                  style: GoogleFonts.inter(
-                                    color: const Color(0xFF2E2E2E),
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                            '${_walletBalance.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')} $_walletCurrency',
+                            style: GoogleFonts.inter(
+                              color: const Color(0xFF2E2E2E),
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                         Positioned(
                           right: 11,
@@ -373,7 +373,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                   ),
                                   child: Row(
                                     mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+                                    MainAxisAlignment.spaceBetween,
                                     children: [
                                       Row(
                                         children: [
@@ -409,15 +409,15 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                 // ── Progress bar + sub-text: teal background ──
                                 Padding(
                                   padding:
-                                      const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                                  const EdgeInsets.fromLTRB(16, 14, 16, 16),
                                   child: Column(
                                     crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    CrossAxisAlignment.start,
                                     children: [
                                       // Progress bar
                                       ClipRRect(
                                         borderRadius:
-                                            BorderRadius.circular(100),
+                                        BorderRadius.circular(100),
                                         child: Stack(
                                           children: [
                                             // Track
@@ -427,20 +427,20 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                               decoration: BoxDecoration(
                                                 color: const Color(0x7FF5A100),
                                                 borderRadius:
-                                                    BorderRadius.circular(100),
+                                                BorderRadius.circular(100),
                                               ),
                                             ),
                                             // Fill
                                             FractionallySizedBox(
                                               widthFactor:
-                                                  progressPercent / 100,
+                                              progressPercent / 100,
                                               child: Container(
                                                 height: 8,
                                                 decoration: BoxDecoration(
                                                   color: Colors.white,
                                                   borderRadius:
-                                                      BorderRadius.circular(
-                                                          100),
+                                                  BorderRadius.circular(
+                                                      100),
                                                 ),
                                               ),
                                             ),
@@ -497,7 +497,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                             _buildListActionCard(
                               context,
                               imagePath:
-                                  'assets/images/skill_assessment_logo.png',
+                              'assets/images/skill_assessment_logo.png',
                               fallbackIcon: Icons.assessment,
                               iconColor: const Color(0xFF1D5572),
                               title: 'Skill Assessment',
@@ -506,8 +506,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                               onTap: () {
                                 Navigator.of(context)
                                     .push(MaterialPageRoute(
-                                        builder: (_) =>
-                                            const AssessmentStartScreen()))
+                                    builder: (_) =>
+                                    const AssessmentStartScreen()))
                                     .then((_) => _loadRoadmapStatus());
                               },
                             ),
@@ -556,8 +556,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                     onTap: () {
                                       Navigator.of(context)
                                           .push(MaterialPageRoute(
-                                              builder: (_) =>
-                                                  const AssessmentStartScreen()))
+                                          builder: (_) =>
+                                          const AssessmentStartScreen()))
                                           .then((_) => _loadRoadmapStatus());
                                     },
                                     child: Container(
@@ -580,18 +580,18 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                               decoration: BoxDecoration(
                                                   color: Colors.white,
                                                   borderRadius:
-                                                      BorderRadius.circular(
-                                                          12)),
+                                                  BorderRadius.circular(
+                                                      12)),
                                               child: Center(
                                                 child: Image.asset(
                                                   'assets/images/skill_assessment_logo.png',
                                                   width: 24,
                                                   height: 24,
                                                   errorBuilder: (_, __, ___) =>
-                                                      const Icon(
-                                                          Icons.assessment,
-                                                          color: Color(
-                                                              0xFF1D5572)),
+                                                  const Icon(
+                                                      Icons.assessment,
+                                                      color: Color(
+                                                          0xFF1D5572)),
                                                 ),
                                               ),
                                             ),
@@ -629,7 +629,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                       Navigator.of(context).push(
                                           MaterialPageRoute(
                                               builder: (_) =>
-                                                  const ChosenRoadmapScreen()));
+                                              const ChosenRoadmapScreen()));
                                     },
                                     child: Container(
                                       height: 118,
@@ -651,17 +651,17 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                               decoration: BoxDecoration(
                                                   color: Colors.white,
                                                   borderRadius:
-                                                      BorderRadius.circular(
-                                                          12)),
+                                                  BorderRadius.circular(
+                                                      12)),
                                               child: Center(
                                                 child: Image.asset(
                                                   'assets/images/roadmaps_logo.png',
                                                   width: 23,
                                                   height: 23,
                                                   errorBuilder: (_, __, ___) =>
-                                                      const Icon(Icons.map,
-                                                          color: Color(
-                                                              0xFFF5A100)),
+                                                  const Icon(Icons.map,
+                                                      color: Color(
+                                                          0xFFF5A100)),
                                                 ),
                                               ),
                                             ),
@@ -702,7 +702,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                       Navigator.of(context).push(
                                           MaterialPageRoute(
                                               builder: (_) =>
-                                                  const CVOptimizerScreen()));
+                                              const CVOptimizerScreen()));
                                     },
                                     child: Container(
                                       height: 118,
@@ -724,18 +724,18 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                               decoration: BoxDecoration(
                                                   color: Colors.white,
                                                   borderRadius:
-                                                      BorderRadius.circular(
-                                                          12)),
+                                                  BorderRadius.circular(
+                                                      12)),
                                               child: Center(
                                                 child: Image.asset(
                                                   'assets/images/cv_optimizer_logo.png',
                                                   width: 20,
                                                   height: 25,
                                                   errorBuilder: (_, __, ___) =>
-                                                      const Icon(
-                                                          Icons.description,
-                                                          color: Color(
-                                                              0xFFF5A100)),
+                                                  const Icon(
+                                                      Icons.description,
+                                                      color: Color(
+                                                          0xFFF5A100)),
                                                 ),
                                               ),
                                             ),
@@ -772,7 +772,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                       Navigator.of(context).push(
                                           MaterialPageRoute(
                                               builder: (_) =>
-                                                  const MentorshipScreen()));
+                                              const MentorshipScreen()));
                                     },
                                     child: Container(
                                       height: 118,
@@ -794,18 +794,18 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                               decoration: BoxDecoration(
                                                   color: Colors.white,
                                                   borderRadius:
-                                                      BorderRadius.circular(
-                                                          12)),
+                                                  BorderRadius.circular(
+                                                      12)),
                                               child: Center(
                                                 child: Image.asset(
                                                   'assets/images/find_mentor_logo.png',
                                                   width: 27,
                                                   height: 18,
                                                   errorBuilder: (_, __, ___) =>
-                                                      const Icon(
-                                                          Icons.person_search,
-                                                          color: Color(
-                                                              0xFF1D5572)),
+                                                  const Icon(
+                                                      Icons.person_search,
+                                                      color: Color(
+                                                          0xFF1D5572)),
                                                 ),
                                               ),
                                             ),
@@ -903,7 +903,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'Complete Your Profile',
@@ -932,7 +932,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                               context,
                                               MaterialPageRoute(
                                                   builder: (context) =>
-                                                      const ProfileScreen()),
+                                                  const ProfileScreen()),
                                             );
                                           },
                                           child: Container(
@@ -941,7 +941,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                             decoration: BoxDecoration(
                                               color: const Color(0xFFF5A100),
                                               borderRadius:
-                                                  BorderRadius.circular(6),
+                                              BorderRadius.circular(6),
                                             ),
                                             child: Text(
                                               'Update Profile',
@@ -973,21 +973,21 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         ),
       ),
       bottomNavigationBar:
-          const BottomNavigation(selectedIndex: BottomNavIndex.home),
+      const BottomNavigation(selectedIndex: BottomNavIndex.home),
     );
   }
 
   /// Full-width card used in the no-roadmap list layout
   Widget _buildListActionCard(
-    BuildContext context, {
-    required String imagePath,
-    required IconData fallbackIcon,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    required Color borderColor,
-    required VoidCallback onTap,
-  }) {
+      BuildContext context, {
+        required String imagePath,
+        required IconData fallbackIcon,
+        required Color iconColor,
+        required String title,
+        required String subtitle,
+        required Color borderColor,
+        required VoidCallback onTap,
+      }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(

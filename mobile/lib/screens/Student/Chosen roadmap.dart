@@ -244,9 +244,29 @@ class _ChosenRoadmapScreenState extends State<ChosenRoadmapScreen> {
   }
 
   Future<void> _launchUrl(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (url.isEmpty) return;
+
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+
+    try {
+      // Try in-app browser first (Chrome Custom Tab on Android, SFSafariViewController on iOS)
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.inAppBrowserView,
+      );
+
+      if (!launched && mounted) {
+        // Fallback to platform default
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
+      }
+    } catch (e) {
+      // Last resort fallback
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open link: $e')),
+        );
+      }
     }
   }
 

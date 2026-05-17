@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/api_service.dart';
 import '../../services/chat_service.dart';
 import '../../widgets/bottom_navigation.dart';
-import '../../models/chat_models.dart';
 import 'chatscreen.dart';
+import 'feedback_screen.dart';
 
 // ── Chats Screen ──────────────────────────────────────────────────────────────
 
@@ -64,13 +65,12 @@ class _ChatsScreenState extends State<ChatsScreen> {
                   s.status == 'started' ||
                   s.status == 'active')
               .toList();
-          _historySessions =
-              chatSessions
-                  .where((s) =>
-                      s.status == 'completed' ||
-                      s.status == 'cancelled' ||
-                      s.status == 'user_no_show')
-                  .toList();
+          _historySessions = chatSessions
+              .where((s) =>
+                  s.status == 'completed' ||
+                  s.status == 'cancelled' ||
+                  s.status == 'user_no_show')
+              .toList();
           _isLoading = false;
         });
       } else {
@@ -88,10 +88,71 @@ class _ChatsScreenState extends State<ChatsScreen> {
   }
 
   void _openChat(ChatUser user) {
+    // For completed/cancelled sessions, check if feedback was already submitted
+    final isCompleted = user.status == 'completed' ||
+        user.status == 'cancelled' ||
+        user.status == 'user_no_show';
+
+    if (isCompleted && user.sessionId.isNotEmpty) {
+      _openCompletedSession(user);
+      return;
+    }
+
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => ChatWithMentorScreen(user: user)),
-    ).then((_) => _fetchSessions()); // Refresh on return
+      MaterialPageRoute(
+        builder: (_) => ChatWithMentorScreen(
+          user: user.copyWith(openedFromHistory: false),
+        ),
+      ),
+    ).then((_) => _fetchSessions());
+  }
+
+  Future<void> _openCompletedSession(ChatUser user) async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final token = auth.token;
+    if (token == null) return;
+
+    try {
+      final response = await ApiService.getSessionFeedback(
+        token: token,
+        sessionId: user.sessionId,
+      );
+
+      if (response['success'] == true && response['data'] != null) {
+        // Feedback already submitted - open chat as read-only
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChatWithMentorScreen(
+                user: user.copyWith(openedFromHistory: true),
+              ),
+            ),
+          ).then((_) => _fetchSessions());
+        }
+      } else {
+        // No feedback yet - open feedback screen
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => FeedbackScreen(sessionId: user.sessionId),
+            ),
+          ).then((_) => _fetchSessions());
+        }
+      }
+    } catch (_) {
+      // On error, just open feedback screen
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => FeedbackScreen(sessionId: user.sessionId),
+          ),
+        ).then((_) => _fetchSessions());
+      }
+    }
   }
 
   @override

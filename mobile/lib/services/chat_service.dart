@@ -89,12 +89,16 @@ class ChatService {
     final mentor = session['mentor'] is Map<String, dynamic>
         ? Map<String, dynamic>.from(session['mentor'])
         : <String, dynamic>{};
+    final requester = session['requester'] is Map<String, dynamic>
+        ? Map<String, dynamic>.from(session['requester'])
+        : <String, dynamic>{};
     final id = session['id'] ?? session['_id'] ?? '';
     return {
       ...session,
       'id': id,
       '_id': id,
       'mentorId': mentor,
+      'requester': requester,
       'status': session['status'] ?? 'scheduled',
       'method': session['method'] ?? 'chat',
       'sessionDuration': session['durationMinutes']?.toString() ?? '',

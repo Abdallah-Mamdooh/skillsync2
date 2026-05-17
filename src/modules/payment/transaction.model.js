@@ -72,11 +72,11 @@ const transactionSchema = new mongoose.Schema(
     },
 
     provider: {
-      type: String,
-      enum: ['internal', 'fawry'],
-      default: 'internal',
-      index: true,
-    },
+    type: String,
+    enum: ['internal', 'fawry', 'paymob'],
+    default: 'internal',
+    index: true,
+},
 
     providerReference: {
       type: String,

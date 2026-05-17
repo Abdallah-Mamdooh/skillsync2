@@ -22,6 +22,8 @@ router.post(
   controller.refundMentorSessionPayment
 );
 
+
+
 router.post(
   '/refunds/event/:registrationId',
   authMiddleware,
@@ -35,4 +37,7 @@ router.get(
   roleMiddleware('mentor'),
   controller.getMentorEarningsSummary
 );
+
+router.post('/paymob/checkout', authMiddleware, controller.createPaymobCheckout);
+router.post('/paymob/webhook', controller.handlePaymobWebhook);
 module.exports = router;

@@ -142,6 +142,12 @@ router.post(
   controller.registerForEventWithFawry
 );
 
+router.post(
+  '/:eventId/register/paymob-checkout',
+  authMiddleware,
+  roleMiddleware('user'),
+  controller.registerForEventWithPaymob
+);
 router.get(
   '/me/registrations',
   authMiddleware,

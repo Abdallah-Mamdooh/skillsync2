@@ -25,4 +25,5 @@ coverage/
 
 # misc
 .DS_Store
-Thumbs.db
+Thumbs.db.env 
+.env 

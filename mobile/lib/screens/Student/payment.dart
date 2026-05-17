@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
+import '../../services/group_event_service.dart';
 import '../../widgets/bottom_navigation.dart';
 import 'payment_confirmation_screen.dart';
 
@@ -18,6 +19,15 @@ class PaymentScreen extends StatefulWidget {
   final String scheduledStartTime;
   final String timezone;
 
+  // ── Event registration fields ──────────────────────────────────────────
+  /// When true, this payment is for an event registration instead of a
+  /// mentor session. The [_confirmBooking] method will call the event
+  /// registration endpoints instead of session booking.
+  final bool isEventRegistration;
+
+  /// The backend eventId, required when [isEventRegistration] is true.
+  final String? eventId;
+
   const PaymentScreen({
     super.key,
     required this.mentorId,
@@ -30,6 +40,8 @@ class PaymentScreen extends StatefulWidget {
     required this.scheduledDate,
     required this.scheduledStartTime,
     required this.timezone,
+    this.isEventRegistration = false,
+    this.eventId,
   });
 
   @override
@@ -50,7 +62,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
   void initState() {
     super.initState();
     _loadWallet();
-    _loadMentorVerification();
+    // Only check mentor verification for session bookings (not events)
+    if (!widget.isEventRegistration) {
+      _loadMentorVerification();
+    }
   }
 
   Future<void> _loadWallet() async {
@@ -81,6 +96,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
     if (token == null) return;
     setState(() => _submitting = true);
 
+    // ── Event registration path ────────────────────────────────────────────
+    if (widget.isEventRegistration) {
+      await _confirmEventRegistration(token);
+      return;
+    }
+
+    // ── Mentor session booking path (existing logic) ───────────────────────
     if (_mentorVerified == false) {
       setState(() => _submitting = false);
       if (!mounted) return;
@@ -171,6 +193,80 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
+  // ── Event registration confirmation ────────────────────────────────────────
+  Future<void> _confirmEventRegistration(String token) async {
+    final eventId = widget.eventId;
+    if (eventId == null || eventId.isEmpty) {
+      setState(() => _submitting = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Event ID is missing. Cannot register.'),
+          backgroundColor: Color(0xFFD32F2F),
+        ),
+      );
+      return;
+    }
+
+    if (widget.sessionPrice > 0 && _walletBalance < widget.sessionPrice) {
+      setState(() => _submitting = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Insufficient wallet balance. '
+            'Required: ${widget.sessionPrice.toStringAsFixed(0)} $_walletCurrency, '
+            'Available: ${_walletBalance.toStringAsFixed(0)} $_walletCurrency.',
+          ),
+          backgroundColor: const Color(0xFFD32F2F),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
+    try {
+      Map<String, dynamic> response;
+
+      if (widget.paymentMethod == 'wallet') {
+        response = await GroupEventService.registerForEvent(token, eventId);
+      } else {
+        response = await GroupEventService.registerForEventWithFawry(
+          token,
+          eventId,
+          {'paymentMethod': widget.paymentMethod},
+        );
+      }
+
+      if (!mounted) return;
+      setState(() => _submitting = false);
+
+      final ok = response['success'] == true;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PaymentConfirmationScreen(
+            isSuccess: ok,
+            sessionId: response['data']?['registrationId']?.toString(),
+            message: ok
+                ? 'Event registration successful!'
+                : (response['message']?.toString() ?? 'Registration failed.'),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Registration error: $e'),
+          backgroundColor: const Color(0xFFD32F2F),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
   Widget _buildHeader(BuildContext context) {
     return Container(
       width: double.infinity,
@@ -233,7 +329,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (_mentorVerified == false) ...[
+                      if (!widget.isEventRegistration &&
+                          _mentorVerified == false) ...[
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(12),
@@ -260,7 +357,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         ),
                         const SizedBox(height: 12),
                       ],
-                      if (widget.sessionPrice <= 0) ...[
+                      if (!widget.isEventRegistration &&
+                          widget.sessionPrice <= 0) ...[
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(12),
@@ -371,19 +469,28 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Booking Summary',
+                          Text(widget.isEventRegistration
+                              ? 'Event Registration'
+                              : 'Booking Summary',
                               style: GoogleFonts.inter(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
                                   color: const Color(0xFF1F2937))),
                           const SizedBox(height: 16),
-                          _summaryRow('Mentor:', widget.mentorName),
+                          _summaryRow(
+                              widget.isEventRegistration
+                                  ? 'Event:'
+                                  : 'Mentor:',
+                              widget.mentorName),
                           const SizedBox(height: 8),
                           _summaryRow('Time:', widget.sessionTime),
                           const SizedBox(height: 8),
                           _summaryRow('Duration:', widget.sessionDuration),
                           const SizedBox(height: 8),
-                          _summaryRow('Session type:',
+                          _summaryRow(
+                              widget.isEventRegistration
+                                  ? 'Type:'
+                                  : 'Session type:',
                               widget.sessionType.toUpperCase()),
                           const SizedBox(height: 8),
                           _summaryRow(

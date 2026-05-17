@@ -57,6 +57,36 @@ const createFawryCheckout = asyncHandler(async (req, res) => {
   });
 });
 
+const createPaymobCheckout = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id).select(
+    'fullName email phoneNumber'
+  );
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  const data = await paymentService.createPaymobCheckout({
+    user: {
+      _id: req.user._id,
+      fullName: user.fullName,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+    },
+    amount: req.body.amount,
+    purpose: 'deposit',
+    entityType: 'wallet_topup',
+    entityId: null,
+    description: req.body.description || 'Wallet top-up via Paymob',
+    paymentMethods: req.body.paymentMethods || [],
+  });
+
+  res.status(200).json({
+    success: true,
+    data,
+  });
+});
+
 const handleFawryWebhook = asyncHandler(async (req, res) => {
   const payload = req.body || {};
 
@@ -131,6 +161,17 @@ const handleFawryWebhook = asyncHandler(async (req, res) => {
     success: true,
     message: 'Webhook received, transaction remains pending',
     status: normalizedStatus,
+  });
+});
+
+const handlePaymobWebhook = asyncHandler(async (req, res) => {
+  const result = await paymentService.handlePaymobWebhook(req.body || {});
+
+  res.status(200).json({
+    success: true,
+    message: 'Paymob webhook processed',
+    status: result.status,
+    applied: result.applied,
   });
 });
 
@@ -238,4 +279,6 @@ module.exports = {
   refundMentorSessionPayment,
   refundEventRegistrationPayment,
   getMentorEarningsSummary,
+  createPaymobCheckout,
+  handlePaymobWebhook,
 };

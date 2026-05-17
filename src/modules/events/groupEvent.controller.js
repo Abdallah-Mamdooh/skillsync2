@@ -128,6 +128,16 @@ const registerForEventWithFawry = asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, data });
 });
 
+const registerForEventWithPaymob = asyncHandler(async (req, res) => {
+  const data = await eventService.registerForEventWithPaymob(
+    req.user._id,
+    req.params.eventId,
+    req.body
+  );
+
+  res.status(201).json({ success: true, data });
+});
+
 module.exports = {
   createEvent,
   updateEvent,
@@ -150,4 +160,5 @@ module.exports = {
   markRegistrationAttended,
   completeEvent,
   registerForEventWithFawry,
+  registerForEventWithPaymob,
 };

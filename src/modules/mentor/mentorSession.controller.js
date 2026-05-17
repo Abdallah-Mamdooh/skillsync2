@@ -14,6 +14,15 @@ const createSessionFawryCheckout = asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, data });
 });
 
+const createSessionPaymobCheckout = asyncHandler(async (req, res) => {
+  const data = await mentorSessionService.createSessionPaymobCheckout(
+    req.user._id,
+    req.body
+  );
+
+  res.status(201).json({ success: true, data });
+});
+
 const getMySessions = asyncHandler(async (req, res) => {
   const data = await mentorSessionService.getMySessions(req.user._id);
   res.status(200).json({ success: true, data });
@@ -106,4 +115,5 @@ module.exports = {
   cancelSession,
   getSessionTimer,
   runLifecycleSweep,
+  createSessionPaymobCheckout,
 };

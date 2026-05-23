@@ -1218,6 +1218,21 @@ async function reviewMentorCancellation(sessionId, payload = {}, adminUser = nul
     performedByRole: 'admin',
   });
 
+  await notificationService.createNotification({
+  userId: session.mentorUserId._id || session.mentorUserId,
+  type: 'mentor_cancellation_reviewed',
+  title: 'Cancellation review completed',
+  message:
+    reviewStatus === 'valid'
+      ? 'Your cancellation was marked as valid by admin.'
+      : 'Your cancellation was rejected by admin.',
+  data: {
+    sessionId: session._id,
+    reviewStatus,
+    penaltyApplied,
+    mentorBlocked,
+  },
+});
   return {
     session,
     mentorProfile,
@@ -1452,6 +1467,89 @@ async function getScheduleChangeRequests(query = {}) {
     },
   };
 }
+
+async function getMentorBehaviorAnalytics() {
+  const [
+    totalMentorCancellations,
+    pendingCancellationReviews,
+    validCancellationReviews,
+    rejectedCancellationReviews,
+
+    mentorsOnBreak,
+    offlineMentors,
+    onlineMentors,
+
+    blockedMentors,
+
+    topCancellationMentors,
+  ] = await Promise.all([
+    MentorSession.countDocuments({
+      'mentorCancellation.isCancelledByMentor': true,
+    }),
+
+    MentorSession.countDocuments({
+      'mentorCancellation.adminReviewStatus': 'pending',
+    }),
+
+    MentorSession.countDocuments({
+      'mentorCancellation.adminReviewStatus': 'valid',
+    }),
+
+    MentorSession.countDocuments({
+      'mentorCancellation.adminReviewStatus': 'rejected',
+    }),
+
+    MentorProfile.countDocuments({
+      availabilityStatus: 'on_break',
+    }),
+
+    MentorProfile.countDocuments({
+      availabilityStatus: 'offline',
+    }),
+
+    MentorProfile.countDocuments({
+      availabilityStatus: 'online',
+    }),
+
+    User.countDocuments({
+      role: 'mentor',
+      isActive: false,
+    }),
+
+    MentorProfile.find({
+      consecutiveValidCancellations: { $gt: 0 },
+    })
+      .populate('userId', 'fullName email')
+      .sort({ consecutiveValidCancellations: -1 })
+      .limit(10),
+  ]);
+
+  return {
+    totalMentorCancellations,
+    pendingCancellationReviews,
+    validCancellationReviews,
+    rejectedCancellationReviews,
+
+    mentorStatuses: {
+      online: onlineMentors,
+      offline: offlineMentors,
+      onBreak: mentorsOnBreak,
+    },
+
+    blockedMentors,
+
+    topCancellationMentors: topCancellationMentors.map((mentor) => ({
+      mentorProfileId: mentor._id,
+      mentorUserId: mentor.userId?._id,
+      fullName: mentor.userId?.fullName || '',
+      email: mentor.userId?.email || '',
+      consecutiveValidCancellations:
+        mentor.consecutiveValidCancellations || 0,
+      cancellationPenaltyCount:
+        mentor.cancellationPenaltyCount || 0,
+    })),
+  };
+}
 module.exports = {
   getDashboardSummary,
   getUsers,
@@ -1489,4 +1587,5 @@ module.exports = {
   rejectScheduleChangeRequest,
   getMentorAvailabilityExceptions,
   getScheduleChangeRequests,
+  getMentorBehaviorAnalytics,
 };

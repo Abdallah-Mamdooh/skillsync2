@@ -209,6 +209,16 @@ const getScheduleChangeRequests = asyncHandler(async (req, res) => {
   const data = await adminService.getScheduleChangeRequests(req.query);
   res.status(200).json({ success: true, data });
 });
+
+const getMentorBehaviorAnalytics = asyncHandler(async (req, res) => {
+  const data = await adminService.getMentorBehaviorAnalytics();
+
+  res.status(200).json({
+    success: true,
+    data,
+  });
+});
+
 module.exports = {
   getDashboardSummary,
   getUsers,
@@ -245,4 +255,5 @@ module.exports = {
   rejectScheduleChangeRequest,
   getMentorAvailabilityExceptions,
   getScheduleChangeRequests,
+  getMentorBehaviorAnalytics,
 };

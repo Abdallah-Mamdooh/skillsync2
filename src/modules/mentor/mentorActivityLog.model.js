@@ -45,8 +45,7 @@ const mentorActivityLogSchema = new mongoose.Schema(
         'mentor_online',
         'mentor_offline',
 
-        'break_started',
-        'break_ended',
+        
       ],
       required: true,
       index: true,

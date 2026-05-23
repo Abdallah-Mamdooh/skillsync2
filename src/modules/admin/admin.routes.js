@@ -253,4 +253,11 @@ router.get(
   roleMiddleware('admin'),
   controller.getScheduleChangeRequests
 );
+
+router.get(
+  '/analytics/mentor-behavior',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.getMentorBehaviorAnalytics
+);
 module.exports = router;

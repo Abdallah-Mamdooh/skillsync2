@@ -138,6 +138,46 @@ const mentorProfileSchema = new mongoose.Schema(
       default: true,
     },
 
+       availabilityStatus: {
+  type: String,
+  enum: ['online', 'offline', 'on_break'],
+  default: 'offline',
+  index: true,
+},
+
+breakStartedAt: {
+  type: Date,
+  default: null,
+},
+
+breakEndsAt: {
+  type: Date,
+  default: null,
+},
+
+breakDurationMinutes: {
+  type: Number,
+  enum: [5, 10, null],
+  default: null,
+},
+
+consecutiveValidCancellations: {
+  type: Number,
+  default: 0,
+  min: 0,
+},
+
+cancellationPenaltyCount: {
+  type: Number,
+  default: 0,
+  min: 0,
+},
+
+lastCancellationReviewedAt: {
+  type: Date,
+  default: null,
+},
+
     supportsChat: {
       type: Boolean,
       default: true,

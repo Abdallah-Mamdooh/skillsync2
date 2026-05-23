@@ -234,7 +234,42 @@ const mentorSessionSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
-
+    mentorCancellation: {
+  isCancelledByMentor: {
+    type: Boolean,
+    default: false,
+    index: true,
+  },
+  reason: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  cancelledAt: {
+    type: Date,
+    default: null,
+  },
+  adminReviewStatus: {
+    type: String,
+    enum: ['pending', 'valid', 'rejected', ''],
+    default: '',
+    index: true,
+  },
+  adminReviewedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+  },
+  adminReviewedAt: {
+    type: Date,
+    default: null,
+  },
+  adminNote: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+},
     userNotes: {
       type: String,
       trim: true,
@@ -260,4 +295,8 @@ mentorSessionSchema.index({
   endAt: 1,
 });
 
+mentorSessionSchema.index({
+  'mentorCancellation.isCancelledByMentor': 1,
+  'mentorCancellation.adminReviewStatus': 1,
+});
 module.exports = mongoose.model('MentorSession', mentorSessionSchema);

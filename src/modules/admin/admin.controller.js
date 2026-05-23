@@ -156,6 +156,59 @@ const updateRoadmapStepResources = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data });
 });
 
+const getPendingMentorCancellations = asyncHandler(async (req, res) => {
+  const data = await adminService.getPendingMentorCancellations();
+  res.status(200).json({ success: true, data });
+});
+
+const reviewMentorCancellation = asyncHandler(async (req, res) => {
+  const data = await adminService.reviewMentorCancellation(
+    req.params.sessionId,
+    req.body,
+    req.user
+  );
+
+  res.status(200).json({ success: true, data });
+});
+const getMentorActivityLogs = asyncHandler(async (req, res) => {
+  const data = await adminService.getMentorActivityLogs(req.query);
+  res.status(200).json({ success: true, data });
+});
+
+const getPendingScheduleChangeRequests = asyncHandler(async (req, res) => {
+  const data = await adminService.getPendingScheduleChangeRequests();
+  res.status(200).json({ success: true, data });
+});
+
+const approveScheduleChangeRequest = asyncHandler(async (req, res) => {
+  const data = await adminService.approveScheduleChangeRequest(
+    req.params.requestId,
+    req.user,
+    req.body
+  );
+
+  res.status(200).json({ success: true, data });
+});
+
+const rejectScheduleChangeRequest = asyncHandler(async (req, res) => {
+  const data = await adminService.rejectScheduleChangeRequest(
+    req.params.requestId,
+    req.user,
+    req.body
+  );
+
+  res.status(200).json({ success: true, data });
+});
+
+const getMentorAvailabilityExceptions = asyncHandler(async (req, res) => {
+  const data = await adminService.getMentorAvailabilityExceptions(req.query);
+  res.status(200).json({ success: true, data });
+});
+
+const getScheduleChangeRequests = asyncHandler(async (req, res) => {
+  const data = await adminService.getScheduleChangeRequests(req.query);
+  res.status(200).json({ success: true, data });
+});
 module.exports = {
   getDashboardSummary,
   getUsers,
@@ -184,4 +237,12 @@ module.exports = {
   deleteCareer,
   getCareerRoadmap,
   updateRoadmapStepResources,
+  getPendingMentorCancellations,
+  reviewMentorCancellation,
+  getMentorActivityLogs,
+  getPendingScheduleChangeRequests,
+  approveScheduleChangeRequest,
+  rejectScheduleChangeRequest,
+  getMentorAvailabilityExceptions,
+  getScheduleChangeRequests,
 };

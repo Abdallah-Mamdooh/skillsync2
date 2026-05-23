@@ -73,6 +73,16 @@ const cancelSession = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data });
 });
 
+const mentorCancelSession = asyncHandler(async (req, res) => {
+  const data = await mentorSessionService.mentorCancelSession(
+    req.user._id,
+    req.params.sessionId,
+    req.body
+  );
+
+  res.status(200).json({ success: true, data });
+});
+
 const getSessionTimer = asyncHandler(async (req, res) => {
   const data = await mentorSessionService.getSessionTimer(
     req.user._id,
@@ -116,4 +126,5 @@ module.exports = {
   getSessionTimer,
   runLifecycleSweep,
   createSessionPaymobCheckout,
+  mentorCancelSession,
 };

@@ -8,6 +8,9 @@ const Career = require('../career/career.model');
 const notificationService = require('../notification/notification.service');
 const Roadmap = require('../roadmap/roadmap.model');
 const auditService = require('../audit/audit.service');
+const MentorActivityLog = require('../mentor/mentorActivityLog.model');
+const MentorScheduleChangeRequest = require('../mentor/mentorScheduleChangeRequest.model');
+const MentorAvailabilityException = require('../mentor/mentorAvailabilityException.model');
 
 
 function getDateNDaysAgo(days) {
@@ -1070,6 +1073,385 @@ async function deleteUser(userId) {
     userId,
   };
 }
+
+async function getPendingMentorCancellations() {
+  return MentorSession.find({
+    'mentorCancellation.isCancelledByMentor': true,
+    'mentorCancellation.adminReviewStatus': 'pending',
+  })
+    .populate('userId', 'fullName email phoneNumber')
+    .populate('mentorUserId', 'fullName email phoneNumber isActive')
+    .populate('mentorProfileId')
+    .sort({ 'mentorCancellation.cancelledAt': -1 });
+}
+
+async function reviewMentorCancellation(sessionId, payload = {}, adminUser = null) {
+  const { reviewStatus, adminNote = '' } = payload;
+
+  if (!['valid', 'rejected'].includes(reviewStatus)) {
+    throw new Error('reviewStatus must be either valid or rejected');
+  }
+
+  const session = await MentorSession.findById(sessionId)
+    .populate('mentorUserId', 'fullName email isActive');
+
+  if (!session) {
+    throw new Error('Session not found');
+  }
+
+  if (!session.mentorCancellation?.isCancelledByMentor) {
+    throw new Error('This session was not cancelled by mentor');
+  }
+
+  if (session.mentorCancellation.adminReviewStatus !== 'pending') {
+    throw new Error('This cancellation has already been reviewed');
+  }
+
+  const mentorProfile = await MentorProfile.findById(session.mentorProfileId);
+
+  if (!mentorProfile) {
+    throw new Error('Mentor profile not found');
+  }
+
+  session.mentorCancellation.adminReviewStatus = reviewStatus;
+  session.mentorCancellation.adminReviewedBy = adminUser?._id || null;
+  session.mentorCancellation.adminReviewedAt = new Date();
+  session.mentorCancellation.adminNote = String(adminNote || '').trim();
+
+  let penaltyApplied = false;
+  let mentorBlocked = false;
+
+  if (reviewStatus === 'valid') {
+    mentorProfile.consecutiveValidCancellations =
+      Number(mentorProfile.consecutiveValidCancellations || 0) + 1;
+
+    mentorProfile.lastCancellationReviewedAt = new Date();
+
+    if (mentorProfile.consecutiveValidCancellations >= 3) {
+      mentorProfile.cancellationPenaltyCount =
+        Number(mentorProfile.cancellationPenaltyCount || 0) + 1;
+
+      mentorProfile.consecutiveValidCancellations = 0;
+      penaltyApplied = true;
+
+      await MentorActivityLog.create({
+        mentorUserId: session.mentorUserId._id || session.mentorUserId,
+        mentorProfileId: mentorProfile._id,
+        sessionId: session._id,
+        action: 'penalty_applied',
+        message: 'Penalty applied after 3 consecutive valid mentor cancellations',
+        metadata: {
+          cancellationPenaltyCount: mentorProfile.cancellationPenaltyCount,
+        },
+        performedByUserId: adminUser?._id || null,
+        performedByRole: 'admin',
+      });
+    }
+
+    if (mentorProfile.cancellationPenaltyCount >= 2) {
+      const mentorUser = await User.findById(session.mentorUserId._id || session.mentorUserId);
+
+      if (mentorUser) {
+        mentorUser.isActive = false;
+        mentorUser.blockReason = 'Repeated valid mentor session cancellations';
+        mentorUser.blockNote =
+          'Blocked automatically after two cancellation penalty cycles.';
+        mentorUser.blockedAt = new Date();
+        mentorUser.blockedBy = adminUser?.email || 'admin';
+
+        await mentorUser.save();
+        mentorBlocked = true;
+
+        await MentorActivityLog.create({
+          mentorUserId: mentorUser._id,
+          mentorProfileId: mentorProfile._id,
+          sessionId: session._id,
+          action: 'mentor_blocked',
+          message: 'Mentor blocked after repeated cancellation penalties',
+          metadata: {
+            cancellationPenaltyCount: mentorProfile.cancellationPenaltyCount,
+          },
+          performedByUserId: adminUser?._id || null,
+          performedByRole: 'admin',
+        });
+
+        await notificationService.createNotification({
+          userId: mentorUser._id,
+          type: 'account_status_updated',
+          title: 'Account deactivated',
+          message:
+            'Your mentor account has been deactivated due to repeated valid session cancellations.',
+          data: {
+            reason: mentorUser.blockReason,
+          },
+        });
+      }
+    }
+  }
+
+  if (reviewStatus === 'rejected') {
+    mentorProfile.consecutiveValidCancellations = 0;
+    mentorProfile.lastCancellationReviewedAt = new Date();
+  }
+
+  await session.save();
+  await mentorProfile.save();
+
+  await MentorActivityLog.create({
+    mentorUserId: session.mentorUserId._id || session.mentorUserId,
+    mentorProfileId: mentorProfile._id,
+    sessionId: session._id,
+    action:
+      reviewStatus === 'valid'
+        ? 'cancellation_reviewed_valid'
+        : 'cancellation_reviewed_rejected',
+    message: `Admin reviewed mentor cancellation as ${reviewStatus}`,
+    metadata: {
+      reviewStatus,
+      adminNote,
+      consecutiveValidCancellations: mentorProfile.consecutiveValidCancellations,
+      cancellationPenaltyCount: mentorProfile.cancellationPenaltyCount,
+      penaltyApplied,
+      mentorBlocked,
+    },
+    performedByUserId: adminUser?._id || null,
+    performedByRole: 'admin',
+  });
+
+  return {
+    session,
+    mentorProfile,
+    reviewStatus,
+    penaltyApplied,
+    mentorBlocked,
+  };
+}
+
+async function getMentorActivityLogs(query = {}) {
+  const {
+    mentorUserId = '',
+    mentorProfileId = '',
+    action = '',
+    page = 1,
+    limit = 20,
+  } = query;
+
+  const filters = {};
+
+  if (mentorUserId) {
+    filters.mentorUserId = mentorUserId;
+  }
+
+  if (mentorProfileId) {
+    filters.mentorProfileId = mentorProfileId;
+  }
+
+  if (action) {
+    filters.action = action;
+  }
+
+  const skip = (Number(page) - 1) * Number(limit);
+
+  const [items, total] = await Promise.all([
+    MentorActivityLog.find(filters)
+      .populate('mentorUserId', 'fullName email phoneNumber isActive')
+      .populate('mentorProfileId')
+      .populate('sessionId')
+      .populate('performedByUserId', 'fullName email role')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(Number(limit)),
+    MentorActivityLog.countDocuments(filters),
+  ]);
+
+  return {
+    items,
+    pagination: {
+      page: Number(page),
+      limit: Number(limit),
+      total,
+      pages: Math.ceil(total / Number(limit)),
+    },
+  };
+}
+
+async function getPendingScheduleChangeRequests() {
+  return MentorScheduleChangeRequest.find({ status: 'pending' })
+    .populate('mentorUserId', 'fullName email phoneNumber isActive')
+    .populate('mentorProfileId')
+    .sort({ createdAt: -1 });
+}
+
+async function approveScheduleChangeRequest(requestId, adminUser = null, payload = {}) {
+  const request = await MentorScheduleChangeRequest.findById(requestId);
+
+  if (!request) {
+    throw new Error('Schedule change request not found');
+  }
+
+  if (request.status !== 'pending') {
+    throw new Error('This request has already been reviewed');
+  }
+
+  request.status = 'approved';
+  request.reviewedBy = adminUser?._id || null;
+  request.reviewedAt = new Date();
+  request.adminNote = String(payload.adminNote || '').trim();
+
+  await request.save();
+
+  await MentorActivityLog.create({
+    mentorUserId: request.mentorUserId,
+    mentorProfileId: request.mentorProfileId,
+    action: 'schedule_change_approved',
+    message: 'Admin approved mentor schedule change request',
+    metadata: {
+      requestId: request._id,
+      effectiveFrom: request.effectiveFrom,
+      adminNote: request.adminNote,
+    },
+    performedByUserId: adminUser?._id || null,
+    performedByRole: 'admin',
+  });
+
+  await notificationService.createNotification({
+    userId: request.mentorUserId,
+    type: 'schedule_change_approved',
+    title: 'Schedule change approved',
+    message: 'Your schedule change request has been approved.',
+    data: {
+      requestId: request._id,
+      effectiveFrom: request.effectiveFrom,
+    },
+  });
+
+  return request;
+}
+
+async function rejectScheduleChangeRequest(requestId, adminUser = null, payload = {}) {
+  const request = await MentorScheduleChangeRequest.findById(requestId);
+
+  if (!request) {
+    throw new Error('Schedule change request not found');
+  }
+
+  if (request.status !== 'pending') {
+    throw new Error('This request has already been reviewed');
+  }
+
+  request.status = 'rejected';
+  request.reviewedBy = adminUser?._id || null;
+  request.reviewedAt = new Date();
+  request.adminNote = String(payload.adminNote || '').trim();
+
+  await request.save();
+
+  await MentorActivityLog.create({
+    mentorUserId: request.mentorUserId,
+    mentorProfileId: request.mentorProfileId,
+    action: 'schedule_change_rejected',
+    message: 'Admin rejected mentor schedule change request',
+    metadata: {
+      requestId: request._id,
+      adminNote: request.adminNote,
+    },
+    performedByUserId: adminUser?._id || null,
+    performedByRole: 'admin',
+  });
+
+  await notificationService.createNotification({
+    userId: request.mentorUserId,
+    type: 'schedule_change_rejected',
+    title: 'Schedule change rejected',
+    message: 'Your schedule change request was rejected by admin.',
+    data: {
+      requestId: request._id,
+      adminNote: request.adminNote,
+    },
+  });
+
+  return request;
+}
+
+async function getMentorAvailabilityExceptions(query = {}) {
+  const {
+    mentorUserId = '',
+    mentorProfileId = '',
+    isActive = '',
+    page = 1,
+    limit = 20,
+  } = query;
+
+  const filters = {};
+
+  if (mentorUserId) filters.mentorUserId = mentorUserId;
+  if (mentorProfileId) filters.mentorProfileId = mentorProfileId;
+
+  if (isActive !== '') {
+    filters.isActive = String(isActive) === 'true';
+  }
+
+  const skip = (Number(page) - 1) * Number(limit);
+
+  const [items, total] = await Promise.all([
+    MentorAvailabilityException.find(filters)
+      .populate('mentorUserId', 'fullName email phoneNumber isActive')
+      .populate('mentorProfileId')
+      .sort({ unavailableFrom: -1 })
+      .skip(skip)
+      .limit(Number(limit)),
+    MentorAvailabilityException.countDocuments(filters),
+  ]);
+
+  return {
+    items,
+    pagination: {
+      page: Number(page),
+      limit: Number(limit),
+      total,
+      pages: Math.ceil(total / Number(limit)),
+    },
+  };
+}
+
+async function getScheduleChangeRequests(query = {}) {
+  const {
+    mentorUserId = '',
+    mentorProfileId = '',
+    status = '',
+    page = 1,
+    limit = 20,
+  } = query;
+
+  const filters = {};
+
+  if (mentorUserId) filters.mentorUserId = mentorUserId;
+  if (mentorProfileId) filters.mentorProfileId = mentorProfileId;
+  if (status) filters.status = status;
+
+  const skip = (Number(page) - 1) * Number(limit);
+
+  const [items, total] = await Promise.all([
+    MentorScheduleChangeRequest.find(filters)
+      .populate('mentorUserId', 'fullName email phoneNumber isActive')
+      .populate('mentorProfileId')
+      .populate('reviewedBy', 'fullName email role')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(Number(limit)),
+    MentorScheduleChangeRequest.countDocuments(filters),
+  ]);
+
+  return {
+    items,
+    pagination: {
+      page: Number(page),
+      limit: Number(limit),
+      total,
+      pages: Math.ceil(total / Number(limit)),
+    },
+  };
+}
 module.exports = {
   getDashboardSummary,
   getUsers,
@@ -1099,4 +1481,12 @@ module.exports = {
   getCareerRoadmap,
   updateRoadmapStepResources,
   deleteUser,
+  getPendingMentorCancellations,
+  reviewMentorCancellation,
+  getMentorActivityLogs,
+  getPendingScheduleChangeRequests,
+  approveScheduleChangeRequest,
+  rejectScheduleChangeRequest,
+  getMentorAvailabilityExceptions,
+  getScheduleChangeRequests,
 };

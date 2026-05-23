@@ -75,6 +75,13 @@ router.post(
   controller.completeSession
 );
 
+router.post(
+  '/:sessionId/mentor-cancel',
+  authMiddleware,
+  roleMiddleware('mentor'),
+  controller.mentorCancelSession
+);
+
 // shared details
 router.get('/:sessionId', authMiddleware, controller.getSessionById);
 router.get('/:sessionId/timer', authMiddleware, controller.getSessionTimer);

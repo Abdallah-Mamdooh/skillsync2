@@ -662,6 +662,8 @@ async function startSession(mentorUserId, sessionId) {
     throw new Error('Only scheduled sessions can be started');
   }
 
+  assertJoinWindowOpen(session);
+
   if (!['held', 'captured'].includes(session.paymentStatus)) {
     throw new Error('Payment must be held before starting the session');
   }
@@ -717,6 +719,8 @@ async function joinSession(userId, sessionId) {
   if (!['started', 'active'].includes(session.status)) {
     throw new Error('This session is not open for joining');
   }
+
+  assertJoinWindowOpen(session);
 
   if (
     session.noShowDeadline &&
@@ -928,6 +932,78 @@ async function cancelSession(userId, sessionId) {
   };
 }
 
+async function mentorCancelSession(
+  mentorUserId,
+  sessionId,
+  payload = {}
+) {
+  const session = await MentorSession.findById(sessionId);
+
+  if (!session) {
+    throw new Error('Session not found');
+  }
+
+  if (String(session.mentorUserId) !== String(mentorUserId)) {
+    throw new Error('Only the mentor can cancel this session');
+  }
+
+  if (!['scheduled', 'started'].includes(session.status)) {
+    throw new Error('This session can no longer be cancelled');
+  }
+
+  const reason = String(payload.reason || '').trim();
+
+  if (!reason) {
+    throw new Error('Cancellation reason is required');
+  }
+
+  session.mentorCancellation = {
+    isCancelledByMentor: true,
+    reason,
+    cancelledAt: new Date(),
+    adminReviewStatus: 'pending',
+    adminReviewedBy: null,
+    adminReviewedAt: null,
+    adminNote: '',
+  };
+
+  const finalized = await finalizeSession(session, 'cancelled');
+
+  await MentorActivityLog.create({
+    mentorUserId,
+    mentorProfileId: session.mentorProfileId,
+    sessionId: session._id,
+    action: 'session_cancelled_by_mentor',
+    message: 'Mentor cancelled a booked session',
+    metadata: {
+      reason,
+      scheduledDate: session.scheduledDate,
+      scheduledStartTime: session.scheduledStartTime,
+      statusBeforeCancellation: session.status,
+    },
+    performedByUserId: mentorUserId,
+    performedByRole: 'mentor',
+  });
+
+  await notificationService.createNotification({
+    userId: session.userId,
+    type: 'mentor_cancelled_session',
+    title: 'Session cancelled by mentor',
+    message:
+      'Your mentor cancelled the booked session. The admin team will review the case.',
+    data: {
+      sessionId: session._id,
+    },
+  });
+
+  return {
+    sessionId: finalized._id,
+    status: finalized.status,
+    paymentStatus: finalized.paymentStatus,
+    mentorCancellation: finalized.mentorCancellation,
+  };
+}
+
 async function getSessionTimer(currentUserId, sessionId) {
   const { session } = await assertSessionParticipant(sessionId, currentUserId);
 
@@ -936,6 +1012,27 @@ async function getSessionTimer(currentUserId, sessionId) {
     status: session.status,
     timer: buildTimerInfo(session),
   };
+}
+
+const JOIN_WINDOW_MINUTES = 10;
+
+function assertJoinWindowOpen(session) {
+  const now = new Date();
+
+  const scheduledStart = combineDateAndTime(
+    session.scheduledDate,
+    session.scheduledStartTime
+  );
+
+  const joinWindowStart = new Date(
+    scheduledStart.getTime() - JOIN_WINDOW_MINUTES * 60 * 1000
+  );
+
+  if (now < joinWindowStart) {
+    throw new Error(
+      `Session can only be joined ${JOIN_WINDOW_MINUTES} minutes before the scheduled start time`
+    );
+  }
 }
 
 async function runLifecycleSweep() {
@@ -1004,4 +1101,5 @@ module.exports = {
   cancelSession,
   getSessionTimer,
   runLifecycleSweep,
+  mentorCancelSession,
 };

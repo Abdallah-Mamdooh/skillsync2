@@ -23,16 +23,20 @@ const reminderLogSchema = new mongoose.Schema(
     },
 
     reminderType: {
-      type: String,
-      enum: [
-        'session_expiring_soon',
-        'session_starting_soon',
-        'event_starting_soon',
-        'speaker_event_starting_soon',
-      ],
-      required: true,
-      index: true,
-    },
+  type: String,
+  enum: [
+    'session_expiring_soon',
+    'session_starting_soon',
+    'event_starting_soon',
+    'speaker_event_starting_soon',
+
+    'session_24h_before',
+    'session_1h_before',
+    'session_15m_before',
+  ],
+  required: true,
+  index: true,
+},
 
     sentAt: {
       type: Date,

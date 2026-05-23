@@ -1,5 +1,6 @@
 const MentorProfile = require('./mentorProfile.model');
 const MentorSession = require('./mentorSession.model');
+const MentorAvailabilityException = require('./mentorAvailabilityException.model');
 
 const FIXED_TIMEZONE = 'Africa/Cairo';
 const STEP_MINUTES = 5;
@@ -136,12 +137,70 @@ async function getBookedIntervalsForMentor(mentorProfileId, scheduledDate) {
   }));
 }
 
+async function getExceptionIntervalsForMentor(mentorProfileId, scheduledDate) {
+  const dayStart = combineDateAndTime(scheduledDate, '00:00');
+  const dayEnd = combineDateAndTime(scheduledDate, '23:59');
+
+  const exceptions = await MentorAvailabilityException.find({
+    mentorProfileId,
+    isActive: true,
+    unavailableFrom: { $lt: dayEnd },
+    unavailableTo: { $gt: dayStart },
+  });
+
+  return exceptions.map((exception) => {
+    const from = new Date(exception.unavailableFrom);
+    const to = new Date(exception.unavailableTo);
+
+    const effectiveStart = from < dayStart ? dayStart : from;
+    const effectiveEnd = to > dayEnd ? dayEnd : to;
+
+    const startMinutes =
+      effectiveStart.getHours() * 60 + effectiveStart.getMinutes();
+
+    const endMinutes =
+      effectiveEnd.getHours() * 60 + effectiveEnd.getMinutes();
+
+    return {
+      startMinutes,
+      endMinutes,
+      reason: exception.reason || '',
+    };
+  });
+}
+
 async function getAvailableSlots(mentorProfileId, date, durationMinutes) {
   const duration = Number(durationMinutes);
 
-  if (!Number.isInteger(duration) || duration < 15 || duration > 60 || duration % 5 !== 0) {
-    throw new Error('durationMinutes must be between 15 and 60 in 5-minute increments');
+  if (
+    !Number.isInteger(duration) ||
+    duration < 15 ||
+    duration > 60 ||
+    duration % 5 !== 0
+  ) {
+    throw new Error(
+      'durationMinutes must be between 15 and 60 in 5-minute increments'
+    );
   }
+   const requestedDate = new Date(`${date}T00:00:00`);
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+
+const maxDate = new Date(today);
+maxDate.setDate(today.getDate() + 7);
+
+if (Number.isNaN(requestedDate.getTime())) {
+  throw new Error('Invalid date. Expected YYYY-MM-DD');
+}
+
+if (requestedDate < today) {
+  throw new Error('Cannot book a past date');
+}
+
+if (requestedDate > maxDate) {
+  throw new Error('Cannot book more than 7 days ahead');
+}
+     
 
   const mentorProfile = await MentorProfile.findById(mentorProfileId);
 
@@ -153,14 +212,17 @@ async function getAvailableSlots(mentorProfileId, date, durationMinutes) {
     throw new Error('Mentor is not verified');
   }
 
-  if (!mentorProfile.isAvailable) {
-    throw new Error('Mentor is not available');
-  }
+  
 
   const dayOfWeek = getDayOfWeekFromDate(date);
 
-  const availability = normalizeAvailabilityRanges(mentorProfile.availability || []);
-  const dayRanges = availability.filter((item) => item.dayOfWeek === dayOfWeek);
+  const availability = normalizeAvailabilityRanges(
+    mentorProfile.availability || []
+  );
+
+  const dayRanges = availability.filter(
+    (item) => item.dayOfWeek === dayOfWeek
+  );
 
   if (dayRanges.length === 0) {
     return {
@@ -172,7 +234,15 @@ async function getAvailableSlots(mentorProfileId, date, durationMinutes) {
     };
   }
 
-  const bookedIntervals = await getBookedIntervalsForMentor(mentorProfileId, date);
+  const bookedIntervals = await getBookedIntervalsForMentor(
+    mentorProfileId,
+    date
+  );
+
+  const exceptionIntervals = await getExceptionIntervalsForMentor(
+    mentorProfileId,
+    date
+  );
 
   const slots = [];
 
@@ -184,7 +254,7 @@ async function getAvailableSlots(mentorProfileId, date, durationMinutes) {
     ) {
       const candidateEnd = candidateStart + duration;
 
-      const conflicts = bookedIntervals.some((booking) =>
+      const conflictsWithBooking = bookedIntervals.some((booking) =>
         overlapExists(
           candidateStart,
           candidateEnd,
@@ -193,7 +263,16 @@ async function getAvailableSlots(mentorProfileId, date, durationMinutes) {
         )
       );
 
-      if (!conflicts) {
+      const conflictsWithException = exceptionIntervals.some((exception) =>
+        overlapExists(
+          candidateStart,
+          candidateEnd,
+          exception.startMinutes,
+          exception.endMinutes
+        )
+      );
+
+      if (!conflictsWithBooking && !conflictsWithException) {
         slots.push({
           startTime: formatMinutesToTime(candidateStart),
           endTime: formatMinutesToTime(candidateEnd),
@@ -210,6 +289,7 @@ async function getAvailableSlots(mentorProfileId, date, durationMinutes) {
     slots,
   };
 }
+
 
 async function validateBookingSlot({
   mentorProfileId,
@@ -250,4 +330,5 @@ module.exports = {
   getAvailableSlots,
   validateBookingSlot,
   combineDateAndTime,
+  getExceptionIntervalsForMentor,
 };

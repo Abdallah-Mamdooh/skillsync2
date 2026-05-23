@@ -4,6 +4,7 @@ const notificationService = require('./notification.service');
 const MentorSession = require('../mentor/mentorSession.model');
 const GroupEvent = require('../events/groupEvent.model');
 const EventRegistration = require('../events/eventRegistration.model');
+const sendEmail = require('../../utils/sendEmail');
 
 async function alreadySent({ userId, entityType, entityId, reminderType }) {
   const existing = await ReminderLog.findOne({
@@ -77,64 +78,110 @@ const sendSessionExpiringSoonReminders = async () => {
 
 const sendSessionStartingSoonReminders = async () => {
   const now = new Date();
-  const inFifteenMinutes = new Date(now.getTime() + 15 * 60 * 1000);
 
-  const sessions = await MentorSession.find({
-    status: 'accepted',
-    expiresAt: { $exists: true },
-    acceptedAt: { $ne: null },
-    startedAt: null,
-    createdAt: { $lte: now },
-    // MVP approximation since there is no explicit scheduledAt for sessions yet
-    // use accepted sessions created recently and not started yet
-  });
+  const windows = [
+    {
+      reminderType: 'session_24h_before',
+      label: '24 hours',
+      from: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+      to: new Date(now.getTime() + 24 * 60 * 60 * 1000 + 5 * 60 * 1000),
+    },
+    {
+      reminderType: 'session_1h_before',
+      label: '1 hour',
+      from: new Date(now.getTime() + 60 * 60 * 1000),
+      to: new Date(now.getTime() + 60 * 60 * 1000 + 5 * 60 * 1000),
+    },
+    {
+      reminderType: 'session_15m_before',
+      label: '15 minutes',
+      from: new Date(now.getTime() + 15 * 60 * 1000),
+      to: new Date(now.getTime() + 15 * 60 * 1000 + 5 * 60 * 1000),
+    },
+  ];
 
   let sentCount = 0;
 
-  for (const session of sessions) {
-    // only send if accepted recently enough to be relevant
-    const acceptedAt = session.acceptedAt ? new Date(session.acceptedAt) : null;
-    if (!acceptedAt) continue;
+  for (const window of windows) {
+    const sessions = await MentorSession.find({
+      status: 'scheduled',
+      startAt: {
+        $gte: window.from,
+        $lte: window.to,
+      },
+    })
+      .populate('userId', 'fullName email')
+      .populate('mentorUserId', 'fullName email');
 
-    const diff = acceptedAt.getTime() - now.getTime();
-    if (diff > 15 * 60 * 1000) continue;
-    if (acceptedAt > inFifteenMinutes) continue;
+    for (const session of sessions) {
+      const entityType = 'mentor_session';
+      const entityId = session._id;
 
-    const reminderType = 'session_starting_soon';
-    const entityType = 'mentor_session';
-    const entityId = session._id;
-
-    for (const userId of [session.userId, session.mentorUserId]) {
-      const sent = await alreadySent({
-        userId,
-        entityType,
-        entityId,
-        reminderType,
-      });
-
-      if (sent) continue;
-
-      await notificationService.createNotification({
-        userId,
-        type: 'session_starting_soon',
-        title: 'Session starting soon',
-        message: 'Your mentor session is starting soon.',
-        data: {
-          sessionId: session._id,
-          status: session.status,
-          acceptedAt: session.acceptedAt,
-          method: session.method,
+      const recipients = [
+        {
+          userId: session.userId?._id,
+          email: session.userId?.email,
+          name: session.userId?.fullName || 'Student',
+          role: 'user',
         },
-      });
+        {
+          userId: session.mentorUserId?._id,
+          email: session.mentorUserId?.email,
+          name: session.mentorUserId?.fullName || 'Mentor',
+          role: 'mentor',
+        },
+      ];
 
-      await markSent({
-        userId,
-        entityType,
-        entityId,
-        reminderType,
-      });
+      for (const recipient of recipients) {
+        if (!recipient.userId) continue;
 
-      sentCount++;
+        const sent = await alreadySent({
+          userId: recipient.userId,
+          entityType,
+          entityId,
+          reminderType: window.reminderType,
+        });
+
+        if (sent) continue;
+
+        await notificationService.createNotification({
+          userId: recipient.userId,
+          type: window.reminderType,
+          title: 'Session reminder',
+          message: `Your mentor session starts in ${window.label}.`,
+          data: {
+            sessionId: session._id,
+            scheduledDate: session.scheduledDate,
+            scheduledStartTime: session.scheduledStartTime,
+            scheduledEndTime: session.scheduledEndTime,
+            method: session.method,
+          },
+        });
+
+        if (recipient.email) {
+          await sendEmail(
+            recipient.email,
+            'SkillSync Session Reminder',
+            `
+              <h2>SkillSync Session Reminder</h2>
+              <p>Hello ${recipient.name},</p>
+              <p>Your mentor session starts in <strong>${window.label}</strong>.</p>
+              <p><strong>Date:</strong> ${session.scheduledDate}</p>
+              <p><strong>Time:</strong> ${session.scheduledStartTime} - ${session.scheduledEndTime}</p>
+              <p>Please open SkillSync and be ready before the session starts.</p>
+            `
+          );
+        }
+
+        await markSent({
+          userId: recipient.userId,
+          entityType,
+          entityId,
+          reminderType: window.reminderType,
+        });
+
+        sentCount++;
+      }
     }
   }
 

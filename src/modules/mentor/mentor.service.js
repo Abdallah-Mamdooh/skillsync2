@@ -3,6 +3,9 @@ const User = require('../auth/user.model');
 const {
   validateAvailabilityRanges,
 } = require('./mentorAvailability.service');
+const MentorActivityLog = require('./mentorActivityLog.model');
+const MentorScheduleChangeRequest = require('./mentorScheduleChangeRequest.model');
+const MentorAvailabilityException = require('./mentorAvailabilityException.model');
 
 function normalizeProfilePayload(payload = {}) {
   return {
@@ -195,10 +198,337 @@ const getMentorById = async (mentorProfileId) => {
   };
 };
 
+const updateMentorAvailabilityStatus = async (userId, payload = {}) => {
+  const { availabilityStatus, breakDurationMinutes } = payload;
+
+  const allowedStatuses = ['online', 'offline', 'on_break'];
+
+  if (!allowedStatuses.includes(availabilityStatus)) {
+    throw new Error('availabilityStatus must be online, offline, or on_break');
+  }
+
+  const profile = await MentorProfile.findOne({ userId });
+
+  if (!profile) {
+    throw new Error('Mentor profile not found');
+  }
+
+  const previousStatus = profile.availabilityStatus || 'offline';
+
+  profile.availabilityStatus = availabilityStatus;
+
+  if (availabilityStatus === 'online') {
+    profile.isAvailable = true;
+    profile.breakStartedAt = null;
+    profile.breakEndsAt = null;
+    profile.breakDurationMinutes = null;
+  }
+
+  if (availabilityStatus === 'offline') {
+    profile.isAvailable = false;
+    profile.breakStartedAt = null;
+    profile.breakEndsAt = null;
+    profile.breakDurationMinutes = null;
+  }
+
+  if (availabilityStatus === 'on_break') {
+    const duration = Number(breakDurationMinutes);
+
+    if (![5, 10].includes(duration)) {
+      throw new Error('Break duration must be either 5 or 10 minutes');
+    }
+
+    const now = new Date();
+
+    profile.isAvailable = false;
+    profile.breakStartedAt = now;
+    profile.breakEndsAt = new Date(now.getTime() + duration * 60 * 1000);
+    profile.breakDurationMinutes = duration;
+  }
+
+  await profile.save();
+
+  await MentorActivityLog.create({
+    mentorUserId: userId,
+    mentorProfileId: profile._id,
+    action:
+      availabilityStatus === 'on_break'
+        ? 'break_started'
+        : 'status_changed',
+    message: `Mentor status changed from ${previousStatus} to ${availabilityStatus}`,
+    metadata: {
+      previousStatus,
+      availabilityStatus,
+      breakDurationMinutes: profile.breakDurationMinutes,
+      breakStartedAt: profile.breakStartedAt,
+      breakEndsAt: profile.breakEndsAt,
+    },
+    performedByUserId: userId,
+    performedByRole: 'mentor',
+  });
+
+  return profile;
+};
+
+const submitScheduleChangeRequest = async (userId, payload = {}) => {
+  const {
+    requestedAvailability = [],
+    reason = '',
+    effectiveFrom,
+  } = payload;
+
+  const profile = await MentorProfile.findOne({ userId });
+
+  if (!profile) {
+    throw new Error('Mentor profile not found');
+  }
+
+  const existingPending = await MentorScheduleChangeRequest.findOne({
+    mentorProfileId: profile._id,
+    status: 'pending',
+  });
+
+  if (existingPending) {
+    throw new Error('You already have a pending schedule change request');
+  }
+
+  if (
+    !Array.isArray(requestedAvailability) ||
+    requestedAvailability.length === 0
+  ) {
+    throw new Error('requestedAvailability is required');
+  }
+
+  const request = await MentorScheduleChangeRequest.create({
+    mentorUserId: userId,
+    mentorProfileId: profile._id,
+    currentAvailability: profile.availability || [],
+    requestedAvailability,
+    reason,
+    effectiveFrom,
+    status: 'pending',
+  });
+
+  await MentorActivityLog.create({
+    mentorUserId: userId,
+    mentorProfileId: profile._id,
+    action: 'schedule_change_requested',
+    message: 'Mentor submitted schedule change request',
+    metadata: {
+      requestedAvailability,
+      effectiveFrom,
+      reason,
+    },
+    performedByUserId: userId,
+    performedByRole: 'mentor',
+  });
+
+  return request;
+};
+
+const applyApprovedScheduleChanges = async () => {
+  const now = new Date();
+
+  const requests = await MentorScheduleChangeRequest.find({
+    status: 'approved',
+    effectiveFrom: { $lte: now },
+  });
+
+  let appliedCount = 0;
+
+  for (const request of requests) {
+    const profile = await MentorProfile.findById(request.mentorProfileId);
+
+    if (!profile) continue;
+
+    profile.availability = request.requestedAvailability;
+    await profile.save();
+
+    request.status = 'applied';
+    request.appliedAt = now;
+    await request.save();
+
+    await MentorActivityLog.create({
+      mentorUserId: request.mentorUserId,
+      mentorProfileId: request.mentorProfileId,
+      action: 'schedule_change_applied',
+      message: 'Approved mentor schedule change was applied automatically',
+      metadata: {
+        requestId: request._id,
+        effectiveFrom: request.effectiveFrom,
+        appliedAt: now,
+      },
+      performedByUserId: null,
+      performedByRole: 'system',
+    });
+
+    appliedCount += 1;
+  }
+
+  return {
+    appliedCount,
+    checkedAt: now,
+  };
+};
+
+const createAvailabilityException = async (userId, payload = {}) => {
+  const { unavailableFrom, unavailableTo, reason = '' } = payload;
+
+  if (!unavailableFrom || !unavailableTo) {
+    throw new Error('unavailableFrom and unavailableTo are required');
+  }
+
+  const from = new Date(unavailableFrom);
+  const to = new Date(unavailableTo);
+
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+    throw new Error('Invalid unavailable date range');
+  }
+
+  if (to <= from) {
+    throw new Error('unavailableTo must be after unavailableFrom');
+  }
+
+  const profile = await MentorProfile.findOne({ userId });
+
+  if (!profile) {
+    throw new Error('Mentor profile not found');
+  }
+
+  const exception = await MentorAvailabilityException.create({
+    mentorUserId: userId,
+    mentorProfileId: profile._id,
+    unavailableFrom: from,
+    unavailableTo: to,
+    reason,
+    isActive: true,
+  });
+
+  await MentorActivityLog.create({
+    mentorUserId: userId,
+    mentorProfileId: profile._id,
+    action: 'availability_exception_created',
+    message: 'Mentor created availability exception',
+    metadata: {
+      exceptionId: exception._id,
+      unavailableFrom: from,
+      unavailableTo: to,
+      reason,
+    },
+    performedByUserId: userId,
+    performedByRole: 'mentor',
+  });
+
+  return exception;
+};
+
+const removeAvailabilityException = async (userId, exceptionId) => {
+  const exception = await MentorAvailabilityException.findById(exceptionId);
+
+  if (!exception) {
+    throw new Error('Availability exception not found');
+  }
+
+  if (String(exception.mentorUserId) !== String(userId)) {
+    throw new Error('You are not allowed to remove this exception');
+  }
+
+  exception.isActive = false;
+  await exception.save();
+
+  await MentorActivityLog.create({
+    mentorUserId: userId,
+    mentorProfileId: exception.mentorProfileId,
+    action: 'availability_exception_removed',
+    message: 'Mentor removed availability exception',
+    metadata: {
+      exceptionId: exception._id,
+      unavailableFrom: exception.unavailableFrom,
+      unavailableTo: exception.unavailableTo,
+      reason: exception.reason,
+    },
+    performedByUserId: userId,
+    performedByRole: 'mentor',
+  });
+
+  return exception;
+};
+
+const getMyAvailabilityExceptions = async (userId) => {
+  const profile = await MentorProfile.findOne({ userId });
+
+  if (!profile) {
+    throw new Error('Mentor profile not found');
+  }
+
+  return MentorAvailabilityException.find({
+    mentorProfileId: profile._id,
+    isActive: true,
+    unavailableTo: { $gte: new Date() },
+  }).sort({ unavailableFrom: 1 });
+};
+
+
+
+const expireFinishedBreaks = async () => {
+  const now = new Date();
+
+  const mentors = await MentorProfile.find({
+    availabilityStatus: 'on_break',
+    breakEndsAt: { $lte: now },
+  });
+
+  for (const mentor of mentors) {
+    mentor.availabilityStatus = 'online';
+    mentor.isAvailable = true;
+    mentor.breakEndsAt = null;
+
+    await mentor.save();
+
+    await MentorActivityLog.create({
+      mentorUserId: mentor.userId,
+      mentorProfileId: mentor._id,
+
+      action: 'break_ended',
+
+      message:
+        'Mentor break expired automatically',
+
+      metadata: {},
+
+      performedByUserId: null,
+      performedByRole: 'system',
+    });
+  }
+
+  return {
+    updated: mentors.length,
+  };
+};
+
+const getMyScheduleChangeRequests = async (userId) => {
+  const profile = await MentorProfile.findOne({ userId });
+
+  if (!profile) {
+    throw new Error('Mentor profile not found');
+  }
+
+  return MentorScheduleChangeRequest.find({
+    mentorProfileId: profile._id,
+  }).sort({ createdAt: -1 });
+};
 module.exports = {
   createMentorProfile,
   updateMentorProfile,
   getMyMentorProfile,
   getPublicMentors,
   getMentorById,
+  updateMentorAvailabilityStatus,
+  expireFinishedBreaks,
+  submitScheduleChangeRequest,
+  applyApprovedScheduleChanges,
+  createAvailabilityException,
+  removeAvailabilityException,
+  getMyAvailabilityExceptions,
+  getMyScheduleChangeRequests, 
 };

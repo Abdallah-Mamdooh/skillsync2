@@ -34,4 +34,60 @@ router.get(
   controller.getMyMentorProfile
 );
 
+router.patch(
+  '/me/availability-status',
+  authMiddleware,
+  roleMiddleware('mentor'),
+  validate(['availabilityStatus']),
+  controller.updateMentorAvailabilityStatus
+);
+
+router.post(
+  '/breaks/expire',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.expireFinishedBreaks
+);
+router.post(
+  '/me/schedule-change-request',
+  authMiddleware,
+  roleMiddleware('mentor'),
+  validate(['requestedAvailability', 'effectiveFrom']),
+  controller.submitScheduleChangeRequest
+);
+router.post(
+  '/schedule-change-requests/apply-due',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.applyApprovedScheduleChanges
+);
+
+router.post(
+  '/me/availability-exceptions',
+  authMiddleware,
+  roleMiddleware('mentor'),
+  validate(['unavailableFrom', 'unavailableTo']),
+  controller.createAvailabilityException
+);
+
+router.get(
+  '/me/availability-exceptions',
+  authMiddleware,
+  roleMiddleware('mentor'),
+  controller.getMyAvailabilityExceptions
+);
+
+router.delete(
+  '/me/availability-exceptions/:exceptionId',
+  authMiddleware,
+  roleMiddleware('mentor'),
+  controller.removeAvailabilityException
+);
+
+router.get(
+  '/me/schedule-change-requests',
+  authMiddleware,
+  roleMiddleware('mentor'),
+  controller.getMyScheduleChangeRequests
+);
 module.exports = router;

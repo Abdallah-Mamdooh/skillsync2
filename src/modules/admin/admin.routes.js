@@ -198,4 +198,59 @@ router.get(
   controller.getTransactions
 );
 
+router.get(
+  '/mentor-cancellations/pending',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.getPendingMentorCancellations
+);
+
+router.post(
+  '/mentor-cancellations/:sessionId/review',
+  authMiddleware,
+  roleMiddleware('admin'),
+  validate(['reviewStatus']),
+  controller.reviewMentorCancellation
+);
+router.get(
+  '/mentor-activity-logs',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.getMentorActivityLogs
+);
+
+router.get(
+  '/schedule-change-requests/pending',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.getPendingScheduleChangeRequests
+);
+
+router.post(
+  '/schedule-change-requests/:requestId/approve',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.approveScheduleChangeRequest
+);
+
+router.post(
+  '/schedule-change-requests/:requestId/reject',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.rejectScheduleChangeRequest
+);
+
+router.get(
+  '/mentor-availability-exceptions',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.getMentorAvailabilityExceptions
+);
+
+router.get(
+  '/schedule-change-requests',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.getScheduleChangeRequests
+);
 module.exports = router;

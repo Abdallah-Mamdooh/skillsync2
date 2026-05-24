@@ -232,6 +232,14 @@ const resetPassword = async (token, newPassword) => {
 };
 
 const changePassword = async (userId, oldPassword, newPassword) => {
+  if (!oldPassword || !newPassword) {
+    throw new Error('Old password and new password are required');
+  }
+
+  if (newPassword.length < 8) {
+    throw new Error('New password must be at least 8 characters');
+  }
+
   const user = await User.findById(userId).select('+password');
 
   if (!user) {
@@ -249,6 +257,10 @@ const changePassword = async (userId, oldPassword, newPassword) => {
   }
 
   user.password = await bcrypt.hash(newPassword, 10);
+
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
+
   await user.save();
 
   return {

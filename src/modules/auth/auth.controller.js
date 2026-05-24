@@ -25,11 +25,14 @@ const resetPassword = asyncHandler(async (req, res) => {
 });
 
 const changePassword = asyncHandler(async (req, res) => {
+  const { oldPassword, currentPassword, newPassword } = req.body;
+
   const response = await authService.changePassword(
     req.user._id,
-    req.body.oldPassword,
-    req.body.newPassword
+    oldPassword || currentPassword,
+    newPassword
   );
+
   res.status(200).json(response);
 });
 

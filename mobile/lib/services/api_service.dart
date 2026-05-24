@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart' show kIsWeb;
 
@@ -10,14 +11,28 @@ class ApiService {
     defaultValue: '',
   );
 
-  // Runtime default when API_BASE_URL is not provided.
   // Physical device on local network: use the host machine's LAN IP.
-  // To override, run with: flutter run --dart-define=API_BASE_URL=http://YOUR_IP:5000/api
-  static String get _lanIp => '192.168.110.79';
+  static String get _lanIp => '192.168.1.4';
 
   static String get baseUrl {
     if (_envBaseUrl.isNotEmpty) return _envBaseUrl;
     if (kIsWeb) return 'http://localhost:5000/api';
+
+    // For Android, 10.0.2.2 is used for the Emulator.
+    // For Physical devices, you MUST use your computer's LAN IP.
+    // Ensure your computer and phone are on the SAME Wi-Fi.
+
+    // Toggle this based on your testing device:
+    // true = Emulator/Simulator, false = Physical Device
+    const bool isEmulator = false;
+
+    if (isEmulator) {
+      return Platform.isAndroid
+          ? 'http://10.0.2.2:5000/api'
+          : 'http://localhost:5000/api';
+    }
+
+    // Use machine's LAN IP for physical device
     return 'http://$_lanIp:5000/api';
   }
 
@@ -30,7 +45,49 @@ class ApiService {
     return uri.replace(queryParameters: queryParameters);
   }
 
-  static Map<String, String> _defaultHeaders({String? token, bool disableCache = false}) {
+  // Sanitize outgoing JSON bodies:
+  // - remove client-provided timestamp fields (`createdAt`, `updatedAt`)
+  // - convert MongoDB Extended JSON like {$date: '...'} to ISO strings
+  // - convert DateTime to ISO strings
+  static dynamic _sanitizeValue(dynamic v) {
+    if (v == null) return null;
+
+    if (v is DateTime) {
+      return v.toUtc().toIso8601String();
+    }
+
+    if (v is Map) {
+      // treat Map with single $date specially
+      if (v.length == 1 && v.containsKey(r'$date')) {
+        final dv = v[r'$date'];
+        try {
+          if (dv is String) return DateTime.parse(dv).toUtc().toIso8601String();
+          if (dv is num) return DateTime.fromMillisecondsSinceEpoch(dv.toInt()).toUtc().toIso8601String();
+        } catch (_) {
+          return dv;
+        }
+      }
+
+      final out = <String, dynamic>{};
+      v.forEach((key, val) {
+        if (key == 'createdAt' || key == 'updatedAt') return; // strip timestamps from client
+        out['$key'] = _sanitizeValue(val);
+      });
+      return out;
+    }
+
+    if (v is List) return v.map(_sanitizeValue).toList();
+
+    return v;
+  }
+
+  static dynamic _sanitizeBody(Object? body) {
+    if (body == null) return null;
+    return _sanitizeValue(body);
+  }
+
+  static Map<String, String> _defaultHeaders(
+      {String? token, bool disableCache = false}) {
     return {
       if (token != null) 'Authorization': 'Bearer $token',
       if (disableCache) 'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -46,13 +103,21 @@ class ApiService {
     try {
       final url = '$baseUrl$endpoint';
       print('DEBUG: Calling API -> $url');
+      final sanitized = _sanitizeBody(body);
+      try {
+        print('DEBUG: POST $url payload -> ${jsonEncode(sanitized)}');
+      } catch (_) {}
       final response = await http.post(
         Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
         },
-        body: jsonEncode(body),
+        body: jsonEncode(sanitized),
       );
+
+      try {
+        print('DEBUG: POST response ${response.statusCode} -> ${response.body}');
+      } catch (_) {}
 
       return _handleResponse(response);
     } catch (e) {
@@ -67,14 +132,22 @@ class ApiService {
     String token,
   ) async {
     try {
+      final sanitized = _sanitizeBody(body);
+      try {
+        print('DEBUG: POST $baseUrl$endpoint payload -> ${jsonEncode(sanitized)}');
+      } catch (_) {}
       final response = await http.post(
         Uri.parse('$baseUrl$endpoint'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode(body),
+        body: jsonEncode(sanitized),
       );
+
+      try {
+        print('DEBUG: POST ${endpoint} response ${response.statusCode} -> ${response.body}');
+      } catch (_) {}
 
       return _handleResponse(response);
     } catch (e) {
@@ -89,14 +162,19 @@ class ApiService {
     String token,
   ) async {
     try {
+      final sanitized = _sanitizeBody(body);
       final response = await http.patch(
         Uri.parse('$baseUrl$endpoint'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode(body),
+        body: jsonEncode(sanitized),
       );
+
+      try {
+        print('DEBUG: PATCH ${endpoint} response ${response.statusCode} -> ${response.body}');
+      } catch (_) {}
 
       return _handleResponse(response);
     } catch (e) {
@@ -111,14 +189,19 @@ class ApiService {
     String token,
   ) async {
     try {
+      final sanitized = _sanitizeBody(body);
       final response = await http.put(
         Uri.parse('$baseUrl$endpoint'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode(body),
+        body: jsonEncode(sanitized),
       );
+
+      try {
+        print('DEBUG: PUT ${endpoint} response ${response.statusCode} -> ${response.body}');
+      } catch (_) {}
 
       return _handleResponse(response);
     } catch (e) {
@@ -161,21 +244,23 @@ class ApiService {
   }
 
   static Map<String, dynamic> _handleResponse(http.Response response) {
+    Map<String, dynamic> data;
+    try {
+      final decoded = jsonDecode(response.body);
+      data = decoded is Map
+          ? Map<String, dynamic>.from(decoded)
+          : {'data': decoded};
+    } catch (_) {
+      data = {};
+    }
+
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      return jsonDecode(response.body);
+      return data;
     } else {
-      try {
-        final error = jsonDecode(response.body);
-        return {
-          'success': false,
-          'message': error['message'] ?? 'Server error',
-        };
-      } catch (_) {
-        return {
-          'success': false,
-          'message': 'Server error: ${response.statusCode}',
-        };
-      }
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Server error: ${response.statusCode}',
+      };
     }
   }
 

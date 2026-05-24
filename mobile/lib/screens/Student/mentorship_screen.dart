@@ -1125,11 +1125,9 @@ class _ChatBookSessionScreenState extends State<ChatBookSessionScreen> {
   }
 
   void _onContinue() {
-    if (_selectedDuration == null ||
-        _selectedPayment == null) {
+    if (_selectedDuration == null || _selectedPayment == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content:
-              Text('Please select duration and payment method'),
+          content: Text('Please select duration and payment method'),
           backgroundColor: Color(0xFFF5A100)));
       return;
     }

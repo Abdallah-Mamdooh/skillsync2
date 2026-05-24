@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 import '../../widgets/bottom_navigation.dart';
-import 'learning_roadmap_screen.dart'; // Import the roadmap screen
+import 'learning_roadmap_screen.dart';
 
 // ===== CAREER MODEL =====
 class CareerScore {
@@ -92,8 +92,83 @@ List<CareerScore> calculateMatches(List<int> answers) {
 }
 
 // ===== START SCREEN =====
-class AssessmentStartScreen extends StatelessWidget {
+class AssessmentStartScreen extends StatefulWidget {
   const AssessmentStartScreen({super.key});
+
+  @override
+  State<AssessmentStartScreen> createState() => _AssessmentStartScreenState();
+}
+
+class _AssessmentStartScreenState extends State<AssessmentStartScreen> {
+  bool _isCheckingAssessment = true;
+  bool _hasExistingAssessment = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkExistingAssessment();
+  }
+
+  Future<void> _checkExistingAssessment() async {
+    try {
+      final token = context.read<AuthProvider>().token;
+      if (token == null || token.isEmpty) {
+        setState(() => _isCheckingAssessment = false);
+        return;
+      }
+      final response = await ApiService.get('/assessment/result', token);
+      setState(() {
+        _hasExistingAssessment =
+            response['success'] == true && response['data'] != null;
+        _isCheckingAssessment = false;
+      });
+    } catch (_) {
+      setState(() => _isCheckingAssessment = false);
+    }
+  }
+
+  void _handleStartPressed(BuildContext context) {
+    if (_hasExistingAssessment) {
+      _showRetakeDialog(context);
+    } else {
+      _navigateToAssessment(context);
+    }
+  }
+
+  void _showRetakeDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black54,
+      builder: (context) => RetakeAssessmentDialog(
+        onRetake: () {
+          Navigator.of(context).pop();
+          _navigateToAssessment(context);
+        },
+        onCancel: () => Navigator.of(context).pop(),
+      ),
+    );
+  }
+
+  void _navigateToAssessment(BuildContext context) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const AssessmentQuestion1(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(1.0, 0.0);
+          const end = Offset.zero;
+          const curve = Curves.easeInOut;
+          var tween =
+              Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          return SlideTransition(
+              position: animation.drive(tween), child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 400),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -103,7 +178,7 @@ class AssessmentStartScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header matching ChosenRoadmapScreen style
+            // Header
             Container(
               width: double.infinity,
               padding: const EdgeInsets.only(
@@ -124,7 +199,7 @@ class AssessmentStartScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Discover your ideal career path',
+                    'Discover Your Strengths',
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       color: Colors.white,
@@ -133,7 +208,7 @@ class AssessmentStartScreen extends StatelessWidget {
                 ],
               ),
             ),
-            // Rest of the content
+            // Content
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -142,24 +217,24 @@ class AssessmentStartScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const SizedBox(height: 40),
-                     Image.asset(
-                       'assets/images/assessment_start_logo.png',
-                       width: 120,
-                       height: 120,
-                       fit: BoxFit.contain,
-                     ),
-                     const SizedBox(height: 12),
-                     Text(
-                       'Let’s Get Started!',
-                       textAlign: TextAlign.center,
-                       style: GoogleFonts.inter(
-                         fontSize: 30,
-                         fontWeight: FontWeight.w800,
-                         color: const Color(0xFF1F3955),
-                       ),
-                     ),
-                     const SizedBox(height: 24),
-                     Container(
+                    Image.asset(
+                      'assets/images/assessment_start_logo.png',
+                      width: 120,
+                      height: 120,
+                      fit: BoxFit.contain,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Let\u2019s Get Started!',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF1F3955),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
                           horizontal: 20, vertical: 20),
@@ -173,11 +248,11 @@ class AssessmentStartScreen extends StatelessWidget {
                             offset: const Offset(0, 4),
                           ),
                         ],
-                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                        border: Border.all(color: Color(0xFF1D5572)),
                       ),
-                      child: Column(
+                      child: const Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
+                        children: [
                           _BulletPoint(
                             text:
                                 'Your answers directly influence your career recommendations.',
@@ -231,44 +306,34 @@ class AssessmentStartScreen extends StatelessWidget {
                               width: double.infinity,
                               height: 50,
                               child: ElevatedButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    PageRouteBuilder(
-                                      pageBuilder: (context, animation,
-                                              secondaryAnimation) =>
-                                          const AssessmentQuestion1(),
-                                      transitionsBuilder: (context, animation,
-                                          secondaryAnimation, child) {
-                                        const begin = Offset(1.0, 0.0);
-                                        const end = Offset.zero;
-                                        const curve = Curves.easeInOut;
-                                        var tween = Tween(
-                                                begin: begin, end: end)
-                                            .chain(CurveTween(curve: curve));
-                                        return SlideTransition(
-                                            position: animation.drive(tween),
-                                            child: child);
-                                      },
-                                      transitionDuration:
-                                          const Duration(milliseconds: 400),
-                                    ),
-                                  );
-                                },
+                                onPressed: _isCheckingAssessment
+                                    ? null
+                                    : () => _handleStartPressed(context),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFFF5A100),
                                   shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(8)),
                                   elevation: 0,
                                 ),
-                                child: Text(
-                                  'Start Assessment',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFF001636),
-                                  ),
-                                ),
+                                child: _isCheckingAssessment
+                                    ? const SizedBox(
+                                        width: 22,
+                                        height: 22,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.5,
+                                          color: Color(0xFF001636),
+                                        ),
+                                      )
+                                    : Text(
+                                        _hasExistingAssessment
+                                            ? 'Retake Assessment'
+                                            : 'Start Assessment',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: const Color(0xFF001636),
+                                        ),
+                                      ),
                               ),
                             ),
                           ],
@@ -307,7 +372,7 @@ class _BulletPoint extends StatelessWidget {
             text,
             style: GoogleFonts.inter(
               fontSize: 15,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.bold,
               color: const Color(0xFF1F2937),
               height: 1.4,
             ),
@@ -454,27 +519,31 @@ class _AssessmentQuestion1State extends State<AssessmentQuestion1> {
         for (final opt in optionsDynamic) {
           if (opt is String) {
             final title = opt.trim();
-            if (title.isNotEmpty)
+            if (title.isNotEmpty) {
               parsed.add({'title': title, 'tags': <String>[]});
+            }
             continue;
           }
           if (opt is Map<String, dynamic>) {
             final title = extractOptionTitle(opt);
-            if (title.isNotEmpty)
+            if (title.isNotEmpty) {
               parsed.add({'title': title, 'tags': <String>[]});
+            }
           }
         }
       } else if (optionsDynamic is Map<String, dynamic>) {
         for (final entry in optionsDynamic.entries) {
           if (entry.value is String) {
             final title = (entry.value as String).trim();
-            if (title.isNotEmpty)
+            if (title.isNotEmpty) {
               parsed.add({'title': title, 'tags': <String>[]});
+            }
           } else if (entry.value is Map<String, dynamic>) {
             final title =
                 extractOptionTitle(entry.value as Map<String, dynamic>);
-            if (title.isNotEmpty)
+            if (title.isNotEmpty) {
               parsed.add({'title': title, 'tags': <String>[]});
+            }
           }
         }
       }
@@ -514,8 +583,9 @@ class _AssessmentQuestion1State extends State<AssessmentQuestion1> {
       if (parsedOptions.isEmpty) {
         for (var n = 1; n <= 10; n++) {
           final fallback = (raw['option$n'] ?? '').toString().trim();
-          if (fallback.isNotEmpty)
+          if (fallback.isNotEmpty) {
             parsedOptions.add({'title': fallback, 'tags': <String>[]});
+          }
         }
       }
 
@@ -601,7 +671,11 @@ class _AssessmentQuestion1State extends State<AssessmentQuestion1> {
       }
 
       final response = await ApiService.postWithAuth(
-          '/assessment/submit', answersPayload, token);
+          '/assessment/submit',
+          forceOverwrite
+              ? {'answers': answersPayload, 'overwrite': true}
+              : answersPayload,
+          token);
       if (!mounted) return;
 
       final data = response['data'] is Map<String, dynamic>
@@ -628,29 +702,20 @@ class _AssessmentQuestion1State extends State<AssessmentQuestion1> {
           return;
         }
 
-        final shouldOverwrite = await showDialog<bool>(
+        await showDialog(
           context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Overwrite Assessment?'),
-            content: Text(responseMessage.isEmpty
-                ? 'You already completed the assessment. Overwrite old results?'
-                : responseMessage),
-            actions: [
-              TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Cancel')),
-              ElevatedButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('Overwrite')),
-            ],
+          barrierDismissible: true,
+          barrierColor: Colors.black54,
+          builder: (context) => RetakeAssessmentDialog(
+            onRetake: () {
+              Navigator.of(context).pop();
+              _isOverwriteAttempt = true;
+              _submitAssessment(forceOverwrite: true);
+            },
+            onCancel: () => Navigator.of(context).pop(),
           ),
         );
-
-        if (shouldOverwrite == true) {
-          _isOverwriteAttempt = true;
-          await _submitAssessment(forceOverwrite: true);
-          _isOverwriteAttempt = false;
-        }
+        _isOverwriteAttempt = false;
         return;
       }
 
@@ -664,9 +729,10 @@ class _AssessmentQuestion1State extends State<AssessmentQuestion1> {
             .showSnackBar(SnackBar(content: Text(responseMessage)));
       }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text('Unexpected error during submission.')));
+      }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -675,8 +741,8 @@ class _AssessmentQuestion1State extends State<AssessmentQuestion1> {
   @override
   Widget build(BuildContext context) {
     if (_isLoadingQuestions) {
-      return Scaffold(
-        backgroundColor: const Color(0xFFF9FAFB),
+      return const Scaffold(
+        backgroundColor: Color(0xFFF9FAFB),
         body: SafeArea(
           child: Center(child: CircularProgressIndicator()),
         ),
@@ -713,7 +779,7 @@ class _AssessmentQuestion1State extends State<AssessmentQuestion1> {
       body: SafeArea(
         child: Column(
           children: [
-            // Progress header (back button removed)
+            // Progress header
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Column(
@@ -1108,7 +1174,7 @@ class _CareerMatchesScreenState extends State<CareerMatchesScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header matching ChosenRoadmapScreen style
+            // Header
             Container(
               width: double.infinity,
               padding: const EdgeInsets.only(
@@ -1254,6 +1320,155 @@ class _CareerMatchesScreenState extends State<CareerMatchesScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ===== RETAKE ASSESSMENT DIALOG =====
+class RetakeAssessmentDialog extends StatefulWidget {
+  final VoidCallback onRetake;
+  final VoidCallback onCancel;
+
+  const RetakeAssessmentDialog({
+    super.key,
+    required this.onRetake,
+    required this.onCancel,
+  });
+
+  @override
+  State<RetakeAssessmentDialog> createState() => _RetakeAssessmentDialogState();
+}
+
+class _RetakeAssessmentDialogState extends State<RetakeAssessmentDialog>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      elevation: 8,
+      backgroundColor: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Circular icon with refresh symbol
+            Container(
+              width: 64,
+              height: 64,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFF9CA3AF),
+              ),
+              child: RotationTransition(
+                turns: Tween<double>(begin: 1.0, end: 0.0).animate(_controller),
+                child: const Icon(
+                  Icons.replay_rounded,
+                  size: 55,
+                  color: Colors.black,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Title
+            const Text(
+              'Retake Assessment?',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFFE6A817),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+
+            // Description
+            const Text(
+              'Retaking it will update your career recommendations and replace your current learning roadmap with a new one.',
+              style: TextStyle(
+                fontSize: 11,
+                color: Color(0xff1D5572),
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+
+            // Buttons row
+            Row(
+              children: [
+                // Retake button
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1D5572),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      elevation: 0,
+                    ),
+                    onPressed: widget.onRetake,
+                    child: const Text(
+                      'Retake',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+
+                // Cancel button
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.black54,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      side: BorderSide(color: Colors.grey.shade300),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      backgroundColor: Color(0xFFD9D9D9),
+                    ),
+                    onPressed: widget.onCancel,
+                    child: const Text(
+                      'No, cancel',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF1D5572),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

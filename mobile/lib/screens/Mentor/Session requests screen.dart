@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/mentor_service.dart';
@@ -55,9 +56,11 @@ class _SessionRequestsScreenState extends State<SessionRequestsScreen> {
     if (token == null) return;
     final response = await MentorService.getIncomingSessions(token);
     if (response['success'] == true) {
-      final list = response['data'] is List ? response['data'] as List : <dynamic>[];
+      final list =
+          response['data'] is List ? response['data'] as List : <dynamic>[];
       _requests = list.whereType<Map>().map((raw) {
-        final session = MentorService.normalizeSession(Map<String, dynamic>.from(raw));
+        final session =
+            MentorService.normalizeSession(Map<String, dynamic>.from(raw));
         final requester = session['requester'] is Map<String, dynamic>
             ? session['requester'] as Map<String, dynamic>
             : <String, dynamic>{};
@@ -74,7 +77,11 @@ class _SessionRequestsScreenState extends State<SessionRequestsScreen> {
           studentName: fullName,
           initials: initials,
           durationMinutes: ((session['durationMinutes'] ?? 0) as num).toInt(),
-          priceEGP: ((pricing['total'] ?? pricing['totalAmount'] ?? session['totalAmount'] ?? 0) as num).toDouble(),
+          priceEGP: ((pricing['total'] ??
+                  pricing['totalAmount'] ??
+                  session['totalAmount'] ??
+                  0) as num)
+              .toDouble(),
           sessionType: (session['method'] ?? 'chat').toString(),
           timeFrom: (session['scheduledStartTime'] ?? '').toString(),
           timeTo: (session['scheduledEndTime'] ?? '').toString(),
@@ -89,11 +96,14 @@ class _SessionRequestsScreenState extends State<SessionRequestsScreen> {
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
     final selected = _requests[index];
-    final response = await MentorService.startSession(token, selected.sessionId);
+    final response =
+        await MentorService.startSession(token, selected.sessionId);
     if (response['success'] != true) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(response['message']?.toString() ?? 'Failed to start session')),
+          SnackBar(
+              content: Text(response['message']?.toString() ??
+                  'Failed to start session')),
         );
       }
       return;
@@ -115,20 +125,14 @@ class _SessionRequestsScreenState extends State<SessionRequestsScreen> {
   }
 
   Future<void> _onCancel(int index) async {
+    final selected = _requests[index];
     // Confirm before declining
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Decline Request'),
-        content: Text('Are you sure you want to decline the session request from ${_requests[index].studentName}?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Yes', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+      barrierDismissible: true,
+      barrierColor: Colors.black54,
+      builder: (ctx) =>
+          _DeclineRequestDialog(studentName: selected.studentName),
     );
     if (confirmed != true) return;
 
@@ -161,15 +165,16 @@ class _SessionRequestsScreenState extends State<SessionRequestsScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-              itemCount: _requests.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) => _SessionRequestCard(
-                request: _requests[index],
-                onAccept: () => _onAccept(index),
-                onCancel: () => _onCancel(index),
-              ),
-            ),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 20),
+                    itemCount: _requests.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) => _SessionRequestCard(
+                      request: _requests[index],
+                      onAccept: () => _onAccept(index),
+                      onCancel: () => _onCancel(index),
+                    ),
+                  ),
           ),
         ],
       ),
@@ -365,7 +370,7 @@ class _SessionRequestCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _ActionButton(
-                  label: 'Decline',
+                  label: 'Cancel',
                   icon: Icons.close,
                   onTap: onCancel,
                   isAccept: false,
@@ -405,12 +410,8 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = isAccept
-        ? const Color(0xFF1D5572)
-        : Colors.grey.shade200;
-    final fgColor = isAccept
-        ? Colors.white
-        : Colors.black87;
+    final bgColor = isAccept ? Colors.grey.shade200 : Colors.grey.shade200;
+    final fgColor = isAccept ? Colors.black87 : Colors.black87;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -433,6 +434,200 @@ class _ActionButton extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Decline Request Dialog ───────────────────────────────────────────────────
+
+class _DeclineRequestDialog extends StatefulWidget {
+  final String studentName;
+  const _DeclineRequestDialog({required this.studentName});
+
+  @override
+  State<_DeclineRequestDialog> createState() => _DeclineRequestDialogState();
+}
+
+class _DeclineRequestDialogState extends State<_DeclineRequestDialog> {
+  final TextEditingController _reasonController = TextEditingController();
+  int _charCount = 0;
+
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      elevation: 8,
+      backgroundColor: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Circular icon
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.red.withOpacity(0.1),
+                ),
+                child: Center(
+                  child: Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.red, width: 5),
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      size: 30,
+                      color: Colors.red,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Title
+              Text(
+                'Are you sure ?',
+                style: GoogleFonts.inter(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red[900],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+
+              // Subtitle
+              Text(
+                'Declining this request may apply additional fees to your account.',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: Colors.red[800],
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+
+              // Cancellation reason label
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Cancellation reason *',
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // Input field
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: TextField(
+                  controller: _reasonController,
+                  maxLines: 6,
+                  onChanged: (val) {
+                    setState(() {
+                      _charCount = val.length;
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText:
+                        'Please provide as much detail as possible about what happened',
+                    hintStyle: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: Colors.grey[500],
+                    ),
+                    contentPadding: const EdgeInsets.all(16),
+                    border: InputBorder.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+
+              // Character count
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '$_charCount/500 characters',
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1D5572),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        'Yes,cancel',
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFE0E0E0),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        'NO',
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFF1D5572),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

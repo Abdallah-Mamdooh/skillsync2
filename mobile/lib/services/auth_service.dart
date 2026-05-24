@@ -38,12 +38,14 @@ class AuthService {
     }
 
     try {
+      print('DEBUG: Fetching CV from $cvUri');
       final cvResponse = await http.get(cvUri);
       if (cvResponse.statusCode < 200 || cvResponse.statusCode >= 300) {
+        print('DEBUG: CV Fetch failed with status ${cvResponse.statusCode}');
         return {
           'success': false,
           'message':
-              'Could not download the CV from the provided link. Use a direct PDF or DOCX file link.',
+              'Could not download the CV from the provided link. Status: ${cvResponse.statusCode}',
         };
       }
 
@@ -54,16 +56,16 @@ class AuthService {
       );
 
       if (mediaType == null) {
+        print('DEBUG: Invalid CV media type for $fileName');
         return {
           'success': false,
           'message': 'CV link must point to a PDF or DOCX file.',
         };
       }
 
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse('${ApiService.baseUrl}/auth/signup'),
-      );
+      final url = '${ApiService.baseUrl}/auth/signup';
+      print('DEBUG: Calling Multipart API -> $url');
+      final request = http.MultipartRequest('POST', Uri.parse(url));
 
       request.fields.addAll({
         'fullName': fullName,
@@ -74,6 +76,8 @@ class AuthService {
         'linkedinUrl': linkedinUrl ?? '',
         'payoutAccountInfo': additionalInfo ?? '',
         'proposedHourlyRate': '${baseRate ?? ''}',
+        // Add additionalInfo as well to match backend destructuring if needed
+        'additionalInfo': additionalInfo ?? '',
       });
 
       request.files.add(
@@ -87,6 +91,7 @@ class AuthService {
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
+      print('DEBUG: API Response -> ${response.statusCode} ${response.body}');
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return jsonDecode(response.body) as Map<String, dynamic>;
@@ -104,11 +109,11 @@ class AuthService {
           'message': 'Server error: ${response.statusCode}',
         };
       }
-    } catch (_) {
+    } catch (e) {
+      print('DEBUG: Signup Error -> $e');
       return {
         'success': false,
-        'message':
-            'Could not fetch the CV file from the provided link. Use a direct PDF or DOCX file link.',
+        'message': 'Network error during signup: $e',
       };
     }
   }
@@ -174,9 +179,12 @@ class AuthService {
     required String token,
     required String newPassword,
   }) async {
-    return ApiService.post('/auth/reset-password/$token', {
-      'newPassword': newPassword,
-    });
+    final payload = <String, dynamic>{'newPassword': newPassword};
+    // Debug: show sanitized payload that will be sent
+    try {
+      print('DEBUG: resetPassword payload -> $payload');
+    } catch (_) {}
+    return ApiService.post('/auth/reset-password/$token', payload);
   }
 
   static Future<Map<String, dynamic>> changePassword({
@@ -184,10 +192,13 @@ class AuthService {
     required String oldPassword,
     required String newPassword,
   }) async {
-    return ApiService.postWithAuth('/auth/change-password', {
-      'oldPassword': oldPassword,
-      'newPassword': newPassword,
-    }, token);
+    return ApiService.postWithAuth(
+        '/auth/change-password',
+        {
+          'oldPassword': oldPassword,
+          'newPassword': newPassword,
+        },
+        token);
   }
 
   static Future<Map<String, dynamic>> getCurrentUser({

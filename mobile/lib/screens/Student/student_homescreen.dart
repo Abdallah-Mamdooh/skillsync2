@@ -12,6 +12,7 @@ import 'mentorship_screen.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'Notifications screen.dart';
 import 'chathistory.dart';
+import 'package:skillsync_app/screens/Student/PublicEventsScreen.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -66,7 +67,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     if (hasRoadmap) {
       final data = response['data'];
       final raw =
-      data is Map<String, dynamic> ? data['completionPercent'] : null;
+          data is Map<String, dynamic> ? data['completionPercent'] : null;
       if (raw is num) {
         percent = raw.round();
       } else {
@@ -139,7 +140,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     final showRoadmap = _hasRoadmap && !_isRoadmapLoading;
     final progressPercent = _roadmapPercent.clamp(0, 100);
 
-    // Hide recommendation if career interests are completed
     final rawInterests = user?['selectedInterests'];
     final bool hasInterests = rawInterests != null &&
         ((rawInterests is List && rawInterests.isNotEmpty) ||
@@ -159,58 +159,35 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               decoration: const BoxDecoration(
                 color: Color(0xFF1D5572),
                 borderRadius:
-                BorderRadius.vertical(bottom: Radius.circular(32)),
+                    BorderRadius.vertical(bottom: Radius.circular(32)),
               ),
               padding: const EdgeInsets.only(
                   left: 20, right: 20, top: 53, bottom: 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Logo + Title row
+                  // Welcome row (logo + SKILLSYNC removed)
                   Row(
                     children: [
-                      Image.asset(
-                        'assets/images/logo.png',
-                        width: 61,
-                        height: 62,
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => const Icon(Icons.star,
-                            color: Color(0xFFF5A100), size: 60),
-                      ),
-                      const SizedBox(width: 9),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'SKILLSYNC',
-                            style: GoogleFonts.inter(
-                              color: const Color(0xFFF5A100),
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              height: 1,
-                            ),
+                      RichText(
+                        text: TextSpan(
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            height: 1.1,
                           ),
-                          RichText(
-                            text: TextSpan(
-                              style: GoogleFonts.inter(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                height: 1.1,
-                              ),
-                              children: [
-                                const TextSpan(text: 'Welcome back'),
-                                const TextSpan(
-                                    text: ', ',
-                                    style: TextStyle(color: Color(0xFFF5A100))),
-                                TextSpan(text: firstName),
-                                const TextSpan(
-                                    text: '!',
-                                    style: TextStyle(color: Color(0xFFF5A100))),
-                              ],
-                            ),
-                          ),
-                        ],
+                          children: [
+                            const TextSpan(text: 'Welcome back'),
+                            const TextSpan(
+                                text: ', ',
+                                style: TextStyle(color: Color(0xFFF5A100))),
+                            TextSpan(text: firstName),
+                            const TextSpan(
+                                text: '!',
+                                style: TextStyle(color: Color(0xFFF5A100))),
+                          ],
+                        ),
                       ),
                       const Spacer(),
                       IconButton(
@@ -219,7 +196,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                             context,
                             MaterialPageRoute(
                                 builder: (context) =>
-                                const NotificationsScreen()),
+                                    const NotificationsScreen()),
                           );
                         },
                         icon: SvgPicture.asset(
@@ -269,21 +246,21 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                           top: 42,
                           child: _isWalletLoading
                               ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Color(0xFF1D5572),
-                            ),
-                          )
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFF1D5572),
+                                  ),
+                                )
                               : Text(
-                            '${_walletBalance.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')} $_walletCurrency',
-                            style: GoogleFonts.inter(
-                              color: const Color(0xFF2E2E2E),
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                                  '${_walletBalance.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')} $_walletCurrency',
+                                  style: GoogleFonts.inter(
+                                    color: const Color(0xFF2E2E2E),
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                         ),
                         Positioned(
                           right: 11,
@@ -361,7 +338,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // ── Header row: white background ──
+                                // Header row: white background
                                 Container(
                                   width: double.infinity,
                                   padding: const EdgeInsets.symmetric(
@@ -373,7 +350,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                   ),
                                   child: Row(
                                     mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Row(
                                         children: [
@@ -406,41 +383,38 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                     ],
                                   ),
                                 ),
-                                // ── Progress bar + sub-text: teal background ──
+                                // Progress bar + sub-text
                                 Padding(
                                   padding:
-                                  const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                                      const EdgeInsets.fromLTRB(16, 14, 16, 16),
                                   child: Column(
                                     crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      // Progress bar
                                       ClipRRect(
                                         borderRadius:
-                                        BorderRadius.circular(100),
+                                            BorderRadius.circular(100),
                                         child: Stack(
                                           children: [
-                                            // Track
                                             Container(
                                               width: double.infinity,
                                               height: 8,
                                               decoration: BoxDecoration(
                                                 color: const Color(0x7FF5A100),
                                                 borderRadius:
-                                                BorderRadius.circular(100),
+                                                    BorderRadius.circular(100),
                                               ),
                                             ),
-                                            // Fill
                                             FractionallySizedBox(
                                               widthFactor:
-                                              progressPercent / 100,
+                                                  progressPercent / 100,
                                               child: Container(
                                                 height: 8,
                                                 decoration: BoxDecoration(
                                                   color: Colors.white,
                                                   borderRadius:
-                                                  BorderRadius.circular(
-                                                      100),
+                                                      BorderRadius.circular(
+                                                          100),
                                                 ),
                                               ),
                                             ),
@@ -448,7 +422,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                         ),
                                       ),
                                       const SizedBox(height: 12),
-                                      // Sub-text
                                       Text(
                                         "Keep going! You're making great progress on your roadmap.",
                                         textAlign: TextAlign.center,
@@ -489,7 +462,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
                     // ── Quick Actions cards ──────────────────────────────
                     if (!showRoadmap) ...[
-                      // ── NO ROADMAP: full-width vertical list ────────────
+                      // NO ROADMAP: full-width vertical list
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         child: Column(
@@ -497,7 +470,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                             _buildListActionCard(
                               context,
                               imagePath:
-                              'assets/images/skill_assessment_logo.png',
+                                  'assets/images/skill_assessment_logo.png',
                               fallbackIcon: Icons.assessment,
                               iconColor: const Color(0xFF1D5572),
                               title: 'Skill Assessment',
@@ -506,8 +479,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                               onTap: () {
                                 Navigator.of(context)
                                     .push(MaterialPageRoute(
-                                    builder: (_) =>
-                                    const AssessmentStartScreen()))
+                                        builder: (_) =>
+                                            const AssessmentStartScreen()))
                                     .then((_) => _loadRoadmapStatus());
                               },
                             ),
@@ -543,7 +516,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                         ),
                       ),
                     ] else ...[
-                      // ── HAS ROADMAP: original 2-column grid ─────────────
+                      // HAS ROADMAP: 2-column grid
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         child: Column(
@@ -556,8 +529,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                     onTap: () {
                                       Navigator.of(context)
                                           .push(MaterialPageRoute(
-                                          builder: (_) =>
-                                          const AssessmentStartScreen()))
+                                              builder: (_) =>
+                                                  const AssessmentStartScreen()))
                                           .then((_) => _loadRoadmapStatus());
                                     },
                                     child: Container(
@@ -580,18 +553,18 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                               decoration: BoxDecoration(
                                                   color: Colors.white,
                                                   borderRadius:
-                                                  BorderRadius.circular(
-                                                      12)),
+                                                      BorderRadius.circular(
+                                                          12)),
                                               child: Center(
                                                 child: Image.asset(
                                                   'assets/images/skill_assessment_logo.png',
                                                   width: 24,
                                                   height: 24,
                                                   errorBuilder: (_, __, ___) =>
-                                                  const Icon(
-                                                      Icons.assessment,
-                                                      color: Color(
-                                                          0xFF1D5572)),
+                                                      const Icon(
+                                                          Icons.assessment,
+                                                          color: Color(
+                                                              0xFF1D5572)),
                                                 ),
                                               ),
                                             ),
@@ -629,7 +602,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                       Navigator.of(context).push(
                                           MaterialPageRoute(
                                               builder: (_) =>
-                                              const ChosenRoadmapScreen()));
+                                                  const ChosenRoadmapScreen()));
                                     },
                                     child: Container(
                                       height: 118,
@@ -651,17 +624,17 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                               decoration: BoxDecoration(
                                                   color: Colors.white,
                                                   borderRadius:
-                                                  BorderRadius.circular(
-                                                      12)),
+                                                      BorderRadius.circular(
+                                                          12)),
                                               child: Center(
                                                 child: Image.asset(
                                                   'assets/images/roadmaps_logo.png',
                                                   width: 23,
                                                   height: 23,
                                                   errorBuilder: (_, __, ___) =>
-                                                  const Icon(Icons.map,
-                                                      color: Color(
-                                                          0xFFF5A100)),
+                                                      const Icon(Icons.map,
+                                                          color: Color(
+                                                              0xFFF5A100)),
                                                 ),
                                               ),
                                             ),
@@ -702,7 +675,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                       Navigator.of(context).push(
                                           MaterialPageRoute(
                                               builder: (_) =>
-                                              const CVOptimizerScreen()));
+                                                  const CVOptimizerScreen()));
                                     },
                                     child: Container(
                                       height: 118,
@@ -724,18 +697,18 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                               decoration: BoxDecoration(
                                                   color: Colors.white,
                                                   borderRadius:
-                                                  BorderRadius.circular(
-                                                      12)),
+                                                      BorderRadius.circular(
+                                                          12)),
                                               child: Center(
                                                 child: Image.asset(
                                                   'assets/images/cv_optimizer_logo.png',
                                                   width: 20,
                                                   height: 25,
                                                   errorBuilder: (_, __, ___) =>
-                                                  const Icon(
-                                                      Icons.description,
-                                                      color: Color(
-                                                          0xFFF5A100)),
+                                                      const Icon(
+                                                          Icons.description,
+                                                          color: Color(
+                                                              0xFFF5A100)),
                                                 ),
                                               ),
                                             ),
@@ -772,7 +745,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                       Navigator.of(context).push(
                                           MaterialPageRoute(
                                               builder: (_) =>
-                                              const MentorshipScreen()));
+                                                  const MentorshipScreen()));
                                     },
                                     child: Container(
                                       height: 118,
@@ -794,18 +767,18 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                               decoration: BoxDecoration(
                                                   color: Colors.white,
                                                   borderRadius:
-                                                  BorderRadius.circular(
-                                                      12)),
+                                                      BorderRadius.circular(
+                                                          12)),
                                               child: Center(
                                                 child: Image.asset(
                                                   'assets/images/find_mentor_logo.png',
                                                   width: 27,
                                                   height: 18,
                                                   errorBuilder: (_, __, ___) =>
-                                                  const Icon(
-                                                      Icons.person_search,
-                                                      color: Color(
-                                                          0xFF1D5572)),
+                                                      const Icon(
+                                                          Icons.person_search,
+                                                          color: Color(
+                                                              0xFF1D5572)),
                                                 ),
                                               ),
                                             ),
@@ -844,6 +817,25 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                         ),
                       ),
                     ],
+
+                    // ── General Events card (always visible) ─────────────
+                    const SizedBox(height: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: _buildListActionCard(
+                        context,
+                        imagePath: 'assets/images/general_events_logo.png',
+                        fallbackIcon: Icons.calendar_today,
+                        iconColor: const Color(0xFF1D5572),
+                        title: 'General Events',
+                        subtitle: 'Explore upcoming events',
+                        borderColor: const Color(0xFF1D5572),
+                        onTap: () {
+                          Navigator.of(context).push(MaterialPageRoute(
+                              builder: (_) => PublicEventsScreen()));
+                        },
+                      ),
+                    ),
 
                     const SizedBox(height: 24),
 
@@ -903,7 +895,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'Complete Your Profile',
@@ -932,7 +924,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                               context,
                                               MaterialPageRoute(
                                                   builder: (context) =>
-                                                  const ProfileScreen()),
+                                                      const ProfileScreen()),
                                             );
                                           },
                                           child: Container(
@@ -941,7 +933,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                             decoration: BoxDecoration(
                                               color: const Color(0xFFF5A100),
                                               borderRadius:
-                                              BorderRadius.circular(6),
+                                                  BorderRadius.circular(6),
                                             ),
                                             child: Text(
                                               'Update Profile',
@@ -964,7 +956,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                       ),
                     ],
 
-                    const SizedBox(height: 24), // Space at bottom
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
@@ -973,21 +965,20 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         ),
       ),
       bottomNavigationBar:
-      const BottomNavigation(selectedIndex: BottomNavIndex.home),
+          const BottomNavigation(selectedIndex: BottomNavIndex.home),
     );
   }
 
-  /// Full-width card used in the no-roadmap list layout
   Widget _buildListActionCard(
-      BuildContext context, {
-        required String imagePath,
-        required IconData fallbackIcon,
-        required Color iconColor,
-        required String title,
-        required String subtitle,
-        required Color borderColor,
-        required VoidCallback onTap,
-      }) {
+    BuildContext context, {
+    required String imagePath,
+    required IconData fallbackIcon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required Color borderColor,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -1015,8 +1006,12 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                   width: 28,
                   height: 28,
                   fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) =>
-                      Icon(fallbackIcon, color: iconColor, size: 26),
+                  errorBuilder: (_, __, ___) => Image.asset(
+                    'assets/images/General Events.png',
+                    width: 35,
+                    height: 35,
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
             ),

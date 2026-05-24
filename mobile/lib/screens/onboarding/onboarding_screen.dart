@@ -77,13 +77,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 title: 'LEARN FROM EXPERTS WHO\u2019VE BEEN IN YOUR PLACE',
                 description:
                     'Career growth is faster when you learn from someone experienced. SkillSync connects you with verified mentors who understand your challenges and guide you step by step toward your goals.',
-                imagePath: 'assets/images/page3,4.png',
+                imagePath: 'assets/images/page3.png',
               ),
               _OnboardingPageWithBg(
                 title: 'TURN YOUR CV INTO \nA CAREER MAGNET',
                 description:
                     'Your CV shouldn\u2019t just list your experience \u2014 it should tell your story the right way. SkillSync uses advanced AI to deeply analyze your resume, detect missing skills, improve wording, and optimize it for modern recruiters and ATS systems.',
-                imagePath: 'assets/images/page3,4.png',
+                imagePath: 'assets/images/page4.png',
               ),
             ],
           ),
@@ -303,22 +303,10 @@ class _OnboardingPageWithBg extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        // 1. Dark base
-        Container(color: const Color(0xFF1A3A4A)),
-
-        // 2. Gradient overlay
-        Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFFF5A100),
-                Color(0xFF1D5572),
-              ],
-              stops: [0.0, 0.55],
-            ),
-          ),
+        // Background Image
+        Image.asset(
+          'assets/images/onboarding_bg2.png',
+          fit: BoxFit.cover,
         ),
 
         // 3. Half-circle image at top

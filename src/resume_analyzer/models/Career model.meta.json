@@ -1,0 +1,131 @@
+{
+  "model_id": "career_model",
+  "version": "1.0.0",
+  "commit_hash": "cd1d839",
+  "description": "TF-IDF + Logistic Regression pipeline that classifies a resume's career field into one of five buckets.",
+  "task": "multi-class classification",
+  "target_column": "career_label",
+  "package_versions": {
+    "python": "3.13.2",
+    "scikit_learn": "1.8.0"
+  },
+  "artifact": {
+    "filename": "career_model.pkl",
+    "format": "pickle (sklearn.pipeline.Pipeline)",
+    "size_bytes": 578029,
+    "sha256": "9c678d576096d25b1a602cb285b94ec070371d62841a827753b75ad6564efeab",
+    "created_at": "2026-05-03T20:26:36",
+    "updated_at": "2026-05-03T20:26:36"
+  },
+  "companion_artifact": {
+    "filename": "career_classes.pkl",
+    "description": "Ordered list of class labels matching pipeline.classes_",
+    "size_bytes": 65,
+    "sha256": "ac17b6a8efd5cff78eb8b7159b1be43adc65fd146caf059e7eb198abc8cdc135"
+  },
+  "classes": ["business", "creative", "marketing", "other", "tech"],
+  "num_classes": 5,
+  "input": {
+    "type": "raw text",
+    "column": "cv_text",
+    "min_length_chars": 50,
+    "preprocessing": "lowercase → strip URLs → remove non-alphanumeric → normalize whitespace"
+  },
+  "pipeline": [
+    {
+      "step": "tfidf",
+      "class": "sklearn.feature_extraction.text.TfidfVectorizer",
+      "params": {
+        "max_features": 7000,
+        "ngram_range": [1, 2],
+        "sublinear_tf": true,
+        "min_df": 3,
+        "max_df": 0.9,
+        "stop_words": "english"
+      },
+      "fitted_vocabulary_size": 7000
+    },
+    {
+      "step": "clf",
+      "class": "sklearn.linear_model.LogisticRegression",
+      "params": {
+        "C": 4.0,
+        "max_iter": 600,
+        "solver": "lbfgs",
+        "random_state": 42
+      },
+      "convergence": {
+        "iterations_run": 59,
+        "converged": true
+      }
+    }
+  ],
+  "top_discriminative_terms_per_class": {
+    "business":  ["consultant", "hr", "finance", "accountant", "business development"],
+    "creative":  ["designer", "digital", "arts", "designer summary", "creative"],
+    "marketing": ["marketing", "google", "seo", "content", "analytics"],
+    "other":     ["construction", "advocate", "teacher", "chef", "healthcare"],
+    "tech":      ["engineering", "information technology", "information", "technology", "engineering manager"]
+  },
+  "training": {
+    "source_script": "training/train_career.py",
+    "data_file": "data/labeled_resumes.csv",
+    "gold_merge": "data/manual_gold_dataset.csv (merged when present)",
+    "test_split": 0.20,
+    "random_state": 42,
+    "stratified": true
+  },
+  "evaluation_metrics": {
+    "test_set_size": 683,
+    "accuracy": 0.8507,
+    "macro_precision": 0.8920,
+    "macro_recall": 0.8520,
+    "macro_f1": 0.8600,
+    "weighted_precision": 0.8600,
+    "weighted_recall": 0.8500,
+    "weighted_f1": 0.8500,
+    "per_class": {
+      "business":  {"precision": 0.800, "recall": 0.930, "f1": 0.860, "support": 229},
+      "creative":  {"precision": 0.900, "recall": 0.590, "f1": 0.720, "support": 111},
+      "marketing": {"precision": 1.000, "recall": 1.000, "f1": 1.000, "support": 56},
+      "other":     {"precision": 0.830, "recall": 0.850, "f1": 0.840, "support": 200},
+      "tech":      {"precision": 0.930, "recall": 0.890, "f1": 0.910, "support": 87}
+    },
+    "confusion_matrix": {
+      "labels": ["business", "creative", "marketing", "other", "tech"],
+      "matrix": [
+        [212,  4,  0, 11,  2],
+        [ 26, 66,  0, 18,  1],
+        [  0,  0, 56,  0,  0],
+        [ 24,  3,  0, 170, 3],
+        [  3,  0,  0,  7, 77]
+      ]
+    },
+    "evaluation_script": "training/train_career.py",
+    "results_file": "EVALUATION_RESULTS.md"
+  },
+  "evolution_metrics": {
+    "current_version": "1.0.0",
+    "history": [
+      {
+        "version": "1.0.0",
+        "trained_at": "2026-05-03T20:26:36",
+        "commit_hash": "cd1d839",
+        "accuracy": 0.8507,
+        "macro_f1": 0.8600,
+        "macro_precision": 0.8920,
+        "macro_recall": 0.8520,
+        "note": "baseline — first production model; marketing class gold-label only"
+      }
+    ]
+  },
+  "usage": {
+    "load": "import pickle\nwith open('career_model.pkl','rb') as f:\n    pipeline = pickle.load(f)\nprediction = pipeline.predict([clean_text])[0]",
+    "predict_proba": "pipeline.predict_proba([clean_text])[0]  # returns array of 5 class probabilities"
+  },
+  "known_limitations": [
+    "creative and other classes are underrepresented — precision may be lower for these labels",
+    "marketing was not present in the original Kaggle dataset; it relies on gold-label examples only",
+    "model does not use resume structure, only bag-of-words signal"
+  ]
+}

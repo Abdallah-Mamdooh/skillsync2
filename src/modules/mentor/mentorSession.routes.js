@@ -1,4 +1,5 @@
 const express = require('express');
+
 const router = express.Router();
 
 const authMiddleware = require('../../middlewares/auth.middleware');
@@ -6,54 +7,50 @@ const roleMiddleware = require('../../middlewares/role.middleware');
 const validate = require('../../middlewares/validate.middleware');
 const controller = require('./mentorSession.controller');
 
-// user side
+const bookingValidation = validate([
+  'mentorProfileId',
+  'method',
+  'durationMinutes',
+  'scheduledDate',
+  'scheduledStartTime',
+]);
+
+// User side: wallet/default payment hold booking
 router.post(
   '/',
   authMiddleware,
   roleMiddleware('user'),
-  validate([
-    'mentorProfileId',
-    'method',
-    'durationMinutes',
-    'scheduledDate',
-    'scheduledStartTime',
-  ]),
+  bookingValidation,
   controller.requestSession
 );
 
-router.post(
-  '/fawry-checkout',
-  authMiddleware,
-  roleMiddleware('user'),
-  validate([
-    'mentorProfileId',
-    'method',
-    'durationMinutes',
-    'scheduledDate',
-    'scheduledStartTime',
-  ]),
-  controller.createSessionFawryCheckout
-);
-
+// User side: Paymob checkout booking
 router.post(
   '/paymob-checkout',
   authMiddleware,
   roleMiddleware('user'),
-  validate([
-    'mentorProfileId',
-    'method',
-    'durationMinutes',
-    'scheduledDate',
-    'scheduledStartTime',
-  ]),
+  bookingValidation,
   controller.createSessionPaymobCheckout
 );
 
-router.get('/me', authMiddleware, controller.getMySessions);
-router.post('/:sessionId/join', authMiddleware, roleMiddleware('user'), controller.joinSession);
-router.post('/:sessionId/cancel', authMiddleware, roleMiddleware('user'), controller.cancelSession);
+// Legacy compatibility only
+router.post(
+  '/fawry-checkout',
+  authMiddleware,
+  roleMiddleware('user'),
+  bookingValidation,
+  controller.createSessionFawryCheckout
+);
 
-// mentor side
+// User sessions
+router.get('/me', authMiddleware, controller.getMySessions);
+
+// Manual sweeps for testing/admin operations
+// Put these before dynamic /:sessionId routes to avoid route confusion
+router.post('/lifecycle/run', authMiddleware, controller.runLifecycleSweep);
+router.post('/expire-pending/run', authMiddleware, controller.expirePendingSessions);
+
+// Mentor side
 router.get(
   '/incoming',
   authMiddleware,
@@ -82,15 +79,26 @@ router.post(
   controller.mentorCancelSession
 );
 
-// shared details
-router.get('/:sessionId', authMiddleware, controller.getSessionById);
+// User side session actions
+router.post(
+  '/:sessionId/join',
+  authMiddleware,
+  roleMiddleware('user'),
+  controller.joinSession
+);
+
+router.post(
+  '/:sessionId/cancel',
+  authMiddleware,
+  roleMiddleware('user'),
+  controller.cancelSession
+);
+
+// Shared details
 router.get('/:sessionId/timer', authMiddleware, controller.getSessionTimer);
+router.get('/:sessionId', authMiddleware, controller.getSessionById);
 
-// manual sweep for testing/admin ops
-router.post('/lifecycle/run', authMiddleware, controller.runLifecycleSweep);
-router.post('/expire-pending/run', authMiddleware, controller.expirePendingSessions);
-
-// kept only for compatibility
+// Kept only for compatibility with old flow
 router.post(
   '/:sessionId/accept',
   authMiddleware,

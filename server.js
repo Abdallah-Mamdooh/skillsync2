@@ -10,22 +10,19 @@ const User = require('./src/modules/auth/user.model');
 const chatService = require('./src/modules/mentor/chat.service');
 const { startReminderCron } = require('./src/modules/notification/reminder.cron');
 const { startMentorSessionCron } = require('./src/modules/mentor/mentorSession.cron');
-connectDB();
-startReminderCron();
-startMentorSessionCron();
+const { setIo } = require('./src/utils/socket');
+
 const PORT = process.env.PORT || 5000;
 
 const server = http.createServer(app);
-const { setIo } = require('./src/utils/socket');
-
 
 const io = new Server(server, {
   cors: {
     origin: '*',
   },
 });
-setIo(io);
 
+setIo(io);
 
 async function getUserFromSocket(socket, eventToken = null) {
   const authHeader = socket.handshake.headers?.authorization || '';
@@ -43,6 +40,7 @@ async function getUserFromSocket(socket, eventToken = null) {
   const userId = decoded.id || decoded._id;
 
   const user = await User.findById(userId);
+
   if (!user) {
     throw new Error('Socket user not found');
   }
@@ -51,31 +49,32 @@ async function getUserFromSocket(socket, eventToken = null) {
 }
 
 io.on('connection', (socket) => {
-
   socket.on('join_user_room', async ({ token }) => {
-  try {
-    const user = await getUserFromSocket(socket, token);
-    const room = `user_${user._id.toString()}`;
+    try {
+      const user = await getUserFromSocket(socket, token);
+      const room = `user_${user._id.toString()}`;
 
-    socket.join(room);
+      socket.join(room);
 
-    socket.emit('joined_user_room', {
-      userId: user._id,
-      room,
-    });
-  } catch (err) {
-    socket.emit('notification_error', {
-      message: err.message,
-    });
-  }
-});
+      socket.emit('joined_user_room', {
+        userId: user._id,
+        room,
+      });
+    } catch (err) {
+      socket.emit('notification_error', {
+        message: err.message,
+      });
+    }
+  });
 
   socket.on('join_session_room', async ({ sessionId, token }) => {
     try {
       const user = await getUserFromSocket(socket, token);
+
       await chatService.getChatMessages(sessionId, user._id);
 
       const room = `session_${sessionId}`;
+
       socket.join(room);
 
       socket.emit('joined_session_room', {
@@ -83,7 +82,9 @@ io.on('connection', (socket) => {
         room,
       });
     } catch (err) {
-      socket.emit('chat_error', { message: err.message });
+      socket.emit('chat_error', {
+        message: err.message,
+      });
     }
   });
 
@@ -112,13 +113,27 @@ io.on('connection', (socket) => {
         });
       }
     } catch (err) {
-      socket.emit('chat_error', { message: err.message });
+      socket.emit('chat_error', {
+        message: err.message,
+      });
     }
   });
 });
 
-startReminderCron();
+async function bootstrap() {
+  try {
+    await connectDB();
 
-server.listen(PORT, () => {
-  console.log(`SkillSync API running on port ${PORT}`);
-});
+    startReminderCron();
+    startMentorSessionCron();
+
+    server.listen(PORT, () => {
+      console.log(`SkillSync API running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Server startup failed:', error.message);
+    process.exit(1);
+  }
+}
+
+bootstrap();

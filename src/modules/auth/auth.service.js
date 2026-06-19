@@ -4,84 +4,157 @@ const crypto = require('crypto');
 const User = require('./user.model');
 const jwtUtils = require('../../utils/jwt');
 const sendEmail = require('../../utils/sendEmail');
-const { encryptText } = require('../../utils/encryption');
 
-const signup = async (data, file) => {
-  const {
-    fullName,
-    email,
-    phoneNumber,
-    password,
-    role,
-    linkedinUrl,
-    additionalInfo,
-    proposedHourlyRate,
-    payoutAccountInfo,
-  } = data;
+const normalizeEmail = (email) => {
+  return String(email || '').trim().toLowerCase();
+};
 
+const normalizePhoneNumber = (phoneNumber) => {
+  return String(phoneNumber || '').trim().replace(/\s+/g, '');
+};
+
+const isValidEmail = (email) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  return emailRegex.test(email);
+};
+
+const isValidEgyptianPhoneNumber = (phoneNumber) => {
+  // Accepts:
+  // 01012345678
+  // 01112345678
+  // 01212345678
+  // 01512345678
+  // +201012345678
+  // 00201012345678
+  const phoneRegex = /^(01[0125][0-9]{8}|\+201[0125][0-9]{8}|00201[0125][0-9]{8})$/;
+  return phoneRegex.test(phoneNumber);
+};
+
+const isStrongPassword = (password) => {
+  // Minimum 8 chars, at least one letter and one number
+  const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
+  return passwordRegex.test(password);
+};
+
+const isValidFullName = (fullName) => {
+  const name = String(fullName || '').trim();
+
+  // Allows Arabic and English letters, spaces, apostrophe, dash.
+  // Must be at least 2 characters.
+  const nameRegex = /^[A-Za-z\u0600-\u06FF\s'-]{2,}$/;
+
+  return nameRegex.test(name);
+};
+
+const isValidLinkedInUrl = (url) => {
+  const value = String(url || '').trim();
+
+  return /^https?:\/\/(www\.)?linkedin\.com\/.+/i.test(value);
+};
+
+const validateSignupData = ({
+  fullName,
+  email,
+  phoneNumber,
+  password,
+  role,
+  cvUrl,
+  linkedinUrl,
+}) => {
   if (!fullName || !email || !password || !role) {
-    throw new Error('fullName, email, password, and role are required');
+    throw new Error('Full name, email, password, and account type are required');
   }
 
-  if (role !== 'admin' && !phoneNumber) {
+  if (!['user', 'mentor'].includes(role)) {
+    throw new Error('Invalid account type. Only user and mentor registration are allowed');
+  }
+
+  if (!isValidFullName(fullName)) {
+    throw new Error('Full name must contain only letters and spaces');
+  }
+
+  if (!isValidEmail(email)) {
+    throw new Error('Please enter a valid email address');
+  }
+
+  if (!phoneNumber) {
     throw new Error('Phone number is required');
   }
 
-  const cvUrl = file ? `/uploads/cvs/${file.filename}` : '';
-
-  if (role === 'mentor' && !file) {
-    throw new Error('Mentors must upload a CV');
+  if (!isValidEgyptianPhoneNumber(phoneNumber)) {
+    throw new Error('Please enter a valid Egyptian phone number');
   }
 
-  const orConditions = [{ email }];
-
-  if (phoneNumber) {
-    orConditions.push({ phoneNumber });
+  if (!isStrongPassword(password)) {
+    throw new Error('Password must be at least 8 characters and contain at least one letter and one number');
   }
 
-  const existingUser = await User.findOne({ $or: orConditions });
+  if (role === 'mentor') {
+    if (!cvUrl) {
+      throw new Error('Mentors must provide a CV');
+    }
+
+    if (!linkedinUrl) {
+      throw new Error('Mentors must provide a LinkedIn profile');
+    }
+
+    if (!isValidLinkedInUrl(linkedinUrl)) {
+      throw new Error('Please enter a valid LinkedIn profile URL');
+    }
+  }
+};
+
+const signup = async (data) => {
+  const {
+    fullName,
+    phoneNumber,
+    password,
+    role,
+    cvUrl,
+    linkedinUrl,
+    additionalInfo,
+  } = data;
+
+  const email = normalizeEmail(data.email);
+  const normalizedPhoneNumber = normalizePhoneNumber(phoneNumber);
+
+  validateSignupData({
+    fullName,
+    email,
+    phoneNumber: normalizedPhoneNumber,
+    password,
+    role,
+    cvUrl,
+    linkedinUrl,
+  });
+
+  const existingUser = await User.findOne({
+    $or: [
+      { email },
+      { phoneNumber: normalizedPhoneNumber },
+    ],
+  });
 
   if (existingUser) {
     throw new Error('Email or phone number already in use');
   }
 
-  if (role === 'mentor') {
-    if (!linkedinUrl) {
-      throw new Error('Mentors must provide LinkedIn profile');
-    }
-
-    if (
-      proposedHourlyRate === undefined ||
-      proposedHourlyRate === null ||
-      Number(proposedHourlyRate) <= 0
-    ) {
-      throw new Error('Mentors must provide a valid proposed hourly rate');
-    }
-
-    if (!payoutAccountInfo || !payoutAccountInfo.trim()) {
-      throw new Error('Mentors must provide payout account information');
-    }
-  }
-
   const hashedPassword = await bcrypt.hash(password, 10);
 
   const user = await User.create({
-    fullName,
+    fullName: fullName.trim(),
     email,
-    phoneNumber,
+    phoneNumber: normalizedPhoneNumber,
     password: hashedPassword,
     role,
     authProvider: 'local',
-    cvUrl,
-    mentorProfile:
-      role === 'mentor'
-        ? {
-            linkedinUrl,
-            additionalInfo,
-            proposedHourlyRate: Number(proposedHourlyRate),
-            payoutAccountInfo: encryptText(payoutAccountInfo),
-          }
-        : undefined,
+    cvUrl: role === 'mentor' ? cvUrl : (cvUrl || ''),
+    mentorProfile: role === 'mentor'
+      ? {
+          linkedinUrl: linkedinUrl.trim(),
+          additionalInfo,
+        }
+      : undefined,
   });
 
   const userObject = user.toObject();
@@ -95,7 +168,16 @@ const signup = async (data, file) => {
 };
 
 const login = async (data) => {
-  const { email, password } = data;
+  const email = normalizeEmail(data.email);
+  const { password } = data;
+
+  if (!email || !password) {
+    throw new Error('Email and password are required');
+  }
+
+  if (!isValidEmail(email)) {
+    throw new Error('Please enter a valid email address');
+  }
 
   const user = await User.findOne({ email }).select('+password');
 
@@ -114,19 +196,29 @@ const login = async (data) => {
   }
 
   const token = jwtUtils.generateToken(user);
+
   const userObject = user.toObject();
   delete userObject.password;
 
   return {
     success: true,
     message: 'Login successful',
-    data: { token, user: userObject },
+    data: {
+      token,
+      user: userObject,
+    },
   };
 };
 
-const googleLogin = async (email) => {
+const googleLogin = async (emailInput) => {
+  const email = normalizeEmail(emailInput);
+
   if (!email) {
     throw new Error('Email is required');
+  }
+
+  if (!isValidEmail(email)) {
+    throw new Error('Please enter a valid email address');
   }
 
   const user = await User.findOne({ email });
@@ -140,22 +232,28 @@ const googleLogin = async (email) => {
   return {
     success: true,
     message: 'Google login successful',
-    data: { token, user },
+    data: {
+      token,
+      user,
+    },
   };
 };
 
-const forgotPassword = async (email) => {
+const forgotPassword = async (emailInput) => {
+  const email = normalizeEmail(emailInput);
+
   if (!email) {
     throw new Error('Email is required');
+  }
+
+  if (!isValidEmail(email)) {
+    throw new Error('Please enter a valid email address');
   }
 
   const user = await User.findOne({ email });
 
   if (!user) {
-    return {
-      success: true,
-      message: 'If this email exists, a reset link has been sent.',
-    };
+    throw new Error('No user found with this email');
   }
 
   const resetToken = crypto.randomBytes(32).toString('hex');
@@ -170,42 +268,39 @@ const forgotPassword = async (email) => {
 
   await user.save();
 
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-  const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
+  const resetUrl = `http://localhost:3000/reset-password/${resetToken}`;
 
   await sendEmail(
     user.email,
-    'SkillSync Password Reset',
+    'Password Reset',
     `
-Hello ${user.fullName || ''},
+    ### Password Reset
 
-You requested to reset your SkillSync password.
+    Click below to reset your password:
 
-Click the link below to set a new password:
-${resetUrl}
-
-This link will expire in 10 minutes.
-
-If you did not request this, please ignore this email.
+    ${resetUrl}
     `
   );
 
   return {
     success: true,
-    message: 'If this email exists, a reset link has been sent.',
+    message: 'Reset link sent to email',
   };
 };
 
 const resetPassword = async (token, newPassword) => {
-  if (!token) {
-    throw new Error('Reset token is required');
+  if (!newPassword) {
+    throw new Error('New password is required');
   }
 
-  if (!newPassword || newPassword.length < 8) {
-    throw new Error('Password must be at least 8 characters');
+  if (!isStrongPassword(newPassword)) {
+    throw new Error('Password must be at least 8 characters and contain at least one letter and one number');
   }
 
-  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+  const hashedToken = crypto
+    .createHash('sha256')
+    .update(token)
+    .digest('hex');
 
   const user = await User.findOne({
     passwordResetToken: hashedToken,
@@ -236,8 +331,8 @@ const changePassword = async (userId, oldPassword, newPassword) => {
     throw new Error('Old password and new password are required');
   }
 
-  if (newPassword.length < 8) {
-    throw new Error('New password must be at least 8 characters');
+  if (!isStrongPassword(newPassword)) {
+    throw new Error('Password must be at least 8 characters and contain at least one letter and one number');
   }
 
   const user = await User.findById(userId).select('+password');
@@ -257,9 +352,6 @@ const changePassword = async (userId, oldPassword, newPassword) => {
   }
 
   user.password = await bcrypt.hash(newPassword, 10);
-
-  user.passwordResetToken = undefined;
-  user.passwordResetExpires = undefined;
 
   await user.save();
 

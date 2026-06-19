@@ -7,6 +7,7 @@ const roleMiddleware = require('../../middlewares/role.middleware');
 const validate = require('../../middlewares/validate.middleware');
 const controller = require('./admin.controller');
 
+// Dashboard
 router.get(
   '/dashboard-summary',
   authMiddleware,
@@ -14,11 +15,19 @@ router.get(
   controller.getDashboardSummary
 );
 
+// Users
 router.get(
   '/users',
   authMiddleware,
   roleMiddleware('admin'),
   controller.getUsers
+);
+
+router.get(
+  '/users/:userId',
+  authMiddleware,
+  roleMiddleware('admin'),
+  controller.getUserDetails
 );
 
 router.patch(
@@ -28,6 +37,7 @@ router.patch(
   controller.updateUserStatus
 );
 
+// Mentor Profiles
 router.get(
   '/mentor-profiles',
   authMiddleware,
@@ -56,6 +66,7 @@ router.post(
   controller.unverifyMentorProfile
 );
 
+// Complaints
 router.get(
   '/complaints/open',
   authMiddleware,

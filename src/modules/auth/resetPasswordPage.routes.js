@@ -33,12 +33,12 @@ router.get('/reset-password/:token', (req, res) => {
     }
     h2 {
       margin-top: 0;
-      color: #222;
       text-align: center;
+      color: #222;
     }
     p {
-      color: #666;
       text-align: center;
+      color: #666;
       font-size: 14px;
     }
     input {
@@ -112,8 +112,8 @@ router.get('/reset-password/:token', (req, res) => {
         return;
       }
 
-      if (newPassword.length < 8) {
-        message.textContent = 'Password must be at least 8 characters.';
+      if (!/^(?=.*[A-Za-z])(?=.*\\d).{8,}$/.test(newPassword)) {
+        message.textContent = 'Password must be at least 8 characters and contain at least one letter and one number.';
         message.classList.add('error');
         return;
       }

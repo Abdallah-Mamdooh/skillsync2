@@ -1,25 +1,50 @@
-const nodemailer = require("nodemailer");
+const nodemailer = require('nodemailer');
 
 const sendEmail = async (to, subject, html) => {
-  try {
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
+  const emailUser = String(process.env.EMAIL_USER || '').trim();
+  const emailPass = String(process.env.EMAIL_PASS || '').replace(/\s/g, '');
 
-    await transporter.sendMail({
-      from: `"SkillSync" <${process.env.EMAIL_USER}>`,
+  if (!emailUser || !emailPass) {
+    throw new Error('Email service is not configured. EMAIL_USER or EMAIL_PASS is missing.');
+  }
+
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: emailUser,
+      pass: emailPass,
+    },
+  });
+
+  try {
+    await transporter.verify();
+
+    const info = await transporter.sendMail({
+      from: `"SkillSync" <${emailUser}>`,
       to,
       subject,
-      html
+      html,
+      text: String(html || '').replace(/<[^>]*>/g, ''),
     });
 
-    console.log("Email sent successfully");
+    console.log('Email sent successfully:', {
+      to,
+      subject,
+      messageId: info.messageId,
+    });
+
+    return info;
   } catch (error) {
-    console.error("Email sending failed:", error);
+    console.error('Email sending failed:', {
+      to,
+      subject,
+      message: error.message,
+      code: error.code,
+      command: error.command,
+      response: error.response,
+    });
+
+    throw new Error(`Email sending failed: ${error.message}`);
   }
 };
 

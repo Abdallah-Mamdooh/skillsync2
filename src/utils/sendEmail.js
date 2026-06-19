@@ -1,4 +1,11 @@
 const nodemailer = require('nodemailer');
+const dns = require('dns');
+
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch (error) {
+  console.warn('Could not force IPv4 DNS order:', error.message);
+}
 
 const sendEmail = async (to, subject, html) => {
   const emailUser = String(process.env.EMAIL_USER || '').trim();
@@ -9,11 +16,17 @@ const sendEmail = async (to, subject, html) => {
   }
 
   const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    family: 4,
     auth: {
       user: emailUser,
       pass: emailPass,
     },
+    connectionTimeout: 20000,
+    greetingTimeout: 20000,
+    socketTimeout: 30000,
   });
 
   try {

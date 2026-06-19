@@ -14,8 +14,7 @@
 
     "test": "echo \"Error: no test specified\" && exit 1",
 
-    "start": "node server.js",
-
+    "start": "concurrently \"python src/resume-analyzer/app.py\" \"node server.js\"",
     "sync:all-roadmaps": "node scripts/syncAllRoadmaps.js",
 
     "seed:sections": "node scripts/seedAssessmentSections.js",
@@ -51,6 +50,8 @@
     "axios": "^1.15.0",
 
     "bcryptjs": "^3.0.3",
+
+    "concurrently": "^10.0.3",
 
     "cors": "^2.8.5",
 

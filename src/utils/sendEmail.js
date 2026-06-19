@@ -1,11 +1,7 @@
 const nodemailer = require('nodemailer');
-const dns = require('dns');
+const dns = require('dns').promises;
 
-try {
-  dns.setDefaultResultOrder('ipv4first');
-} catch (error) {
-  console.warn('Could not force IPv4 DNS order:', error.message);
-}
+const SMTP_HOST = 'smtp.gmail.com';
 
 const sendEmail = async (to, subject, html) => {
   const emailUser = String(process.env.EMAIL_USER || '').trim();
@@ -15,14 +11,31 @@ const sendEmail = async (to, subject, html) => {
     throw new Error('Email service is not configured. EMAIL_USER or EMAIL_PASS is missing.');
   }
 
+  let smtpHost = SMTP_HOST;
+
+  try {
+    const ipv4Addresses = await dns.resolve4(SMTP_HOST);
+
+    if (ipv4Addresses && ipv4Addresses.length > 0) {
+      smtpHost = ipv4Addresses[0];
+    }
+
+    console.log('SMTP Gmail IPv4 selected:', smtpHost);
+  } catch (error) {
+    console.warn('Could not resolve Gmail IPv4, using hostname:', error.message);
+  }
+
   const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
+    host: smtpHost,
     port: 465,
     secure: true,
-    family: 4,
     auth: {
       user: emailUser,
       pass: emailPass,
+    },
+    tls: {
+      servername: SMTP_HOST,
+      rejectUnauthorized: true,
     },
     connectionTimeout: 20000,
     greetingTimeout: 20000,

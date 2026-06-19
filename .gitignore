@@ -2,6 +2,7 @@
 node_modules/
 
 # environment
+skillsync-backup/
 .env
 .env
 !.env

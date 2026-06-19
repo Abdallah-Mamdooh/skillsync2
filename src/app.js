@@ -30,7 +30,7 @@ const supportRoutes = require('./modules/support/support.routes');
 const settingsRoutes = require('./modules/settings/settings.routes');
 const cvAnalysisRoutes = require('./modules/cvAnalysis/cvAnalysis.routes');
 const dashboardCompatRoutes = require('./modules/dashboardCompat/dashboardCompat.routes');
-
+const resetPasswordPageRoutes = require('./modules/auth/resetPasswordPage.routes');
 const app = express();
 
 // Global middleware
@@ -74,7 +74,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/cv-analysis', cvAnalysisRoutes);
 app.use('/api/payouts', payoutRoutes);
 app.use('/api', dashboardCompatRoutes);
-
+app.use('/', resetPasswordPageRoutes);
 // Shared routes
 app.use('/api', routes);
 

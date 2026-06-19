@@ -268,7 +268,12 @@ const forgotPassword = async (emailInput) => {
 
   await user.save();
 
-  const resetUrl = `http://localhost:3000/reset-password/${resetToken}`;
+  const resetBaseUrl =
+    process.env.PASSWORD_RESET_BASE_URL ||
+    process.env.BACKEND_PUBLIC_URL ||
+    'http://localhost:5000';
+
+  const resetUrl = `${resetBaseUrl.replace(/\/$/, '')}/reset-password/${resetToken}`;
 
   await sendEmail(
     user.email,
@@ -279,6 +284,8 @@ const forgotPassword = async (emailInput) => {
     Click below to reset your password:
 
     ${resetUrl}
+
+    This link will expire in 10 minutes.
     `
   );
 

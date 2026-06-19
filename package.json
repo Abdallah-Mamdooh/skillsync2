@@ -14,8 +14,7 @@
 
     "test": "echo \"Error: no test specified\" && exit 1",
 
-    "start": "concurrently \"python src/resume_analyzer/app.py\" \"node server.js\"",
-
+    "start": "node server.js",
     "sync:all-roadmaps": "node scripts/syncAllRoadmaps.js",
 
     "seed:sections": "node scripts/seedAssessmentSections.js",
